@@ -21,7 +21,7 @@
                     <li><a href="clientes.html">Clientes</a></li>
                     <li><a href="produtos.html">Produtos</a></li>
                     <li><a href="caixa.html">Caixa</a></li>
-                    <li><a href="perfil-vendedor.html">Perfil Vendedor</a></li>
+                    <li><a href="perfil-vendedor.html">Meu Perfil</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer"> <button id="logout-btn" class="btn-logout">Sair</button> </div>
@@ -40,20 +40,31 @@
                 <div class="venda-resumo">
                     <div class="card">
                         <h2>Resumo da Venda</h2>
-                        <div class="cliente-selecao-container">
-                            <div class="input-group">
-                                <label for="select-cliente">Associar Cliente (Opcional)</label>
-                                <select id="select-cliente">
-                                    <option value="">Venda sem cliente</option>
-                                </select>
-                            </div>
-                            <button type="button" id="btn-novo-cliente" class="btn-novo-cliente">+</button>
+                        <div class="input-group" style="position: relative;">
+                            <label for="busca-cliente">Associar Cliente (Opcional)</label>
+                            <input type="text" id="busca-cliente" class="input-busca" placeholder="Digite o nome do cliente...">
+                            <input type="hidden" id="cliente-id">
+                            <div id="cliente-resultados" class="autocomplete-resultados"></div>
                         </div>
+                        <button type="button" id="btn-novo-cliente" class="btn-novo-cliente" style="width: 100%; margin-top: -10px; margin-bottom: 20px;">+ Cadastrar Novo Cliente</button>
+
                         <hr class="divider">
                         <div id="carrinho-itens" class="carrinho-itens">
                             <p class="carrinho-vazio">Selecione produtos para adicioná-los à venda.</p>
                         </div>
                         <hr class="divider">
+                        
+                        <div class="secao-pagamento">
+                            <h3>Forma de Pagamento</h3>
+                            <div class="metodos-pagamento">
+                                <label><input type="checkbox" name="pagamento" value="Dinheiro"> Dinheiro</label>
+                                <label><input type="checkbox" name="pagamento" value="Pix"> Pix</label>
+                                <label><input type="checkbox" name="pagamento" value="Débito"> Débito</label>
+                                <label><input type="checkbox" name="pagamento" value="Crédito"> Crédito</label>
+                            </div>
+                            <div id="valores-parciais-container"></div>
+                        </div>
+
                         <div class="total-venda">
                             <strong>TOTAL:</strong>
                             <strong id="venda-total">R$ 0,00</strong>
@@ -82,7 +93,7 @@
     </div>
 
     <div id="recibo-template" class="recibo-container">
-        <div class="recibo-header"> <h2>Uze Moda Sustentável</h2> <p>Rua da Moda, 123 - Centro</p> <p>Comprovante de Venda</p> </div>
+        <div class="recibo-header"></div>
         <div class="recibo-info">
             <p><strong>Venda:</strong> <span id="recibo-venda-id"></span></p>
             <p><strong>Data:</strong> <span id="recibo-data"></span></p>
@@ -93,6 +104,7 @@
             <thead> <tr> <th>Item</th> <th>Qtd.</th> <th>Preço Unit.</th> <th>Subtotal</th> </tr> </thead>
             <tbody id="recibo-itens"></tbody>
         </table>
+        <div id="recibo-pagamentos"></div>
         <div class="recibo-total"> <strong>TOTAL: <span id="recibo-total-valor"></span></strong> </div>
         <div class="recibo-footer"> <p>Obrigado pela sua compra!</p> </div>
     </div>
