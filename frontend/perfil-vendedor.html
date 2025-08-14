@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu Perfil | Painel do Vendedor</title>
     <link rel="stylesheet" href="css/global.css">
-    <link rel="stylesheet" href="css/painel.css"> <link rel="stylesheet" href="css/perfil-vendedor.css"> <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link rel="stylesheet" href="css/painel.css">
+    <link rel="stylesheet" href="css/perfil-vendedor.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="painel-container">
@@ -21,7 +22,6 @@
                     <li><a href="produtos.html">Produtos</a></li>
                     <li><a href="caixa.html">Caixa</a></li>
                     <li class="active"><a href="perfil-vendedor.html">Meu Perfil</a></li>
-                    <li><a href="alterar-senha.html">Alterar Senha</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer"> <button id="logout-btn" class="btn-logout">Sair</button> </div>
@@ -34,9 +34,9 @@
                     <p>Veja seu desempenho de vendas abaixo.</p>
                 </div>
                 <div class="filtro-periodo">
-                    <button class="btn-periodo active" data-periodo="hoje">Hoje</button>
+                    <button class="btn-periodo" data-periodo="hoje">Hoje</button>
                     <button class="btn-periodo" data-periodo="semana">Esta Semana</button>
-                    <button class="btn-periodo" data-periodo="mes">Este Mês</button>
+                    <button class="btn-periodo active" data-periodo="mes">Este Mês</button>
                 </div>
             </header>
             
@@ -60,18 +60,37 @@
             </section>
 
             <div class="perfil-layout">
-                <section class="card">
-                    <h2>Desempenho Diário (Mês Atual)</h2>
-                    <div style="position: relative; height: 350px; margin-top: 20px;">
-                        <canvas id="grafico-desempenho-diario"></canvas>
-                    </div>
-                </section>
+                <div class="coluna-principal">
+                    <section class="card">
+                        <h2>Desempenho Diário (Mês Atual)</h2>
+                        <div style="position: relative; height: 350px; margin-top: 20px;">
+                            <canvas id="grafico-desempenho-diario"></canvas>
+                        </div>
+                    </section>
+                    <section class="card">
+                        <h2>Alterar Minha Senha</h2>
+                        <form id="alterar-senha-form" style="max-width: 500px; margin-top: 20px;">
+                            <div class="input-group">
+                                <label for="senha-atual">Senha Atual</label>
+                                <input type="password" id="senha-atual" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="nova-senha">Nova Senha (mínimo 6 caracteres)</label>
+                                <input type="password" id="nova-senha" required minlength="6">
+                            </div>
+                            <div class="form-actions">
+                                <div id="success-message" class="success-message"></div>
+                                <button type="submit" class="btn">Salvar Nova Senha</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
 
                 <div class="coluna-direita">
                     <section class="card">
                         <h2>Top 5 Produtos Vendidos</h2>
                         <ul id="top-produtos-lista" class="lista-simples">
-                            <li>Nenhuma venda no período.</li>
+                            <li>Carregando...</li>
                         </ul>
                     </section>
                     <section class="card">
@@ -86,7 +105,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="ultimas-vendas-body">
-                                    <tr><td colspan="3">Nenhuma venda no período.</td></tr>
+                                    <tr><td colspan="3">Carregando...</td></tr>
                                 </tbody>
                             </table>
                         </div>
