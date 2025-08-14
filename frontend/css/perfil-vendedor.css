@@ -1,9 +1,15 @@
 /* Layout Principal do Perfil */
 .perfil-layout {
     display: grid;
-    grid-template-columns: 2fr 1fr; /* Coluna do gráfico maior que a da direita */
+    grid-template-columns: 2fr 1fr; /* Coluna principal maior que a da direita */
     gap: 30px;
     align-items: flex-start;
+}
+
+.coluna-principal {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
 }
 
 /* Métricas em cards */
@@ -65,6 +71,7 @@
     border-bottom: 1px solid #f0f0f0;
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .lista-simples li:last-child {
@@ -74,12 +81,24 @@
 .lista-simples .quantidade {
     font-weight: bold;
     color: var(--secondary-color);
+    background-color: #ecf0f1;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 0.8rem;
 }
 
 /* Tabela Simples (para Últimas Vendas) */
 .tabela-simples th, .tabela-simples td {
     padding: 10px;
     font-size: 0.9rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+.tabela-simples thead th {
+    background-color: transparent;
+    border-bottom: 2px solid #ddd;
+}
+.tabela-simples tr:last-child td {
+    border-bottom: none;
 }
 
 /* Responsividade */
