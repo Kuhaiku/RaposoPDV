@@ -194,3 +194,49 @@
 .recibo-tabela th:nth-child(4), .recibo-trola td:nth-child(4) { text-align: right; }
 .recibo-total { text-align: right; font-size: 1.2rem; font-weight: bold; border-top: 1px dashed #000; padding-top: 10px; }
 .recibo-footer { text-align: center; margin-top: 30px; }
+
+/* ... (todo o seu css existente) ... */
+
+/* ESTILOS PARA BUSCA DE CLIENTE */
+.autocomplete-resultados {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+}
+.autocomplete-resultados div {
+    padding: 12px;
+    cursor: pointer;
+}
+.autocomplete-resultados div:hover {
+    background-color: #f4f6f9;
+}
+
+/* ESTILOS PARA SEÇÃO DE PAGAMENTO */
+.secao-pagamento {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.secao-pagamento h3 {
+    margin-bottom: 10px;
+}
+.metodos-pagamento {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+.metodos-pagamento label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+#valores-parciais-container .input-group {
+    margin-bottom: 10px;
+}
