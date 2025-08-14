@@ -19,4 +19,8 @@ router.get('/detalhes/:id', empresaController.obterDetalhes);
 router.put('/inativar/:id', empresaController.inativar);
 router.put('/ativar/:id', empresaController.ativar);
 
+// NOVA ROTA - Redefinir senha da empresa (apenas Super Admin)
+router.put('/:id/redefinir-senha', empresaController.redefinirSenha);
+
+
 module.exports = router;

@@ -9,10 +9,12 @@ exports.registrar = async (req, res) => {
         return res.status(400).json({ message: 'Nome da empresa, e-mail de contato e senha são obrigatórios.' });
     }
     try {
+        // Gera o slug a partir do nome da empresa
+        const slug = nome_empresa.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
         const senhaHash = await bcrypt.hash(senha, 10);
         const [result] = await pool.query(
-            'INSERT INTO empresas (nome_empresa, email_contato, senha_hash, cnpj, telefone_comercial, endereco_comercial, cidade, estado, cep, dia_pagamento_acordado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [nome_empresa, email_contato, senhaHash, cnpj, telefone_comercial, endereco_comercial, cidade, estado, cep, dia_pagamento_acordado]
+            'INSERT INTO empresas (nome_empresa, email_contato, senha_hash, cnpj, telefone_comercial, endereco_comercial, cidade, estado, cep, dia_pagamento_acordado, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [nome_empresa, email_contato, senhaHash, cnpj, telefone_comercial, endereco_comercial, cidade, estado, cep, dia_pagamento_acordado, slug]
         );
         res.status(201).json({ message: 'Empresa registrada com sucesso!', empresaId: result.insertId });
     } catch (error) {
@@ -155,9 +157,9 @@ exports.login = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor durante o login da empresa.' });
     }
 };
+
 // Retorna os dados da empresa do funcionário atualmente logado
 exports.obterDadosDaMinhaEmpresa = async (req, res) => {
-    // O req.empresaId é adicionado pelo middleware de autenticação do funcionário
     const empresa_id = req.empresaId;
     
     try {
@@ -171,26 +173,30 @@ exports.obterDadosDaMinhaEmpresa = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao obter dados da empresa.' });
     }
 };
-// Registra uma nova empresa
-exports.registrar = async (req, res) => {
-    const { nome_empresa, email_contato, senha, cnpj, telefone_comercial, endereco_comercial, cidade, estado, cep, dia_pagamento_acordado } = req.body;
-    if (!nome_empresa || !email_contato || !senha) {
-        return res.status(400).json({ message: 'Nome da empresa, e-mail de contato e senha são obrigatórios.' });
+
+// Redefine a senha de uma empresa (só Super Admin pode fazer)
+exports.redefinirSenha = async (req, res) => {
+    const { id } = req.params;
+    const { novaSenha } = req.body;
+
+    if (!novaSenha || novaSenha.length < 6) {
+        return res.status(400).json({ message: 'A nova senha é obrigatória e deve ter no mínimo 6 caracteres.' });
     }
+
     try {
-        // Gera o slug a partir do nome da empresa
-        const slug = nome_empresa.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-        const senhaHash = await bcrypt.hash(senha, 10);
+        const senhaHash = await bcrypt.hash(novaSenha, 10);
         const [result] = await pool.query(
-            'INSERT INTO empresas (nome_empresa, email_contato, senha_hash, cnpj, telefone_comercial, endereco_comercial, cidade, estado, cep, dia_pagamento_acordado, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [nome_empresa, email_contato, senhaHash, cnpj, telefone_comercial, endereco_comercial, cidade, estado, cep, dia_pagamento_acordado, slug]
+            'UPDATE empresas SET senha_hash = ? WHERE id = ?',
+            [senhaHash, id]
         );
-        res.status(201).json({ message: 'Empresa registrada com sucesso!', empresaId: result.insertId });
-    } catch (error) {
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({ message: 'Este e-mail de contato ou CNPJ já está em uso.' });
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Empresa não encontrada.' });
         }
+
+        res.status(200).json({ message: 'Senha da empresa atualizada com sucesso.' });
+    } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Erro no servidor ao registrar empresa.' });
+        res.status(500).json({ message: 'Erro no servidor ao redefinir a senha da empresa.' });
     }
 };

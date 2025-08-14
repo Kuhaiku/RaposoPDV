@@ -15,5 +15,12 @@ router.post('/registrar', authEmpresaMiddleware, usuarioController.registrar);
 // Rota para LISTAR os funcionários da empresa logada
 router.get('/', authEmpresaMiddleware, usuarioController.listarTodos);
 
+// NOVA ROTA - Redefinir senha de um funcionário (só a empresa logada pode fazer)
+router.put('/:id/redefinir-senha', authEmpresaMiddleware, usuarioController.redefinirSenha);
+
+
+// NOVA ROTA - O próprio usuário logado redefine sua senha
+router.put('/redefinir-senha-propria', authMiddleware, usuarioController.redefinirSenhaPropria);
+
 
 module.exports = router;
