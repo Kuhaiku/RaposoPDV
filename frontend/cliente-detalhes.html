@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Cliente | Painel Uze Moda</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/clientes.css">
+    <link rel="stylesheet" href="css/cliente-detalhes.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="painel-container">
+        <aside class="sidebar">
+            <div class="sidebar-header"> <h2>Uze Moda</h2> </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="painel.html">Dashboard</a></li>
+                    <li><a href="nova-venda.html">Nova Venda</a></li>
+                    <li><a href="vendas.html">Histórico</a></li>
+                    <li class="active"><a href="clientes.html">Clientes</a></li>
+                    <li><a href="produtos.html">Produtos</a></li>
+                    <li><a href="caixa.html">Caixa</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer"> <button id="logout-btn" class="btn-logout">Sair</button> </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="main-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 id="nome-cliente-header">Carregando...</h1>
+                <a href="clientes.html" class="btn btn-secondary" style="width: auto; padding: 10px 20px;">Voltar para Lista</a>
+            </header>
+
+            <section class="metricas-cliente">
+                <div class="card"><h3>Total Gasto</h3><p id="total-gasto">R$ 0,00</p></div>
+                <div class="card"><h3>Total de Compras</h3><p id="total-compras">0</p></div>
+            </section>
+
+            <div class="detalhes-layout">
+                <section class="card">
+                    <h2>Dados Cadastrais</h2>
+                    <div id="dados-cadastrais" class="dados-grid"></div>
+                </section>
+                <section class="card">
+                    <h2>Histórico de Compras</h2>
+                    <button id="gerar-relatorio-btn" class="btn" style="margin-bottom: 20px;">Gerar Relatório das Compras Selecionadas</button>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;"><input type="checkbox" id="selecionar-todas"></th>
+                                    <th>ID Venda</th>
+                                    <th>Data</th>
+                                    <th>Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historico-compras-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    
+    <div id="recibo-template" class="recibo-container">
+        <div class="recibo-header"> <h2>Uze Moda Sustentável</h2> <p>Relatório de Compras</p> </div>
+        <div class="recibo-info"> <p><strong>Cliente:</strong> <span id="recibo-cliente-nome"></span></p> </div>
+        <div id="recibo-vendas-container"></div>
+        <div class="recibo-total"> <strong>TOTAL GERAL: <span id="recibo-total-geral"></span></strong> </div>
+        <div class="recibo-footer"> <p>Relatório gerado em: <span id="recibo-data-geracao"></span></p> </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/cliente-detalhes.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel da Empresa | Uze Painel</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/clientes.css"> </head>
+<body>
+    <div class="painel-container">
+        <aside class="sidebar">
+            <div class="sidebar-header"> <h2 id="nome-empresa-header">Carregando...</h2> </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active"><a href="painel-empresa.html">Funcionários</a></li>
+                    <li><a href="login.html">Acessar Painel de Vendas</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer"> 
+                <button id="logout-empresa-btn" class="btn-logout">Sair (Empresa)</button>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <header class="main-header"> <h1>Gerenciar Funcionários</h1> </header>
+            <section class="card">
+                <h2>Adicionar Novo Funcionário</h2>
+                <form id="add-funcionario-form" class="form-grid">
+                    <div class="input-group"> <label for="nome">Nome</label> <input type="text" id="nome" required> </div>
+                    <div class="input-group"> <label for="email">E-mail</label> <input type="email" id="email" required> </div>
+                    <div class="input-group"> <label for="senha">Senha</label> <input type="password" id="senha" required> </div>
+                    <div class="form-actions">
+                        <div id="success-message" class="success-message"></div>
+                        <button type="submit" class="btn">Salvar Funcionário</button>
+                    </div>
+                </form>
+            </section>
+            <section class="card">
+                <h2>Funcionários Cadastrados</h2>
+                <div class="table-container">
+                    <table>
+                        <thead> <tr> <th>Nome</th> <th>E-mail</th> </tr> </thead>
+                        <tbody id="funcionarios-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="js/painel-empresa.js"></script>
+</body>
+</html>

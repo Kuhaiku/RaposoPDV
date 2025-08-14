@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Painel Uze Moda Sustentável</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/painel.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+</head>
+<body>
+    <div class="painel-container">
+        <aside class="sidebar">
+             <div class="sidebar-header"> <h2>Uze Moda</h2> </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active"><a href="painel.html">Dashboard</a></li>
+                    <li><a href="nova-venda.html">Nova Venda</a></li>
+                    <li><a href="vendas.html">Histórico</a></li>
+                    <li><a href="clientes.html">Clientes</a></li>
+                    <li><a href="produtos.html">Produtos</a></li>
+                    <li><a href="caixa.html">Caixa</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer"> <button id="logout-btn" class="btn-logout">Sair</button> </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>Dashboard</h1>
+            </header>
+            
+            <section class="metricas">
+                <div class="card">
+                    <h3>Faturamento do Mês</h3>
+                    <p id="faturamento-mes">R$ 0,00</p>
+                </div>
+                <div class="card">
+                    <h3>Novos Clientes (30 dias)</h3>
+                    <p id="novos-clientes">0</p>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="grafico-header">
+                    <h3>Desempenho de Vendas no Mês</h3>
+                    <div class="chart-controls">
+                        <button id="btn-view-ambos" class="btn-toggle active">Ambos</button>
+                        <button id="btn-view-quantidade" class="btn-toggle">Quantidade</button>
+                        <button id="btn-view-valor" class="btn-toggle">Valor (R$)</button>
+                    </div>
+                </div>
+                <div style="position: relative; height: 350px; margin-top: 20px;">
+                    <canvas id="grafico-vendas-diarias"></canvas>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/painel.js"></script>
+</body>
+</html>
