@@ -23,7 +23,6 @@ async function fetchWithSuperAdminAuth(endpoint, options = {}) {
 document.addEventListener('DOMContentLoaded', () => {
     checkSuperAdminAuth();
     
-    // Pegar ID da empresa pela URL
     const urlParams = new URLSearchParams(window.location.search);
     const empresaId = urlParams.get('id');
     if (!empresaId) {
@@ -40,21 +39,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const addPagamentoForm = document.getElementById('add-pagamento-form');
     const successMessageDiv = document.getElementById('success-message');
 
+    // NOVOS ELEMENTOS DO MODAL
+    const redefinirSenhaBtn = document.getElementById('btn-redefinir-senha-empresa');
+    const redefinirSenhaModal = document.getElementById('redefinir-senha-empresa-modal');
+    const redefinirSenhaForm = document.getElementById('redefinir-senha-empresa-form');
+    const cancelarRedefinirBtn = document.getElementById('cancelar-redefinir-empresa-btn');
+
+
     function calcularProximoVencimento(diaAcordado) {
         const hoje = new Date();
         let vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), diaAcordado);
 
-        // Se a data de vencimento deste mês já passou, calcula para o próximo mês.
         if (vencimento < hoje) {
             vencimento.setMonth(vencimento.getMonth() + 1);
         }
 
-        // Regra do dia útil: 0 é Domingo, 6 é Sábado.
         let diaDaSemana = vencimento.getDay();
-        if (diaDaSemana === 0) { // Se for Domingo
-            vencimento.setDate(vencimento.getDate() + 1); // Pula para Segunda
-        } else if (diaDaSemana === 6) { // Se for Sábado
-            vencimento.setDate(vencimento.getDate() + 2); // Pula para Segunda
+        if (diaDaSemana === 0) {
+            vencimento.setDate(vencimento.getDate() + 1);
+        } else if (diaDaSemana === 6) {
+            vencimento.setDate(vencimento.getDate() + 2);
         }
         
         return vencimento.toLocaleDateString('pt-BR');
@@ -70,7 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const empresa = await empresaRes.json();
             const pagamentos = await pagamentosRes.json();
             
-            // Preenche dados da empresa
             headerNomeEmpresa.textContent = empresa.nome_empresa;
             dadosEmpresaView.innerHTML = `
                 <p><strong>CNPJ:</strong> ${empresa.cnpj || 'N/A'}</p>
@@ -80,10 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p><strong>Dia Vencimento:</strong> Dia ${empresa.dia_pagamento_acordado}</p>
             `;
 
-            // Calcula e exibe próximo vencimento
             proximoVencimentoEl.textContent = calcularProximoVencimento(empresa.dia_pagamento_acordado);
 
-            // Preenche histórico de pagamentos
             pagamentosBody.innerHTML = '';
             if (pagamentos.length > 0) {
                 pagamentos.forEach(p => {
@@ -109,8 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const novoPagamento = {
             empresaId: empresaId,
             valorPago: document.getElementById('valor-pago').value,
-            mesReferencia: hoje.getMonth() + 1, // Mês atual
-            anoReferencia: hoje.getFullYear() // Ano atual
+            mesReferencia: hoje.getMonth() + 1,
+            anoReferencia: hoje.getFullYear()
         };
         try {
             const response = await fetchWithSuperAdminAuth('/api/pagamentos/registrar', {
@@ -123,7 +124,36 @@ document.addEventListener('DOMContentLoaded', () => {
             addPagamentoForm.reset();
             successMessageDiv.textContent = 'Pagamento registrado com sucesso!';
             setTimeout(() => { successMessageDiv.textContent = ''; }, 3000);
-            carregarDados(); // Recarrega tudo
+            carregarDados();
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    // --- LÓGICA DO MODAL DE REDEFINIR SENHA ---
+    redefinirSenhaBtn.addEventListener('click', () => {
+        redefinirSenhaModal.style.display = 'flex';
+    });
+
+    cancelarRedefinirBtn.addEventListener('click', () => {
+        redefinirSenhaModal.style.display = 'none';
+        redefinirSenhaForm.reset();
+    });
+
+    redefinirSenhaForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const novaSenha = document.getElementById('nova-senha-empresa').value;
+        try {
+            const response = await fetchWithSuperAdminAuth(`/api/empresas/${empresaId}/redefinir-senha`, {
+                method: 'PUT',
+                body: JSON.stringify({ novaSenha })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            
+            alert(data.message);
+            redefinirSenhaModal.style.display = 'none';
+            redefinirSenhaForm.reset();
         } catch (error) {
             alert(error.message);
         }

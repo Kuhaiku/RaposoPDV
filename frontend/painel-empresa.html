@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel da Empresa </title>
+    <title>Painel da Empresa</title>
     <link rel="stylesheet" href="css/global.css">
-    <link rel="stylesheet" href="css/clientes.css"> </head>
+    <link rel="stylesheet" href="css/clientes.css">
+</head>
 <body>
     <div class="painel-container">
         <aside class="sidebar">
@@ -13,10 +14,11 @@
             <nav class="sidebar-nav">
                 <ul>
                     <li class="active"><a href="painel-empresa.html">Funcionários</a></li>
-                    <li><a href="login.html">Acessar Painel de Vendas</a></li>
+                    <li><a href="alterar-senha.html">Alterar Minha Senha</a></li>
                 </ul>
             </nav>
-            <div class="sidebar-footer"> 
+            <div class="sidebar-footer">
+                <a href="login.html" class="btn btn-secondary">Acessar Painel de Vendas</a>
                 <button id="logout-empresa-btn" class="btn-logout">Sair (Empresa)</button>
             </div>
         </aside>
@@ -28,7 +30,7 @@
                 <form id="add-funcionario-form" class="form-grid">
                     <div class="input-group"> <label for="nome">Nome</label> <input type="text" id="nome" required> </div>
                     <div class="input-group"> <label for="email">E-mail</label> <input type="email" id="email" required> </div>
-                    <div class="input-group"> <label for="senha">Senha</label> <input type="password" id="senha" required> </div>
+                    <div class="input-group"> <label for="senha">Senha Padrão</label> <input type="password" id="senha" required minlength="6"> </div>
                     <div class="form-actions">
                         <div id="success-message" class="success-message"></div>
                         <button type="submit" class="btn">Salvar Funcionário</button>
@@ -39,13 +41,37 @@
                 <h2>Funcionários Cadastrados</h2>
                 <div class="table-container">
                     <table>
-                        <thead> <tr> <th>Nome</th> <th>E-mail</th> </tr> </thead>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>E-mail</th>
+                                <th style="width: 150px;">Ações</th>
+                            </tr>
+                        </thead>
                         <tbody id="funcionarios-table-body"></tbody>
                     </table>
                 </div>
             </section>
         </main>
     </div>
+
+    <div id="redefinir-senha-usuario-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <h2>Redefinir Senha do Funcionário</h2>
+            <form id="redefinir-senha-usuario-form">
+                <input type="hidden" id="id-usuario-redefinir">
+                <div class="input-group">
+                    <label for="nova-senha-usuario">Nova Senha</label>
+                    <input type="password" id="nova-senha-usuario" required minlength="6">
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="cancelar-redefinir-usuario-btn" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn">Salvar Nova Senha</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="js/painel-empresa.js"></script>
 </body>
 </html>

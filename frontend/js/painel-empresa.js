@@ -29,7 +29,6 @@ async function fetchWithEmpresaAuth(endpoint, options = {}) {
     return response;
 }
 
-
 document.addEventListener('DOMContentLoaded', () => {
     checkEmpresaAuth();
 
@@ -39,7 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const addFuncionarioForm = document.getElementById('add-funcionario-form');
     const successMessageDiv = document.getElementById('success-message');
 
-    // Decodifica o token para pegar o nome da empresa
+    // NOVOS ELEMENTOS DO MODAL
+    const redefinirSenhaUsuarioModal = document.getElementById('redefinir-senha-usuario-modal');
+    const redefinirSenhaUsuarioForm = document.getElementById('redefinir-senha-usuario-form');
+    const cancelarRedefinirUsuarioBtn = document.getElementById('cancelar-redefinir-usuario-btn');
+    const idUsuarioInput = document.getElementById('id-usuario-redefinir');
+
     try {
         const token = localStorage.getItem('empresaAuthToken');
         const payload = JSON.parse(atob(token.split('.')[1]));
@@ -55,7 +59,13 @@ document.addEventListener('DOMContentLoaded', () => {
             funcionariosTableBody.innerHTML = '';
             funcionarios.forEach(func => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${func.nome}</td><td>${func.email}</td>`;
+                tr.innerHTML = `
+                    <td>${func.nome}</td>
+                    <td>${func.email}</td>
+                    <td>
+                        <button class="btn-action btn-edit btn-redefinir-senha" data-id="${func.id}">Redefinir Senha</button>
+                    </td>
+                `;
                 funcionariosTableBody.appendChild(tr);
             });
         } catch (error) {
@@ -81,7 +91,42 @@ document.addEventListener('DOMContentLoaded', () => {
             addFuncionarioForm.reset();
             successMessageDiv.textContent = 'Funcionário salvo com sucesso!';
             setTimeout(() => { successMessageDiv.textContent = ''; }, 3000);
-            carregarFuncionarios(); // Recarrega a lista
+            carregarFuncionarios();
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    // --- LÓGICA DO MODAL DE REDEFINIR SENHA DE FUNCIONÁRIO ---
+    funcionariosTableBody.addEventListener('click', (event) => {
+        if (event.target.classList.contains('btn-redefinir-senha')) {
+            const usuarioId = event.target.dataset.id;
+            idUsuarioInput.value = usuarioId;
+            redefinirSenhaUsuarioModal.style.display = 'flex';
+        }
+    });
+
+    cancelarRedefinirUsuarioBtn.addEventListener('click', () => {
+        redefinirSenhaUsuarioModal.style.display = 'none';
+        redefinirSenhaUsuarioForm.reset();
+    });
+
+    redefinirSenhaUsuarioForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const usuarioId = idUsuarioInput.value;
+        const novaSenha = document.getElementById('nova-senha-usuario').value;
+
+        try {
+            const response = await fetchWithEmpresaAuth(`/api/usuarios/${usuarioId}/redefinir-senha`, {
+                method: 'PUT',
+                body: JSON.stringify({ novaSenha })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            
+            alert(data.message);
+            redefinirSenhaUsuarioModal.style.display = 'none';
+            redefinirSenhaUsuarioForm.reset();
         } catch (error) {
             alert(error.message);
         }
