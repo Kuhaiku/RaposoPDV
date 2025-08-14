@@ -176,3 +176,87 @@ exports.redefinirSenhaPropria = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao alterar sua senha.' });
     }
 };
+exports.obterDadosPerfil = async (req, res) => {
+    const usuario_id = req.usuarioId;
+    const { periodo = 'mes' } = req.query; // 'hoje', 'semana', 'mes'
+
+    let dateFilter = '';
+    if (periodo === 'hoje') {
+        dateFilter = 'AND DATE(v.data_venda) = CURDATE()';
+    } else if (periodo === 'semana') {
+        dateFilter = 'AND YEARWEEK(v.data_venda, 1) = YEARWEEK(CURDATE(), 1)';
+    } else { // Padrão é 'mes'
+        dateFilter = 'AND MONTH(v.data_venda) = MONTH(CURDATE()) AND YEAR(v.data_venda) = YEAR(CURDATE())';
+    }
+
+    try {
+        const connection = await pool.getConnection();
+
+        // Query principal para métricas
+        const queryMetricas = `
+            SELECT
+                IFNULL(SUM(v.valor_total), 0) AS totalFaturado,
+                COUNT(v.id) AS numeroVendas,
+                IFNULL(SUM(vi.quantidade), 0) AS itensVendidos
+            FROM vendas AS v
+            LEFT JOIN venda_itens AS vi ON v.id = vi.venda_id
+            WHERE v.usuario_id = ? ${dateFilter};
+        `;
+        const [metricasResult] = await connection.query(queryMetricas, [usuario_id]);
+
+        // Query para top 5 produtos
+        const queryTopProdutos = `
+            SELECT p.nome, SUM(vi.quantidade) as totalVendido
+            FROM venda_itens AS vi
+            JOIN vendas AS v ON vi.venda_id = v.id
+            JOIN produtos AS p ON vi.produto_id = p.id
+            WHERE v.usuario_id = ? ${dateFilter}
+            GROUP BY p.nome
+            ORDER BY totalVendido DESC
+            LIMIT 5;
+        `;
+        const [topProdutos] = await connection.query(queryTopProdutos, [usuario_id]);
+
+        // Query para últimas 5 vendas
+        const queryUltimasVendas = `
+            SELECT v.data_venda, c.nome AS cliente_nome, v.valor_total
+            FROM vendas AS v
+            LEFT JOIN clientes AS c ON v.cliente_id = c.id
+            WHERE v.usuario_id = ?
+            ORDER BY v.data_venda DESC
+            LIMIT 5;
+        `;
+        const [ultimasVendas] = await connection.query(queryUltimasVendas, [usuario_id]);
+
+        // Query para gráfico de desempenho diário (sempre do mês atual)
+        const queryGrafico = `
+            SELECT 
+                DAY(data_venda) AS dia, 
+                SUM(valor_total) AS total
+            FROM vendas
+            WHERE usuario_id = ? AND MONTH(data_venda) = MONTH(CURDATE()) AND YEAR(data_venda) = YEAR(CURDATE())
+            GROUP BY DAY(data_venda)
+            ORDER BY dia ASC;
+        `;
+        const [graficoData] = await connection.query(queryGrafico, [usuario_id]);
+
+        connection.release();
+
+        const metricas = metricasResult[0];
+        const ticketMedio = metricas.numeroVendas > 0 ? metricas.totalFaturado / metricas.numeroVendas : 0;
+
+        res.status(200).json({
+            totalFaturado: metricas.totalFaturado,
+            numeroVendas: metricas.numeroVendas,
+            ticketMedio: ticketMedio,
+            itensVendidos: parseInt(metricas.itensVendidos, 10),
+            topProdutos,
+            ultimasVendas,
+            graficoData
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor ao buscar dados do perfil.' });
+    }
+};
