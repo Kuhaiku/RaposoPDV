@@ -237,3 +237,24 @@ exports.redefinirSenhaPropria = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao alterar sua senha.' });
     }
 };
+// Retorna os dados da empresa do funcionário atualmente logado
+exports.obterDadosDaMinhaEmpresa = async (req, res) => {
+    // O req.empresaId é adicionado pelo middleware de autenticação do funcionário
+    const empresa_id = req.empresaId;
+    
+    try {
+        // Query ATUALIZADA para buscar mais campos
+        const [rows] = await pool.query(
+            'SELECT nome_empresa, slug, endereco_comercial, telefone_comercial FROM empresas WHERE id = ?', 
+            [empresa_id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Empresa não encontrada.' });
+        }
+        res.status(200).json(rows[0]);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor ao obter dados da empresa.' });
+    }
+};
