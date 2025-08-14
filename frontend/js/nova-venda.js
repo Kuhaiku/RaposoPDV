@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let produtosDisponiveis = [];
     let carrinho = [];
+    let dadosEmpresa = {}; // NOVA VARIÁVEL para guardar os dados da empresa
 
     function renderizarProdutos(produtos) {
         listaProdutosEl.innerHTML = '';
@@ -74,12 +75,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // FUNÇÃO ATUALIZADA para usar os dados da empresa
     async function gerarRecibo(vendaId) {
         try {
             const response = await fetchWithAuth(`/api/vendas/${vendaId}`);
             if (!response.ok) throw new Error('Não foi possível buscar os dados para o recibo.');
             const detalhesVenda = await response.json();
 
+            // Popula os dados da empresa no cabeçalho do recibo
+            const reciboHeader = document.querySelector('#recibo-template .recibo-header');
+            reciboHeader.innerHTML = `
+                <h2>${dadosEmpresa.nome_empresa || 'Comprovante'}</h2>
+                <p>${dadosEmpresa.endereco_comercial || ''}</p>
+                <p>${dadosEmpresa.telefone_comercial || ''}</p>
+                <p>Comprovante de Venda</p>
+            `;
+
+            // Popula o resto das informações
             document.getElementById('recibo-venda-id').textContent = `#${detalhesVenda.id}`;
             document.getElementById('recibo-data').textContent = new Date(detalhesVenda.data_venda).toLocaleString('pt-BR');
             document.getElementById('recibo-cliente').textContent = detalhesVenda.cliente_nome || 'Não identificado';
@@ -155,11 +167,19 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizarCarrinho();
         renderizarProdutos(produtosDisponiveis);
     }
-
+    
+    // FUNÇÃO ATUALIZADA para buscar os dados da empresa na inicialização
     async function inicializar() {
         try {
-            const produtosRes = await fetchWithAuth('/api/produtos');
+            // Promise.all executa as buscas em paralelo
+            const [produtosRes, empresaRes] = await Promise.all([
+                fetchWithAuth('/api/produtos'),
+                fetchWithAuth('/api/empresas/meus-dados') 
+            ]);
+
             produtosDisponiveis = await produtosRes.json();
+            dadosEmpresa = await empresaRes.json(); // Salva os dados da empresa
+
             renderizarProdutos(produtosDisponiveis);
             await carregarClientes();
         } catch (error) {
