@@ -39,7 +39,7 @@ app.use('/api/pagamentos', pagamentoRoutes);
 
 // --- SERVINDO O FRONTEND ---
 // O servidor agora serve os arquivos estáticos da pasta 'frontend'
-const frontendPath = path.join(__dirname, '..', '..', 'frontend');
+const frontendPath = path.join(__dirname, '..', 'frontend');
 app.use(express.static(frontendPath));
 
 // Rota "catch-all" para direcionar para o login principal se nenhuma rota de API for encontrada
