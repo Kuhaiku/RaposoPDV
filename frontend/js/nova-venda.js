@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let produtosDisponiveis = [];
     let carrinho = [];
-    let dadosEmpresa = {}; // NOVA VARIÁVEL para guardar os dados da empresa
+    let dadosEmpresa = {}; // Variável para guardar os dados da empresa
 
     function renderizarProdutos(produtos) {
         listaProdutosEl.innerHTML = '';
@@ -75,14 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // FUNÇÃO ATUALIZADA para usar os dados da empresa
     async function gerarRecibo(vendaId) {
         try {
             const response = await fetchWithAuth(`/api/vendas/${vendaId}`);
             if (!response.ok) throw new Error('Não foi possível buscar os dados para o recibo.');
             const detalhesVenda = await response.json();
 
-            // Popula os dados da empresa no cabeçalho do recibo
             const reciboHeader = document.querySelector('#recibo-template .recibo-header');
             reciboHeader.innerHTML = `
                 <h2>${dadosEmpresa.nome_empresa || 'Comprovante'}</h2>
@@ -91,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>Comprovante de Venda</p>
             `;
 
-            // Popula o resto das informações
             document.getElementById('recibo-venda-id').textContent = `#${detalhesVenda.id}`;
             document.getElementById('recibo-data').textContent = new Date(detalhesVenda.data_venda).toLocaleString('pt-BR');
             document.getElementById('recibo-cliente').textContent = detalhesVenda.cliente_nome || 'Não identificado';
@@ -112,4 +109,162 @@ document.addEventListener('DOMContentLoaded', () => {
             const canvas = await html2canvas(elementoRecibo);
             
             const link = document.createElement('a');
-            link.href = canvas.
+            link.href = canvas.toDataURL('image/png');
+            link.download = `Recibo-Venda_${detalhesVenda.id}-${detalhesVenda.cliente_nome || 'Cliente'}.png`;
+            link.click();
+        } catch (error) {
+            console.error('Erro ao gerar recibo:', error);
+            alert('A venda foi registrada, mas houve um erro ao gerar o recibo.');
+        }
+    }
+
+    function adicionarAoCarrinho(produtoId) {
+        const produto = produtosDisponiveis.find(p => p.id === produtoId);
+        if (!produto) return;
+        if (produto.estoque <= 0) {
+            alert(`O produto "${produto.nome}" está fora de estoque.`);
+            return;
+        }
+        const itemNoCarrinho = carrinho.find(item => item.id === produtoId);
+        if (itemNoCarrinho) {
+            if (itemNoCarrinho.quantidade < produto.estoque) {
+                itemNoCarrinho.quantidade++;
+            } else {
+                alert(`Estoque máximo atingido para "${produto.nome}".`);
+            }
+        } else {
+            carrinho.push({ ...produto, quantidade: 1 });
+        }
+        renderizarCarrinho();
+        renderizarProdutos(produtosDisponiveis);
+    }
+
+    function alterarQuantidade(produtoId, mudanca) {
+        const itemNoCarrinho = carrinho.find(item => item.id === produtoId);
+        if (!itemNoCarrinho) return;
+        if (mudanca > 0) {
+            if (itemNoCarrinho.quantidade < itemNoCarrinho.estoque) {
+                itemNoCarrinho.quantidade += mudanca;
+            } else {
+                alert(`Estoque máximo atingido para "${itemNoCarrinho.nome}".`);
+            }
+        } else {
+            itemNoCarrinho.quantidade += mudanca;
+        }
+        if (itemNoCarrinho.quantidade <= 0) {
+            removerDoCarrinho(produtoId);
+        } else {
+            renderizarCarrinho();
+            renderizarProdutos(produtosDisponiveis);
+        }
+    }
+
+    function removerDoCarrinho(produtoId) {
+        carrinho = carrinho.filter(item => item.id !== produtoId);
+        renderizarCarrinho();
+        renderizarProdutos(produtosDisponiveis);
+    }
+
+    async function inicializar() {
+        try {
+            const [produtosRes, empresaRes] = await Promise.all([
+                fetchWithAuth('/api/produtos'),
+                fetchWithAuth('/api/empresas/meus-dados')
+            ]);
+
+            produtosDisponiveis = await produtosRes.json();
+            dadosEmpresa = await empresaRes.json();
+
+            renderizarProdutos(produtosDisponiveis);
+            await carregarClientes();
+        } catch (error) {
+            console.error('Erro ao inicializar página:', error);
+            alert('Não foi possível carregar os dados. Tente novamente.');
+        }
+    }
+
+    buscaProdutoInput.addEventListener('keyup', () => renderizarProdutos(produtosDisponiveis));
+
+    listaProdutosEl.addEventListener('click', (event) => {
+        const card = event.target.closest('.produto-selecao-card');
+        if (card) adicionarAoCarrinho(parseInt(card.dataset.produtoId));
+    });
+
+    carrinhoItensEl.addEventListener('click', (event) => {
+        const target = event.target;
+        const itemEl = target.closest('.carrinho-item');
+        if (!itemEl) return;
+        const produtoId = parseInt(itemEl.dataset.produtoId);
+        if (target.classList.contains('btn-qty-change')) {
+            alterarQuantidade(produtoId, parseInt(target.dataset.change));
+        }
+        if (target.classList.contains('btn-remover-item')) {
+            removerDoCarrinho(produtoId);
+        }
+    });
+
+    finalizarVendaBtn.addEventListener('click', async () => {
+        if(carrinho.length === 0) return;
+        const clienteId = selectClienteEl.value ? parseInt(selectClienteEl.value) : null;
+        const itensVenda = carrinho.map(item => ({ produto_id: item.id, quantidade: item.quantidade }));
+        try {
+            const response = await fetchWithAuth('/api/vendas', {
+                method: 'POST',
+                body: JSON.stringify({ cliente_id: clienteId, itens: itensVenda })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            
+            if (gerarReciboCheck.checked) {
+                alert('Venda registrada com sucesso! O recibo será baixado.');
+                await gerarRecibo(data.vendaId);
+            } else {
+                alert('Venda registrada com sucesso!');
+            }
+
+            carrinho = [];
+            selectClienteEl.value = '';
+            gerarReciboCheck.checked = false;
+            renderizarCarrinho();
+            await inicializar(); // Re-inicializa para buscar o estoque atualizado
+        } catch (error) {
+            alert(`Erro ao finalizar venda: ${error.message}`);
+        }
+    });
+
+    btnNovoCliente.addEventListener('click', () => {
+        modalNovoCliente.style.display = 'flex';
+    });
+
+    btnCancelarNovoCliente.addEventListener('click', () => {
+        modalNovoCliente.style.display = 'none';
+    });
+
+    formNovoCliente.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const novoCliente = {
+            nome: document.getElementById('modal-nome').value,
+            telefone: document.getElementById('modal-telefone').value,
+            cpf: document.getElementById('modal-cpf').value,
+        };
+        try {
+            const response = await fetchWithAuth('/api/clientes', {
+                method: 'POST',
+                body: JSON.stringify(novoCliente)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            
+            await carregarClientes();
+            selectClienteEl.value = data.clienteId;
+            modalNovoCliente.style.display = 'none';
+            formNovoCliente.reset();
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    logoutBtn.addEventListener('click', logout);
+    
+    inicializar();
+});
