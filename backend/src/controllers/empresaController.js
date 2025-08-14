@@ -200,3 +200,40 @@ exports.redefinirSenha = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao redefinir a senha da empresa.' });
     }
 };
+// Permite que a própria empresa logada altere sua senha
+exports.redefinirSenhaPropria = async (req, res) => {
+    const { senhaAtual, novaSenha } = req.body;
+    const empresa_id = req.empresaId; // ID da própria empresa logada
+
+    if (!senhaAtual || !novaSenha) {
+        return res.status(400).json({ message: 'A senha atual e a nova senha são obrigatórias.' });
+    }
+    if (novaSenha.length < 6) {
+        return res.status(400).json({ message: 'A nova senha deve ter no mínimo 6 caracteres.' });
+    }
+
+    try {
+        const [rows] = await pool.query('SELECT senha_hash FROM empresas WHERE id = ?', [empresa_id]);
+        const empresa = rows[0];
+
+        if (!empresa) {
+            return res.status(404).json({ message: 'Empresa não encontrada.' });
+        }
+
+        const senhaValida = await bcrypt.compare(senhaAtual, empresa.senha_hash);
+        if (!senhaValida) {
+            return res.status(401).json({ message: 'A senha atual está incorreta.' });
+        }
+
+        const novaSenhaHash = await bcrypt.hash(novaSenha, 10);
+        await pool.query(
+            'UPDATE empresas SET senha_hash = ? WHERE id = ?',
+            [novaSenhaHash, empresa_id]
+        );
+
+        res.status(200).json({ message: 'Sua senha foi alterada com sucesso.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor ao alterar sua senha.' });
+    }
+};
