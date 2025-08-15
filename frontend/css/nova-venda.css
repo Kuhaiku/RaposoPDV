@@ -299,3 +299,79 @@
 .lista-modal-busca li:hover {
     background-color: #f4f6f9;
 }
+
+/* ... (todo o seu css existente) ... */
+
+/* ESTILOS PARA NOVA SELEÇÃO DE CLIENTE */
+.cliente-selecao-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cliente-selecao-container select {
+    flex-grow: 1; /* Faz o select ocupar o espaço disponível */
+}
+
+.btn-icone-busca {
+    height: 45px;
+    width: 45px;
+    border: 1px solid #ddd;
+    background-color: #f4f6f9;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+}
+.btn-icone-busca:hover {
+    background-color: #e9ecef;
+}
+
+.btn-novo-cliente {
+    height: 45px;
+    width: 45px;
+    border-radius: 5px;
+    border: 1px solid var(--secondary-color);
+    background-color: var(--secondary-color);
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+}
+.btn-novo-cliente:hover {
+    background-color: var(--primary-color);
+}
+
+/* ESTILOS PARA A LISTA DE CLIENTES NO MODAL DE BUSCA */
+.lista-modal-busca {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+    max-height: 40vh;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 8px;
+}
+
+.lista-modal-busca li {
+    padding: 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s ease;
+}
+
+.lista-modal-busca li:last-child {
+    border-bottom: none;
+}
+
+.lista-modal-busca li:hover {
+    background-color: #f4f6f9;
+}
+
+.lista-modal-busca .sem-resultado {
+    color: #999;
+    cursor: default;
+}
