@@ -272,5 +272,30 @@
     background-color: var(--primary-color);
 }
 
+/* ... (todo o seu css existente) ... */
 
+/* ESTILOS PARA A LISTA DE CLIENTES NO MODAL DE BUSCA */
+.lista-modal-busca {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+    max-height: 40vh;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 8px;
+}
 
+.lista-modal-busca li {
+    padding: 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s ease;
+}
+
+.lista-modal-busca li:last-child {
+    border-bottom: none;
+}
+
+.lista-modal-busca li:hover {
+    background-color: #f4f6f9;
+}
