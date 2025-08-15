@@ -240,3 +240,37 @@
 #valores-parciais-container .input-group {
     margin-bottom: 10px;
 }
+/* ... (todo o seu css existente) ... */
+
+/* Coluna da Direita - Carrinho */
+.cliente-selecao-container {
+    display: flex;
+    align-items: flex-end; /* Alterado de flex-end */
+    gap: 10px;
+}
+
+/* Garante que o campo de busca ocupe o espaço disponível */
+.cliente-selecao-container .input-busca {
+    flex-grow: 1; 
+}
+
+.btn-novo-cliente {
+    height: 45px;
+    width: 45px; /* Largura fixa */
+    border-radius: 5px;
+    border: 1px solid var(--secondary-color);
+    background-color: var(--secondary-color);
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    flex-shrink: 0; /* Impede que o botão encolha */
+    transition: background-color 0.2s;
+}
+
+.btn-novo-cliente:hover {
+    background-color: var(--primary-color);
+}
+
+
+
