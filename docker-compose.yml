@@ -2,16 +2,13 @@ version: '3.8'
 
 services:
   raposo-gestao:
-    # Constrói a imagem usando o Dockerfile no diretório atual
     build: .
-    # Nome do container
     container_name: raposo_gestao_app
-    # Reinicia o container automaticamente se ele parar
     restart: unless-stopped
-    # Mapeia a porta 3000 do seu computador para a porta 3000 do container
     ports:
       - "3000:3000"
-    # Carrega as variáveis de ambiente do seu arquivo .env do backend
-    # IMPORTANTE: O Docker precisa saber suas senhas para conectar ao banco de dados!
+    # ADICIONE ESTAS LINHAS ABAIXO
+    environment:
+      - TZ=America/Sao_Paulo
     env_file:
       - ./backend/.env
