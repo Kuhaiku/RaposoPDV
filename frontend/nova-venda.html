@@ -41,12 +41,16 @@
                     <div class="card">
                         <h2>Resumo da Venda</h2>
                         <div class="input-group" style="position: relative;">
-                            <label for="busca-cliente">Associar Cliente (Opcional)</label>
-                            <input type="text" id="busca-cliente" class="input-busca" placeholder="Digite o nome do cliente...">
-                            <input type="hidden" id="cliente-id">
-                            <div id="cliente-resultados" class="autocomplete-resultados"></div>
-                        </div>
-                        <button type="button" id="btn-novo-cliente" class="btn-novo-cliente" style="width: 100%; margin-top: -10px; margin-bottom: 20px;">+ Cadastrar Novo Cliente</button>
+    <label for="busca-cliente">Associar Cliente (Opcional)</label>
+    <div class="cliente-selecao-container">
+        <input type="text" id="busca-cliente" class="input-busca" placeholder="Digite o nome do cliente...">
+        <input type="hidden" id="cliente-id">
+        <button type="button" id="btn-novo-cliente" class="btn-novo-cliente">+</button>
+    </div>
+    <div id="cliente-resultados" class="autocomplete-resultados"></div>
+</div>
+
+<hr class="divider">
 
                         <hr class="divider">
                         <div id="carrinho-itens" class="carrinho-itens">
