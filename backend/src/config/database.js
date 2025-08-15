@@ -11,7 +11,9 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  // LINHA ADICIONADA PARA CORRIGIR O FUSO HORÁRIO
+  timezone: '-03:00' 
 });
 
 // Testa a conexão para garantir que tudo está certo na inicialização
