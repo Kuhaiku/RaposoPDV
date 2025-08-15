@@ -42,10 +42,13 @@
                         <h2>Resumo da Venda</h2>
                         <div class="input-group">
                             <label for="select-cliente">Associar Cliente (Opcional)</label>
-                            <select id="select-cliente">
-                                </select>
+                            <div class="cliente-selecao-container">
+                                <button id="btn-abrir-busca-cliente" class="btn-icone-busca">🔎</button>
+                                <select id="select-cliente">
+                                    </select>
+                                <button type="button" id="btn-novo-cliente" class="btn-novo-cliente">+</button>
+                            </div>
                         </div>
-                        <button type="button" id="btn-novo-cliente" class="btn-novo-cliente" style="width: 100%; margin-top: 10px; margin-bottom: 20px;">+ Cadastrar Novo Cliente</button>
                         
                         <hr class="divider">
                         <div id="carrinho-itens" class="carrinho-itens">
