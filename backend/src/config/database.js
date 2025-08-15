@@ -12,8 +12,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // LINHA ADICIONADA PARA CORRIGIR O FUSO HORÁRIO
-  timezone: '-03:00' 
+  
 });
 
 // Testa a conexão para garantir que tudo está certo na inicialização
