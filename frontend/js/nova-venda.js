@@ -3,10 +3,12 @@ checkAuth();
 document.addEventListener('DOMContentLoaded', () => {
     // --- ELEMENTOS DO DOM ---
     const selectClienteEl = document.getElementById('select-cliente');
+    const btnAbrirBuscaCliente = document.getElementById('btn-abrir-busca-cliente');
     const modalBuscaCliente = document.getElementById('modal-busca-cliente');
     const btnCancelarBuscaCliente = document.getElementById('btn-cancelar-busca-cliente');
     const inputFiltroCliente = document.getElementById('input-filtro-cliente');
     const listaClientesModal = document.getElementById('lista-clientes-modal');
+    // ... (outros elementos do DOM)
     const logoutBtn = document.getElementById('logout-btn');
     const listaProdutosEl = document.getElementById('lista-produtos');
     const buscaProdutoInput = document.getElementById('busca-produto');
@@ -31,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES DE LÓGICA E RENDERIZAÇÃO ---
 
     // Carrega clientes e popula o <select>
-    async function carregarClientes() {
+    async function carregarClientes(selecionarId = null) {
         try {
             const clientesRes = await fetchWithAuth('/api/clientes');
             todosClientes = await clientesRes.json();
@@ -43,21 +45,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 option.textContent = cliente.nome;
                 selectClienteEl.appendChild(option);
             });
-            // Adiciona a opção de busca no final
-            selectClienteEl.innerHTML += '<option value="buscar" style="font-weight: bold; color: #3498db;">🔎 Buscar cliente...</option>';
-
+            
+            if (selecionarId) {
+                selectClienteEl.value = selecionarId;
+            }
         } catch (error) {
             console.error('Erro ao carregar clientes:', error);
         }
     }
-
+    
     // Abre e prepara o modal de busca
     function abrirModalBuscaCliente() {
         renderizarListaClientesModal(); // Renderiza a lista completa
         modalBuscaCliente.style.display = 'flex';
         inputFiltroCliente.value = '';
         inputFiltroCliente.focus();
-        selectClienteEl.value = ''; // Reseta o select para a opção padrão
     }
 
     // Renderiza a lista de clientes dentro do modal de busca
@@ -80,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // O restante do seu código JS continua aqui...
     function renderizarProdutos(produtos) {
         listaProdutosEl.innerHTML = '';
         const termoBusca = buscaProdutoInput.value.toLowerCase();
@@ -124,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderizarPagamentos() {
         const metodosSelecionados = document.querySelectorAll('input[name="pagamento"]:checked');
         valoresParciaisContainer.innerHTML = '';
-
         if (metodosSelecionados.length > 1) {
             metodosSelecionados.forEach(input => {
                 const valor = input.value;
@@ -139,20 +141,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function gerarRecibo(vendaId, somaPagamentos) {
+        try {
+            const response = await fetchWithAuth(`/api/vendas/${vendaId}`);
+            if (!response.ok) throw new Error('Não foi possível buscar os dados para o recibo.');
+            const detalhesVenda = await response.json();
+            const reciboHeader = document.querySelector('#recibo-template .recibo-header');
+            reciboHeader.innerHTML = `<h2>${dadosEmpresa.nome_empresa || ''}</h2><p>${dadosEmpresa.endereco_comercial || ''}</p><p>${dadosEmpresa.telefone_comercial || ''}</p><p>Comprovante de Venda</p>`;
+            document.getElementById('recibo-venda-id').textContent = `#${detalhesVenda.id}`;
+            document.getElementById('recibo-data').textContent = new Date(detalhesVenda.data_venda).toLocaleString('pt-BR');
+            document.getElementById('recibo-cliente').textContent = detalhesVenda.cliente_nome || 'Não identificado';
+            document.getElementById('recibo-vendedor').textContent = detalhesVenda.usuario_nome;
+            const reciboItensBody = document.getElementById('recibo-itens');
+            reciboItensBody.innerHTML = '';
+            let totalProdutos = 0;
+            detalhesVenda.itens.forEach(item => {
+                const subtotal = item.quantidade * item.preco_unitario;
+                totalProdutos += subtotal;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${item.produto_nome}</td><td style="text-align: center;">${item.quantidade}</td><td>R$ ${parseFloat(item.preco_unitario).toFixed(2)}</td><td style="text-align: right;">${subtotal.toFixed(2)}</td>`;
+                reciboItensBody.appendChild(tr);
+            });
+            const taxas = somaPagamentos - totalProdutos;
+            if (taxas > 0.001) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>Taxas/Acréscimos</td><td></td><td></td><td style="text-align: right;">${taxas.toFixed(2)}</td>`;
+                reciboItensBody.appendChild(tr);
+            }
+            const reciboPagamentosDiv = document.getElementById('recibo-pagamentos');
+            reciboPagamentosDiv.innerHTML = '<h4 style="margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">Pagamentos:</h4>';
+            detalhesVenda.pagamentos.forEach(p => {
+                reciboPagamentosDiv.innerHTML += `<p style="margin: 2px 0;">- ${p.metodo}: R$ ${parseFloat(p.valor).toFixed(2)}</p>`;
+            });
+            document.getElementById('recibo-total-valor').textContent = `R$ ${somaPagamentos.toFixed(2)}`;
+            const elementoRecibo = document.getElementById('recibo-template');
+            const canvas = await html2canvas(elementoRecibo);
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `Recibo-Venda_${detalhesVenda.id}.png`;
+            link.click();
+        } catch (error) {
+            console.error('Erro ao gerar recibo:', error);
+            alert('A venda foi registrada, mas houve um erro ao gerar o recibo.');
+        }
+    }
+    
     function adicionarAoCarrinho(produtoId) {
         const produto = produtosDisponiveis.find(p => p.id === produtoId);
         if (!produto) return;
-        if (produto.estoque <= 0) {
-            alert(`O produto "${produto.nome}" está fora de estoque.`);
-            return;
-        }
+        if (produto.estoque <= 0) { alert(`O produto "${produto.nome}" está fora de estoque.`); return; }
         const itemNoCarrinho = carrinho.find(item => item.id === produtoId);
         if (itemNoCarrinho) {
-            if (itemNoCarrinho.quantidade < produto.estoque) {
-                itemNoCarrinho.quantidade++;
-            } else {
-                alert(`Estoque máximo atingido para "${produto.nome}".`);
-            }
+            if (itemNoCarrinho.quantidade < produto.estoque) { itemNoCarrinho.quantidade++; } else { alert(`Estoque máximo atingido para "${produto.nome}".`); }
         } else {
             carrinho.push({ ...produto, quantidade: 1 });
         }
@@ -164,20 +204,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const itemNoCarrinho = carrinho.find(item => item.id === produtoId);
         if (!itemNoCarrinho) return;
         if (mudanca > 0) {
-            if (itemNoCarrinho.quantidade < itemNoCarrinho.estoque) {
-                itemNoCarrinho.quantidade += mudanca;
-            } else {
-                alert(`Estoque máximo atingido para "${itemNoCarrinho.nome}".`);
-            }
+            if (itemNoCarrinho.quantidade < itemNoCarrinho.estoque) { itemNoCarrinho.quantidade += mudanca; } else { alert(`Estoque máximo atingido para "${itemNoCarrinho.nome}".`); }
         } else {
             itemNoCarrinho.quantidade += mudanca;
         }
-        if (itemNoCarrinho.quantidade <= 0) {
-            removerDoCarrinho(produtoId);
-        } else {
-            renderizarCarrinho();
-            renderizarProdutos(produtosDisponiveis);
-        }
+        if (itemNoCarrinho.quantidade <= 0) { removerDoCarrinho(produtoId); } else { renderizarCarrinho(); renderizarProdutos(produtosDisponiveis); }
     }
 
     function removerDoCarrinho(produtoId) {
@@ -202,75 +233,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function gerarRecibo(vendaId, somaPagamentos) {
-        try {
-            const response = await fetchWithAuth(`/api/vendas/${vendaId}`);
-            if (!response.ok) throw new Error('Não foi possível buscar os dados para o recibo.');
-            const detalhesVenda = await response.json();
-
-            const reciboHeader = document.querySelector('#recibo-template .recibo-header');
-            reciboHeader.innerHTML = `<h2>${dadosEmpresa.nome_empresa || ''}</h2><p>${dadosEmpresa.endereco_comercial || ''}</p><p>${dadosEmpresa.telefone_comercial || ''}</p><p>Comprovante de Venda</p>`;
-
-            document.getElementById('recibo-venda-id').textContent = `#${detalhesVenda.id}`;
-            document.getElementById('recibo-data').textContent = new Date(detalhesVenda.data_venda).toLocaleString('pt-BR');
-            document.getElementById('recibo-cliente').textContent = detalhesVenda.cliente_nome || 'Não identificado';
-            document.getElementById('recibo-vendedor').textContent = detalhesVenda.usuario_nome;
-
-            const reciboItensBody = document.getElementById('recibo-itens');
-            reciboItensBody.innerHTML = '';
-            let totalProdutos = 0;
-            detalhesVenda.itens.forEach(item => {
-                const subtotal = item.quantidade * item.preco_unitario;
-                totalProdutos += subtotal;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${item.produto_nome}</td><td style="text-align: center;">${item.quantidade}</td><td>R$ ${parseFloat(item.preco_unitario).toFixed(2)}</td><td style="text-align: right;">${subtotal.toFixed(2)}</td>`;
-                reciboItensBody.appendChild(tr);
-            });
-
-            const taxas = somaPagamentos - totalProdutos;
-            if (taxas > 0.001) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>Taxas/Acréscimos</td><td></td><td></td><td style="text-align: right;">${taxas.toFixed(2)}</td>`;
-                reciboItensBody.appendChild(tr);
-            }
-
-            const reciboPagamentosDiv = document.getElementById('recibo-pagamentos');
-            reciboPagamentosDiv.innerHTML = '<h4 style="margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">Pagamentos:</h4>';
-            detalhesVenda.pagamentos.forEach(p => {
-                reciboPagamentosDiv.innerHTML += `<p style="margin: 2px 0;">- ${p.metodo}: R$ ${parseFloat(p.valor).toFixed(2)}</p>`;
-            });
-
-            document.getElementById('recibo-total-valor').textContent = `R$ ${somaPagamentos.toFixed(2)}`;
-
-            const elementoRecibo = document.getElementById('recibo-template');
-            const canvas = await html2canvas(elementoRecibo);
-            
-            const link = document.createElement('a');
-            link.href = canvas.toDataURL('image/png');
-            link.download = `Recibo-Venda_${detalhesVenda.id}.png`;
-            link.click();
-        } catch (error) {
-            console.error('Erro ao gerar recibo:', error);
-            alert('A venda foi registrada, mas houve um erro ao gerar o recibo.');
-        }
-    }
-    
     // --- EVENT LISTENERS ---
-    
+    btnAbrirBuscaCliente.addEventListener('click', abrirModalBuscaCliente);
+    inputFiltroCliente.addEventListener('keyup', () => renderizarListaClientesModal(inputFiltroCliente.value));
+    listaClientesModal.addEventListener('click', (e) => { if (e.target.tagName === 'LI' && e.target.dataset.id) { const clienteId = e.target.dataset.id; selectClienteEl.value = clienteId; modalBuscaCliente.style.display = 'none'; } });
+    btnCancelarBuscaCliente.addEventListener('click', () => { modalBuscaCliente.style.display = 'none'; });
+    modalBuscaCliente.addEventListener('click', (e) => { if (e.target === modalBuscaCliente) { modalBuscaCliente.style.display = 'none'; } });
+
     finalizarVendaBtn.addEventListener('click', async () => {
         if (carrinho.length === 0) return;
-
-        const clienteId = selectClienteEl.value && selectClienteEl.value !== 'buscar' ? parseInt(selectClienteEl.value) : null;
+        const clienteId = selectClienteEl.value ? parseInt(selectClienteEl.value) : null;
         const itensVenda = carrinho.map(item => ({ produto_id: item.id, quantidade: item.quantidade }));
         const metodosSelecionados = document.querySelectorAll('input[name="pagamento"]:checked');
-
-        if (metodosSelecionados.length === 0) {
-            return alert('Selecione pelo menos uma forma de pagamento.');
-        }
-
+        if (metodosSelecionados.length === 0) { return alert('Selecione pelo menos uma forma de pagamento.'); }
         let pagamentos = [];
         let somaPagamentos = 0;
-
         if (metodosSelecionados.length === 1) {
             pagamentos.push({ metodo: metodosSelecionados[0].value, valor: totalVenda });
             somaPagamentos = totalVenda;
@@ -279,41 +256,17 @@ document.addEventListener('DOMContentLoaded', () => {
             let algumValorPreenchido = false;
             inputsParciais.forEach(input => {
                 const valor = parseFloat(input.value) || 0;
-                if (valor > 0) {
-                    pagamentos.push({ metodo: input.dataset.metodo, valor: valor });
-                    somaPagamentos += valor;
-                    algumValorPreenchido = true;
-                }
+                if (valor > 0) { pagamentos.push({ metodo: input.dataset.metodo, valor: valor }); somaPagamentos += valor; algumValorPreenchido = true; }
             });
-            if (!algumValorPreenchido) {
-                return alert('Preencha o valor para cada forma de pagamento selecionada.');
-            }
+            if (!algumValorPreenchido) { return alert('Preencha o valor para cada forma de pagamento selecionada.'); }
         }
-
-        if (Math.abs(somaPagamentos - totalVenda) > 0.01) { // Margem para erros de ponto flutuante
-            if (!confirm(`A soma dos pagamentos (${somaPagamentos.toFixed(2)}) é diferente do total da venda (${totalVenda.toFixed(2)}). Deseja continuar mesmo assim?`)) {
-                return;
-            }
-        }
-        
+        if (Math.abs(somaPagamentos - totalVenda) > 0.01) { if (!confirm(`A soma dos pagamentos (${somaPagamentos.toFixed(2)}) é diferente do total da venda (${totalVenda.toFixed(2)}). Deseja continuar mesmo assim?`)) { return; } }
         try {
-            finalizarVendaBtn.disabled = true;
-            finalizarVendaBtn.textContent = 'Processando...';
-
-            const response = await fetchWithAuth('/api/vendas', {
-                method: 'POST',
-                body: JSON.stringify({ cliente_id: clienteId, itens: itensVenda, pagamentos })
-            });
+            finalizarVendaBtn.disabled = true; finalizarVendaBtn.textContent = 'Processando...';
+            const response = await fetchWithAuth('/api/vendas', { method: 'POST', body: JSON.stringify({ cliente_id: clienteId, itens: itensVenda, pagamentos }) });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
-            
-            if (gerarReciboCheck.checked) {
-                alert('Venda registrada com sucesso! O recibo será baixado.');
-                await gerarRecibo(data.vendaId, somaPagamentos);
-            } else {
-                alert('Venda registrada com sucesso!');
-            }
-            
+            if (gerarReciboCheck.checked) { alert('Venda registrada com sucesso! O recibo será baixado.'); await gerarRecibo(data.vendaId, somaPagamentos); } else { alert('Venda registrada com sucesso!'); }
             carrinho = [];
             metodosSelecionados.forEach(c => c.checked = false);
             await inicializar();
@@ -321,8 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             alert(`Erro ao finalizar venda: ${error.message}`);
         } finally {
-            finalizarVendaBtn.disabled = false;
-            finalizarVendaBtn.textContent = 'Finalizar Venda';
+            finalizarVendaBtn.disabled = false; finalizarVendaBtn.textContent = 'Finalizar Venda';
         }
     });
 
@@ -332,24 +284,14 @@ document.addEventListener('DOMContentLoaded', () => {
     btnNovoCliente.addEventListener('click', () => { modalNovoCliente.style.display = 'flex'; });
     btnCancelarNovoCliente.addEventListener('click', () => { modalNovoCliente.style.display = 'none'; });
     metodosPagamentoContainer.addEventListener('change', renderizarPagamentos);
-    
     formNovoCliente.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const novoCliente = {
-            nome: document.getElementById('modal-nome').value,
-            telefone: document.getElementById('modal-telefone').value,
-            cpf: document.getElementById('modal-cpf').value,
-        };
+        const novoCliente = { nome: document.getElementById('modal-nome').value, telefone: document.getElementById('modal-telefone').value, cpf: document.getElementById('modal-cpf').value };
         try {
-            const response = await fetchWithAuth('/api/clientes', {
-                method: 'POST',
-                body: JSON.stringify(novoCliente)
-            });
+            const response = await fetchWithAuth('/api/clientes', { method: 'POST', body: JSON.stringify(novoCliente) });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
-            
-            await carregarClientes();
-            selectClienteEl.value = data.clienteId;
+            await carregarClientes(data.clienteId);
             modalNovoCliente.style.display = 'none';
             formNovoCliente.reset();
         } catch (error) {
