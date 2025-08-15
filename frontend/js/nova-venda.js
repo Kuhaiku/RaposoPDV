@@ -2,6 +2,11 @@ checkAuth();
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- ELEMENTOS DO DOM ---
+    const selectClienteEl = document.getElementById('select-cliente');
+    const modalBuscaCliente = document.getElementById('modal-busca-cliente');
+    const btnCancelarBuscaCliente = document.getElementById('btn-cancelar-busca-cliente');
+    const inputFiltroCliente = document.getElementById('input-filtro-cliente');
+    const listaClientesModal = document.getElementById('lista-clientes-modal');
     const logoutBtn = document.getElementById('logout-btn');
     const listaProdutosEl = document.getElementById('lista-produtos');
     const buscaProdutoInput = document.getElementById('busca-produto');
@@ -13,13 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const formNovoCliente = document.getElementById('form-novo-cliente');
     const btnCancelarNovoCliente = document.getElementById('btn-cancelar-novo-cliente');
     const gerarReciboCheck = document.getElementById('gerar-recibo-check');
-    
-    // Novos elementos para busca de cliente
-    const buscaClienteInputEl = document.getElementById('busca-cliente');
-    const clienteIdInput = document.getElementById('cliente-id');
-    const clienteResultadosEl = document.getElementById('cliente-resultados');
-
-    // Novos elementos para pagamento
     const metodosPagamentoContainer = document.querySelector('.metodos-pagamento');
     const valoresParciaisContainer = document.getElementById('valores-parciais-container');
 
@@ -30,7 +28,58 @@ document.addEventListener('DOMContentLoaded', () => {
     let dadosEmpresa = {};
     let totalVenda = 0;
 
-    // --- FUNÇÕES DE RENDERIZAÇÃO ---
+    // --- FUNÇÕES DE LÓGICA E RENDERIZAÇÃO ---
+
+    // Carrega clientes e popula o <select>
+    async function carregarClientes() {
+        try {
+            const clientesRes = await fetchWithAuth('/api/clientes');
+            todosClientes = await clientesRes.json();
+            
+            selectClienteEl.innerHTML = '<option value="">Venda sem cliente</option>';
+            todosClientes.forEach(cliente => {
+                const option = document.createElement('option');
+                option.value = cliente.id;
+                option.textContent = cliente.nome;
+                selectClienteEl.appendChild(option);
+            });
+            // Adiciona a opção de busca no final
+            selectClienteEl.innerHTML += '<option value="buscar" style="font-weight: bold; color: #3498db;">🔎 Buscar cliente...</option>';
+
+        } catch (error) {
+            console.error('Erro ao carregar clientes:', error);
+        }
+    }
+
+    // Abre e prepara o modal de busca
+    function abrirModalBuscaCliente() {
+        renderizarListaClientesModal(); // Renderiza a lista completa
+        modalBuscaCliente.style.display = 'flex';
+        inputFiltroCliente.value = '';
+        inputFiltroCliente.focus();
+        selectClienteEl.value = ''; // Reseta o select para a opção padrão
+    }
+
+    // Renderiza a lista de clientes dentro do modal de busca
+    function renderizarListaClientesModal(filtro = '') {
+        listaClientesModal.innerHTML = '';
+        const termoBusca = filtro.toLowerCase();
+        
+        const clientesFiltrados = todosClientes.filter(c => c.nome.toLowerCase().includes(termoBusca));
+
+        if (clientesFiltrados.length === 0) {
+            listaClientesModal.innerHTML = '<li class="sem-resultado">Nenhum cliente encontrado.</li>';
+            return;
+        }
+
+        clientesFiltrados.forEach(cliente => {
+            const li = document.createElement('li');
+            li.textContent = cliente.nome;
+            li.dataset.id = cliente.id;
+            listaClientesModal.appendChild(li);
+        });
+    }
+    
     function renderizarProdutos(produtos) {
         listaProdutosEl.innerHTML = '';
         const termoBusca = buscaProdutoInput.value.toLowerCase();
@@ -90,16 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- FUNÇÕES DE DADOS E LÓGICA ---
-    async function carregarClientes() {
-        try {
-            const clientesRes = await fetchWithAuth('/api/clientes');
-            todosClientes = await clientesRes.json();
-        } catch (error) {
-            console.error('Erro ao carregar clientes:', error);
-        }
-    }
-
     function adicionarAoCarrinho(produtoId) {
         const produto = produtosDisponiveis.find(p => p.id === produtoId);
         if (!produto) return;
@@ -149,21 +188,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function inicializar() {
         try {
-            const [produtosRes, empresaRes, clientesRes] = await Promise.all([
+            const [produtosRes, empresaRes] = await Promise.all([
                 fetchWithAuth('/api/produtos'),
-                fetchWithAuth('/api/empresas/meus-dados'),
-                fetchWithAuth('/api/clientes')
+                fetchWithAuth('/api/empresas/meus-dados')
             ]);
             produtosDisponiveis = await produtosRes.json();
             dadosEmpresa = await empresaRes.json();
-            todosClientes = await clientesRes.json();
             renderizarProdutos(produtosDisponiveis);
+            await carregarClientes();
         } catch (error) {
             console.error('Erro ao inicializar página:', error);
             alert('Não foi possível carregar os dados. Tente novamente.');
         }
     }
-    
+
     async function gerarRecibo(vendaId, somaPagamentos) {
         try {
             const response = await fetchWithAuth(`/api/vendas/${vendaId}`);
@@ -190,14 +228,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const taxas = somaPagamentos - totalProdutos;
-            if (taxas > 0.001) { // Adiciona margem para erros de ponto flutuante
+            if (taxas > 0.001) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `<td>Taxas/Acréscimos</td><td></td><td></td><td style="text-align: right;">${taxas.toFixed(2)}</td>`;
                 reciboItensBody.appendChild(tr);
             }
 
             const reciboPagamentosDiv = document.getElementById('recibo-pagamentos');
-            reciboPagamentosDiv.innerHTML = '<h4>Pagamentos:</h4>';
+            reciboPagamentosDiv.innerHTML = '<h4 style="margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">Pagamentos:</h4>';
             detalhesVenda.pagamentos.forEach(p => {
                 reciboPagamentosDiv.innerHTML += `<p style="margin: 2px 0;">- ${p.metodo}: R$ ${parseFloat(p.valor).toFixed(2)}</p>`;
             });
@@ -218,49 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // --- EVENT LISTENERS ---
-    buscaClienteInputEl.addEventListener('keyup', () => {
-        const termo = buscaClienteInputEl.value.toLowerCase();
-        clienteResultadosEl.style.display = 'block';
-        clienteResultadosEl.innerHTML = '';
-        if (termo.length < 1) {
-            clienteResultadosEl.style.display = 'none';
-            return;
-        }
-
-        const filtrados = todosClientes.filter(c => c.nome.toLowerCase().includes(termo));
-        if (filtrados.length === 0) {
-             clienteResultadosEl.style.display = 'none';
-             return;
-        }
-        filtrados.forEach(cliente => {
-            const div = document.createElement('div');
-            div.textContent = cliente.nome;
-            div.dataset.id = cliente.id;
-            clienteResultadosEl.appendChild(div);
-        });
-    });
-
-    clienteResultadosEl.addEventListener('click', (e) => {
-        if (e.target.tagName === 'DIV') {
-            buscaClienteInputEl.value = e.target.textContent;
-            clienteIdInput.value = e.target.dataset.id;
-            clienteResultadosEl.innerHTML = '';
-            clienteResultadosEl.style.display = 'none';
-        }
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!buscaClienteInputEl.contains(e.target) && !clienteResultadosEl.contains(e.target)) {
-            clienteResultadosEl.style.display = 'none';
-        }
-    });
-
-    metodosPagamentoContainer.addEventListener('change', renderizarPagamentos);
-
+    
     finalizarVendaBtn.addEventListener('click', async () => {
         if (carrinho.length === 0) return;
 
-        const clienteId = clienteIdInput.value ? parseInt(clienteIdInput.value) : null;
+        const clienteId = selectClienteEl.value && selectClienteEl.value !== 'buscar' ? parseInt(selectClienteEl.value) : null;
         const itensVenda = carrinho.map(item => ({ produto_id: item.id, quantidade: item.quantidade }));
         const metodosSelecionados = document.querySelectorAll('input[name="pagamento"]:checked');
 
@@ -290,14 +290,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (somaPagamentos.toFixed(2) !== totalVenda.toFixed(2)) {
-            if (!confirm(`A soma dos pagamentos (R$ ${somaPagamentos.toFixed(2)}) é diferente do total da venda (R$ ${totalVenda.toFixed(2)}). Deseja continuar mesmo assim?`)) {
+        if (Math.abs(somaPagamentos - totalVenda) > 0.01) { // Margem para erros de ponto flutuante
+            if (!confirm(`A soma dos pagamentos (${somaPagamentos.toFixed(2)}) é diferente do total da venda (${totalVenda.toFixed(2)}). Deseja continuar mesmo assim?`)) {
                 return;
             }
         }
         
         try {
-            finalizarVendaBtn.disabled = true; // Desabilita o botão para evitar cliques duplos
+            finalizarVendaBtn.disabled = true;
             finalizarVendaBtn.textContent = 'Processando...';
 
             const response = await fetchWithAuth('/api/vendas', {
@@ -314,48 +314,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Venda registrada com sucesso!');
             }
             
-            // Resetar a tela
             carrinho = [];
-            clienteIdInput.value = '';
-            buscaClienteInputEl.value = '';
             metodosSelecionados.forEach(c => c.checked = false);
-            renderizarCarrinho(); // Isso também vai chamar renderizarPagamentos
             await inicializar();
+            renderizarCarrinho();
         } catch (error) {
             alert(`Erro ao finalizar venda: ${error.message}`);
         } finally {
-            finalizarVendaBtn.disabled = false; // Reabilita o botão
+            finalizarVendaBtn.disabled = false;
             finalizarVendaBtn.textContent = 'Finalizar Venda';
         }
     });
 
     logoutBtn.addEventListener('click', logout);
-    
-    listaProdutosEl.addEventListener('click', (event) => {
-        const card = event.target.closest('.produto-selecao-card');
-        if (card) adicionarAoCarrinho(parseInt(card.dataset.produtoId));
-    });
-    
-    carrinhoItensEl.addEventListener('click', (event) => {
-        const target = event.target;
-        const itemEl = target.closest('.carrinho-item');
-        if (!itemEl) return;
-        const produtoId = parseInt(itemEl.dataset.produtoId);
-        if (target.classList.contains('btn-qty-change')) {
-            alterarQuantidade(produtoId, parseInt(target.dataset.change));
-        }
-        if (target.classList.contains('btn-remover-item')) {
-            removerDoCarrinho(produtoId);
-        }
-    });
-    
-    btnNovoCliente.addEventListener('click', () => {
-        modalNovoCliente.style.display = 'flex';
-    });
-    
-    btnCancelarNovoCliente.addEventListener('click', () => {
-        modalNovoCliente.style.display = 'none';
-    });
+    listaProdutosEl.addEventListener('click', (event) => { const card = event.target.closest('.produto-selecao-card'); if (card) adicionarAoCarrinho(parseInt(card.dataset.produtoId)); });
+    carrinhoItensEl.addEventListener('click', (event) => { const target = event.target; const itemEl = target.closest('.carrinho-item'); if (!itemEl) return; const produtoId = parseInt(itemEl.dataset.produtoId); if (target.classList.contains('btn-qty-change')) { alterarQuantidade(produtoId, parseInt(target.dataset.change)); } if (target.classList.contains('btn-remover-item')) { removerDoCarrinho(produtoId); } });
+    btnNovoCliente.addEventListener('click', () => { modalNovoCliente.style.display = 'flex'; });
+    btnCancelarNovoCliente.addEventListener('click', () => { modalNovoCliente.style.display = 'none'; });
+    metodosPagamentoContainer.addEventListener('change', renderizarPagamentos);
     
     formNovoCliente.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -372,9 +348,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
             
-            await carregarClientes(); // Atualiza a lista de clientes
-            buscaClienteInputEl.value = novoCliente.nome;
-            clienteIdInput.value = data.clienteId;
+            await carregarClientes();
+            selectClienteEl.value = data.clienteId;
             modalNovoCliente.style.display = 'none';
             formNovoCliente.reset();
         } catch (error) {
