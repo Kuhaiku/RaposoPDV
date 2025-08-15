@@ -40,18 +40,13 @@
                 <div class="venda-resumo">
                     <div class="card">
                         <h2>Resumo da Venda</h2>
-                        <div class="input-group" style="position: relative;">
-    <label for="busca-cliente">Associar Cliente (Opcional)</label>
-    <div class="cliente-selecao-container">
-        <input type="text" id="busca-cliente" class="input-busca" placeholder="Digite o nome do cliente...">
-        <input type="hidden" id="cliente-id">
-        <button type="button" id="btn-novo-cliente" class="btn-novo-cliente">+</button>
-    </div>
-    <div id="cliente-resultados" class="autocomplete-resultados"></div>
-</div>
-
-<hr class="divider">
-
+                        <div class="input-group">
+                            <label for="select-cliente">Associar Cliente (Opcional)</label>
+                            <select id="select-cliente">
+                                </select>
+                        </div>
+                        <button type="button" id="btn-novo-cliente" class="btn-novo-cliente" style="width: 100%; margin-top: 10px; margin-bottom: 20px;">+ Cadastrar Novo Cliente</button>
+                        
                         <hr class="divider">
                         <div id="carrinho-itens" class="carrinho-itens">
                             <p class="carrinho-vazio">Selecione produtos para adicioná-los à venda.</p>
@@ -93,6 +88,18 @@
                 <div class="input-group"> <label for="modal-cpf">CPF</label> <input type="text" id="modal-cpf" required> </div>
                 <div class="form-actions"> <button type="button" id="btn-cancelar-novo-cliente" class="btn btn-secondary">Cancelar</button> <button type="submit" class="btn">Salvar Cliente</button> </div>
             </form>
+        </div>
+    </div>
+    
+    <div id="modal-busca-cliente" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2>Buscar Cliente</h2>
+            <input type="text" id="input-filtro-cliente" class="input-busca" placeholder="Digite o nome para filtrar...">
+            <ul id="lista-clientes-modal" class="lista-modal-busca">
+                </ul>
+            <div class="form-actions">
+                <button type="button" id="btn-cancelar-busca-cliente" class="btn btn-secondary">Fechar</button>
+            </div>
         </div>
     </div>
 
