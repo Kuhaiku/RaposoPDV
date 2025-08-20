@@ -192,8 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listener para o botão de baixar modelo CSV
     downloadCsvTemplateBtn.addEventListener('click', () => {
         const csvContent = "nome,preco,estoque,categoria,descricao\n" +
-            "Camiseta Basica Branca,99.99,99,Roupas,Camiseta de algodão.\n" +
-            "Calça Jeans,99.99,99,Roupas,Calça jeans azul, lavagem escura.\n";
+             "Calça Jeans,99.99,99,Roupas,Calça jeans azul, lavagem escura.\n";
         
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
