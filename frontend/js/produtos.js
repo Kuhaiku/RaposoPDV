@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const editForm = document.getElementById('edit-produto-form');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
     const verCatalogoBtn = document.getElementById('ver-catalogo-btn');
+    const importCsvBtn = document.getElementById('import-csv-btn');
+    const csvFileInput = document.getElementById('csv-file');
+    const downloadCsvTemplateBtn = document.getElementById('download-csv-template-btn');
 
     // Busca o slug da empresa e configura o link do botão
     async function configurarLinkCatalogo() {
@@ -45,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tr = document.createElement('tr');
                 tr.dataset.produtoId = produto.id; 
                 tr.innerHTML = `
-                    <td><img src="${produto.foto_url}" alt="${produto.nome}" class="produto-img"></td>
+                    <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
                     <td>${produto.nome}</td>
                     <td>R$ ${parseFloat(produto.preco).toFixed(2)}</td>
                     <td>${produto.estoque}</td>
@@ -74,9 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const imagemInput = document.getElementById('imagem');
         if (imagemInput.files[0]) {
             formData.append('imagem', imagemInput.files[0]);
-        } else {
-            alert("A imagem do produto é obrigatória para o cadastro.");
-            return;
         }
         try {
             const response = await fetchWithAuth('/api/produtos', { method: 'POST', body: formData });
@@ -159,6 +159,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(error.message);
             }
         }
+    });
+
+    // Listener para o botão de importar CSV
+    importCsvBtn.addEventListener('click', async () => {
+        const file = csvFileInput.files[0];
+        if (!file) {
+            alert('Por favor, selecione um arquivo CSV.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('csvfile', file);
+
+        try {
+            const response = await fetchWithAuth('/api/produtos/importar-csv', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+
+            alert(data.message);
+            csvFileInput.value = ''; // Limpa o input do arquivo
+            carregarProdutos(); // Recarrega a lista de produtos
+        } catch (error) {
+            alert(`Erro ao importar: ${error.message}`);
+        }
+    });
+
+    // Listener para o botão de baixar modelo CSV
+    downloadCsvTemplateBtn.addEventListener('click', () => {
+        const csvContent = "nome,preco,estoque,categoria,descricao\n" +
+            "Camiseta Basica Branca,49.90,10,Roupas,Camiseta de algodão PIMA.\n" +
+            "Calça Jeans,129.90,5,Roupas,Calça jeans azul, lavagem escura.\n";
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "modelo_produtos.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     });
 
     // Listeners gerais
