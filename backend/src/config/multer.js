@@ -1,34 +1,37 @@
 const multer = require('multer');
 
-// Configura o armazenamento em memória
-// Não vamos salvar o arquivo no disco do nosso servidor.
-// Vamos recebê-lo em memória (buffer) e enviá-lo direto para o Cloudinary.
+// Configuração base de armazenamento em memória
 const storage = multer.memoryStorage();
 
-const upload = multer({
+// Middleware para upload de IMAGENS
+const uploadImage = multer({
     storage: storage,
     limits: {
-        fileSize: 7 * 1024 * 1024 // Limite de 7MB por arquivo
+        fileSize: 7 * 1024 * 1024 // Limite de 7MB
     },
     fileFilter: (req, file, cb) => {
-        // Filtra para aceitar apenas imagens
-        // ADICIONAMOS MAIS TIPOS DE IMAGEM AQUI PARA SER MAIS COMPLETO
-        const mimeTypes = [
-            'image/jpeg', // Para arquivos .jpg e .jpeg
-            'image/pjpeg', // Variação para JPEGs progressivos
-            'image/png',
-            'image/gif',
-            'image/webp'
-        ];
-
+        const mimeTypes = ['image/jpeg', 'image/pjpeg', 'image/png', 'image/gif', 'image/webp'];
         if (mimeTypes.includes(file.mimetype)) {
-            // Se o tipo do arquivo estiver na lista, permite o upload
             cb(null, true);
         } else {
-            // Se não estiver, rejeita com uma mensagem de erro clara
             cb(new Error('Tipo de arquivo inválido. Apenas imagens (jpg, png, gif, webp) são permitidas.'), false);
         }
     }
-});
+}).single('imagem'); // Nome do campo para imagem
 
-module.exports = upload;
+// Middleware para upload de CSV
+const uploadCsv = multer({
+    storage: storage,
+    limits: {
+        fileSize: 7 * 1024 * 1024 // Limite de 7MB
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'text/csv') {
+            cb(null, true);
+        } else {
+            cb(new Error('Tipo de arquivo inválido. Apenas arquivos .csv são permitidos.'), false);
+        }
+    }
+}).single('csvfile'); // Nome do campo para CSV
+
+module.exports = { uploadImage, uploadCsv };
