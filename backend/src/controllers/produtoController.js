@@ -1,13 +1,25 @@
 const pool = require('../config/database');
 const cloudinary = require('../config/cloudinary');
+const csv = require('csv-parser');
+const { Readable } = require('stream');
 
 // Criar um novo produto (com pasta dinâmica no Cloudinary)
 exports.criar = async (req, res) => {
     const empresa_id = req.empresaId;
     const { nome, descricao, preco, estoque, categoria } = req.body;
 
+    // A imagem do produto agora é opcional
     if (!req.file) {
-        return res.status(400).json({ message: 'A imagem do produto é obrigatória.' });
+        try {
+            const [dbResult] = await pool.query(
+                'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria) VALUES (?, ?, ?, ?, ?, ?)',
+                [empresa_id, nome, descricao, preco, estoque, categoria]
+            );
+            return res.status(201).json({ message: 'Produto criado com sucesso!', produtoId: dbResult.insertId });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: 'Erro no servidor ao criar produto sem imagem.' });
+        }
     }
 
     try {
@@ -156,4 +168,46 @@ exports.reativar = async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Erro ao reativar produto.' });
     }
+};
+
+
+exports.importarCSV = async (req, res) => {
+    const empresa_id = req.empresaId;
+
+    if (!req.file) {
+        return res.status(400).json({ message: 'Nenhum arquivo CSV enviado.' });
+    }
+
+    const produtos = [];
+    const stream = Readable.from(req.file.buffer.toString());
+
+    stream
+        .pipe(csv())
+        .on('data', (row) => {
+            produtos.push(row);
+        })
+        .on('end', async () => {
+            if (produtos.length === 0) {
+                return res.status(400).json({ message: 'O arquivo CSV está vazio ou em formato inválido.' });
+            }
+
+            const connection = await pool.getConnection();
+            try {
+                await connection.beginTransaction();
+                for (const produto of produtos) {
+                    await connection.query(
+                        'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria) VALUES (?, ?, ?, ?, ?, ?)',
+                        [empresa_id, produto.nome, produto.descricao, produto.preco, produto.estoque, produto.categoria]
+                    );
+                }
+                await connection.commit();
+                res.status(201).json({ message: `${produtos.length} produtos importados com sucesso!` });
+            } catch (error) {
+                await connection.rollback();
+                console.error(error);
+                res.status(500).json({ message: 'Erro ao importar produtos do CSV.' });
+            } finally {
+                connection.release();
+            }
+        });
 };
