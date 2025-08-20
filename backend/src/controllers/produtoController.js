@@ -2,8 +2,9 @@ const pool = require('../config/database');
 const cloudinary = require('../config/cloudinary');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
+const iconv = require('iconv-lite'); // Adicionado para decodificar o arquivo
 
-// Criar um novo produto
+// Criar um novo produto (com pasta dinâmica no Cloudinary)
 exports.criar = async (req, res) => {
     const empresa_id = req.empresaId;
     const { nome, descricao, preco, estoque, categoria } = req.body;
@@ -55,7 +56,7 @@ exports.criar = async (req, res) => {
     }
 };
 
-// ... (o restante do arquivo permanece o mesmo)
+// Listar todos os produtos ATIVOS da empresa logada
 exports.listarTodos = async (req, res) => {
     const empresa_id = req.empresaId;
     try {
@@ -65,6 +66,8 @@ exports.listarTodos = async (req, res) => {
         res.status(500).json({ message: 'Erro ao listar produtos.' });
     }
 };
+
+// Obter um produto específico por ID
 exports.obterPorId = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -78,6 +81,8 @@ exports.obterPorId = async (req, res) => {
         res.status(500).json({ message: 'Erro ao obter produto.' });
     }
 };
+
+// Atualizar um produto existente (com pasta dinâmica no Cloudinary)
 exports.atualizar = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -93,15 +98,13 @@ exports.atualizar = async (req, res) => {
             if (foto_public_id) {
                 await cloudinary.uploader.destroy(foto_public_id);
             }
-            
-            // 1. Busca o slug da empresa para salvar a nova foto na pasta correta
+
             const [empresaRows] = await pool.query('SELECT slug FROM empresas WHERE id = ?', [empresa_id]);
             if (empresaRows.length === 0 || !empresaRows[0].slug) {
                 return res.status(404).json({ message: 'Diretório da empresa não encontrado.' });
             }
             const folderPath = `raposopdv/${empresaRows[0].slug}/produtos`;
 
-            // 2. Faz o upload da nova imagem para a pasta dinâmica
             const result = await new Promise((resolve, reject) => {
                 const uploadStream = cloudinary.uploader.upload_stream({ folder: folderPath }, (error, result) => {
                     if (error) reject(error); else resolve(result);
@@ -122,6 +125,8 @@ exports.atualizar = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao atualizar produto.' });
     }
 };
+
+// Inativar um produto
 exports.excluir = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -136,6 +141,8 @@ exports.excluir = async (req, res) => {
         res.status(500).json({ message: 'Erro ao inativar produto.' });
     }
 };
+
+// Listar todos os produtos INATIVOS da empresa logada
 exports.listarInativos = async (req, res) => {
     const empresa_id = req.empresaId;
     try {
@@ -145,6 +152,8 @@ exports.listarInativos = async (req, res) => {
         res.status(500).json({ message: 'Erro ao listar produtos inativos.' });
     }
 };
+
+// Reativar um produto
 exports.reativar = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -159,6 +168,8 @@ exports.reativar = async (req, res) => {
         res.status(500).json({ message: 'Erro ao reativar produto.' });
     }
 };
+
+// Importar produtos via CSV
 exports.importarCSV = async (req, res) => {
     const empresa_id = req.empresaId;
 
@@ -167,7 +178,9 @@ exports.importarCSV = async (req, res) => {
     }
 
     const produtos = [];
-    const stream = Readable.from(req.file.buffer.toString());
+    // ALTERAÇÃO: Decodifica o buffer do arquivo usando 'latin1' para suportar acentuação
+    const fileContent = iconv.decode(req.file.buffer, 'latin1');
+    const stream = Readable.from(fileContent);
 
     stream
         .pipe(csv())
@@ -183,17 +196,24 @@ exports.importarCSV = async (req, res) => {
             try {
                 await connection.beginTransaction();
                 for (const produto of produtos) {
+                    // Garante que os campos obrigatórios não sejam nulos
+                    const nome = produto.nome || '';
+                    const preco = parseFloat(produto.preco) || 0;
+                    const estoque = parseInt(produto.estoque, 10) || 0;
+                    const categoria = produto.categoria || '';
+                    const descricao = produto.descricao || '';
+
                     await connection.query(
                         'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria) VALUES (?, ?, ?, ?, ?, ?)',
-                        [empresa_id, produto.nome, produto.descricao, produto.preco, produto.estoque, produto.categoria]
+                        [empresa_id, nome, descricao, preco, estoque, categoria]
                     );
                 }
                 await connection.commit();
                 res.status(201).json({ message: `${produtos.length} produtos importados com sucesso!` });
             } catch (error) {
                 await connection.rollback();
-                console.error(error);
-                res.status(500).json({ message: 'Erro ao importar produtos do CSV.' });
+                console.error('Erro no banco de dados ao importar CSV:', error);
+                res.status(500).json({ message: 'Erro ao salvar produtos do CSV no banco de dados.' });
             } finally {
                 connection.release();
             }
