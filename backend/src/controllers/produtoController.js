@@ -3,18 +3,19 @@ const cloudinary = require('../config/cloudinary');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
 
-// Criar um novo produto (com pasta dinâmica no Cloudinary)
+// Criar um novo produto
 exports.criar = async (req, res) => {
     const empresa_id = req.empresaId;
     const { nome, descricao, preco, estoque, categoria } = req.body;
 
-    // A imagem do produto agora é opcional
+    // Se não houver imagem, insere no banco e finaliza
     if (!req.file) {
         try {
             const [dbResult] = await pool.query(
                 'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria) VALUES (?, ?, ?, ?, ?, ?)',
                 [empresa_id, nome, descricao, preco, estoque, categoria]
             );
+            // Adicionado 'return' para encerrar a função aqui
             return res.status(201).json({ message: 'Produto criado com sucesso!', produtoId: dbResult.insertId });
         } catch (error) {
             console.error(error);
@@ -22,15 +23,14 @@ exports.criar = async (req, res) => {
         }
     }
 
+    // Se houver imagem, continua para o upload no Cloudinary
     try {
-        // 1. Busca o slug da empresa para usar como nome da pasta
         const [empresaRows] = await pool.query('SELECT slug FROM empresas WHERE id = ?', [empresa_id]);
         if (empresaRows.length === 0 || !empresaRows[0].slug) {
             return res.status(404).json({ message: 'Diretório da empresa não encontrado.' });
         }
         const folderPath = `raposopdv/${empresaRows[0].slug}/produtos`;
 
-        // 2. Faz o upload para a pasta específica da empresa
         const uploadStream = cloudinary.uploader.upload_stream(
             { folder: folderPath },
             async (error, result) => {
@@ -55,7 +55,7 @@ exports.criar = async (req, res) => {
     }
 };
 
-// Listar todos os produtos ATIVOS da empresa logada
+// ... (o restante do arquivo permanece o mesmo)
 exports.listarTodos = async (req, res) => {
     const empresa_id = req.empresaId;
     try {
@@ -65,8 +65,6 @@ exports.listarTodos = async (req, res) => {
         res.status(500).json({ message: 'Erro ao listar produtos.' });
     }
 };
-
-// Obter um produto específico por ID
 exports.obterPorId = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -80,8 +78,6 @@ exports.obterPorId = async (req, res) => {
         res.status(500).json({ message: 'Erro ao obter produto.' });
     }
 };
-
-// Atualizar um produto existente (com pasta dinâmica no Cloudinary)
 exports.atualizar = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -126,8 +122,6 @@ exports.atualizar = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao atualizar produto.' });
     }
 };
-
-// Inativar um produto
 exports.excluir = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -142,8 +136,6 @@ exports.excluir = async (req, res) => {
         res.status(500).json({ message: 'Erro ao inativar produto.' });
     }
 };
-
-// Listar todos os produtos INATIVOS da empresa logada
 exports.listarInativos = async (req, res) => {
     const empresa_id = req.empresaId;
     try {
@@ -153,8 +145,6 @@ exports.listarInativos = async (req, res) => {
         res.status(500).json({ message: 'Erro ao listar produtos inativos.' });
     }
 };
-
-// Reativar um produto
 exports.reativar = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -169,8 +159,6 @@ exports.reativar = async (req, res) => {
         res.status(500).json({ message: 'Erro ao reativar produto.' });
     }
 };
-
-
 exports.importarCSV = async (req, res) => {
     const empresa_id = req.empresaId;
 
