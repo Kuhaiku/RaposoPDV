@@ -36,4 +36,7 @@ router.put("/:id/reativar", produtoController.reativar);
 // DELETE /api/produtos/123
 router.delete("/:id", produtoController.excluir);
 
+
+router.post("/importar-csv", upload.single('csvfile'), produtoController.importarCSV);
+
 module.exports = router;
