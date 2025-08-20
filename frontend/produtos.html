@@ -91,6 +91,17 @@
                     </table>
                 </div>
             </section>
+              <section class="card">
+                <h2>Importar Produtos em Lote (CSV)</h2>
+                <div class="form-grid" style="grid-template-columns: 1fr auto auto; align-items: flex-end;">
+                    <div class="input-group">
+                        <label for="csv-file">Selecione o arquivo CSV</label>
+                        <input type="file" id="csv-file" accept=".csv" />
+                    </div>
+                    <button id="import-csv-btn" class="btn">Importar</button>
+                    <button id="download-csv-template-btn" class="btn btn-secondary">Baixar Modelo</button>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -131,18 +142,9 @@
                 </div>
             </form>
         </div>
+        
     </div>
-     <section class="card">
-                <h2>Importar Produtos em Lote (CSV)</h2>
-                <div class="form-grid" style="grid-template-columns: 1fr auto auto; align-items: flex-end;">
-                    <div class="input-group">
-                        <label for="csv-file">Selecione o arquivo CSV</label>
-                        <input type="file" id="csv-file" accept=".csv" />
-                    </div>
-                    <button id="import-csv-btn" class="btn">Importar</button>
-                    <button id="download-csv-template-btn" class="btn btn-secondary">Baixar Modelo</button>
-                </div>
-            </section>
+   
     <script src="js/auth.js"></script>
     <script src="js/produtos.js"></script>
 </body>
