@@ -49,7 +49,7 @@
                         <input type="text" id="nome" required />
                     </div>
                     <div class="input-group">
-                        <label for="preco">Preço (ex: 99.90)</label>
+                        <label for="preco">Preço</label>
                         <input type="number" step="0.01" id="preco" required />
                     </div>
                     <div class="input-group">
@@ -73,20 +73,7 @@
                         <button type="submit" class="btn">Salvar Produto</button>
                     </div>
                 </form>
-            </section>
-
-            <section class="card">
-                <h2>Importar Produtos em Lote (CSV)</h2>
-                <div class="form-grid" style="grid-template-columns: 1fr auto auto; align-items: flex-end;">
-                    <div class="input-group">
-                        <label for="csv-file">Selecione o arquivo CSV</label>
-                        <input type="file" id="csv-file" accept=".csv" />
-                    </div>
-                    <button id="import-csv-btn" class="btn">Importar</button>
-                    <button id="download-csv-template-btn" class="btn btn-secondary">Baixar Modelo</button>
-                </div>
-            </section>
-
+            </section>         
             <section class="card">
                 <h2>Lista de Produtos Ativos</h2>
                 <div class="table-container">
@@ -145,7 +132,17 @@
             </form>
         </div>
     </div>
-
+     <section class="card">
+                <h2>Importar Produtos em Lote (CSV)</h2>
+                <div class="form-grid" style="grid-template-columns: 1fr auto auto; align-items: flex-end;">
+                    <div class="input-group">
+                        <label for="csv-file">Selecione o arquivo CSV</label>
+                        <input type="file" id="csv-file" accept=".csv" />
+                    </div>
+                    <button id="import-csv-btn" class="btn">Importar</button>
+                    <button id="download-csv-template-btn" class="btn btn-secondary">Baixar Modelo</button>
+                </div>
+            </section>
     <script src="js/auth.js"></script>
     <script src="js/produtos.js"></script>
 </body>
