@@ -2,41 +2,34 @@ const express = require("express");
 const router = express.Router();
 const produtoController = require("../controllers/produtoController");
 const authMiddleware = require("../middlewares/authMiddleware");
-const upload = require("../config/multer");
+// Importa os dois middlewares de upload
+const { uploadImage, uploadCsv } = require("../config/multer");
 
 // --- ROTAS PROTEGIDAS PARA FUNCIONÁRIOS ---
-// O middleware de autenticação é aplicado a TODAS as rotas deste arquivo.
 router.use(authMiddleware);
 
-// Rota para LISTAR todos os produtos ativos da empresa do funcionário logado.
-// GET /api/produtos/
+// Rota para LISTAR todos os produtos
 router.get("/", produtoController.listarTodos);
 
-// Rota para CRIAR um novo produto.
-// POST /api/produtos/
-router.post("/", upload.single("imagem"), produtoController.criar);
+// Rota para CRIAR um novo produto (usando upload de imagem)
+router.post("/", uploadImage, produtoController.criar);
+
+// Rota para IMPORTAR produtos via CSV (usando upload de CSV)
+router.post("/importar-csv", uploadCsv, produtoController.importarCSV);
 
 // Rota para LISTAR os produtos inativos
-// GET /api/produtos/inativos
 router.get("/inativos", produtoController.listarInativos);
 
-// Rota para OBTER os dados de UM produto específico pelo seu ID.
-// GET /api/produtos/123
+// Rota para OBTER os dados de UM produto específico
 router.get("/:id", produtoController.obterPorId);
 
-// Rota para ATUALIZAR um produto existente.
-// PUT /api/produtos/123
-router.put("/:id", upload.single("imagem"), produtoController.atualizar);
+// Rota para ATUALIZAR um produto (usando upload de imagem)
+router.put("/:id", uploadImage, produtoController.atualizar);
 
-// Rota para REATIVAR um produto.
-// PUT /api/produtos/123/reativar
+// Rota para REATIVAR um produto
 router.put("/:id/reativar", produtoController.reativar);
 
-// Rota para INATIVAR (soft delete) um produto.
-// DELETE /api/produtos/123
+// Rota para INATIVAR um produto
 router.delete("/:id", produtoController.excluir);
-
-
-router.post("/importar-csv", upload.single('csvfile'), produtoController.importarCSV);
 
 module.exports = router;
