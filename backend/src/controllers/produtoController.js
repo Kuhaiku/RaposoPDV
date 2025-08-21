@@ -2,7 +2,7 @@ const pool = require('../config/database');
 const cloudinary = require('../config/cloudinary');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
-const iconv = require('iconv-lite'); // Adicionado para decodificar o arquivo
+const iconv = require('iconv-lite');
 
 // Criar um novo produto (com pasta dinâmica no Cloudinary)
 exports.criar = async (req, res) => {
@@ -178,12 +178,17 @@ exports.importarCSV = async (req, res) => {
     }
 
     const produtos = [];
-    // ALTERAÇÃO: Decodifica o buffer do arquivo usando 'latin1' para suportar acentuação
+    // Decodifica o buffer do arquivo usando 'latin1' para suportar acentuação
     const fileContent = iconv.decode(req.file.buffer, 'latin1');
     const stream = Readable.from(fileContent);
 
     stream
-        .pipe(csv())
+        // CORREÇÃO: Define explicitamente os cabeçalhos e pula a primeira linha
+        .pipe(csv({
+            headers: ['nome', 'preco', 'estoque', 'categoria', 'descricao'],
+            skipLines: 1,
+            mapHeaders: ({ header }) => header.trim() // Remove espaços em branco dos cabeçalhos
+        }))
         .on('data', (row) => {
             produtos.push(row);
         })
