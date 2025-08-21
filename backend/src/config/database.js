@@ -12,7 +12,8 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  
+  // ADIÇÃO CRÍTICA: Garante que a conexão use UTF-8
+  charset: 'utf8mb4'
 });
 
 // Testa a conexão para garantir que tudo está certo na inicialização
