@@ -2,21 +2,20 @@ const pool = require('../config/database');
 const cloudinary = require('../config/cloudinary');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
-const iconv = require('iconv-lite');
 
-// Criar um novo produto (com pasta dinâmica no Cloudinary)
+// NOTE: A dependência 'iconv-lite' não é mais necessária aqui
+
+// Criar um novo produto
 exports.criar = async (req, res) => {
     const empresa_id = req.empresaId;
     const { nome, descricao, preco, estoque, categoria } = req.body;
 
-    // Se não houver imagem, insere no banco e finaliza
     if (!req.file) {
         try {
             const [dbResult] = await pool.query(
                 'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria) VALUES (?, ?, ?, ?, ?, ?)',
                 [empresa_id, nome, descricao, preco, estoque, categoria]
             );
-            // Adicionado 'return' para encerrar a função aqui
             return res.status(201).json({ message: 'Produto criado com sucesso!', produtoId: dbResult.insertId });
         } catch (error) {
             console.error(error);
@@ -24,7 +23,6 @@ exports.criar = async (req, res) => {
         }
     }
 
-    // Se houver imagem, continua para o upload no Cloudinary
     try {
         const [empresaRows] = await pool.query('SELECT slug FROM empresas WHERE id = ?', [empresa_id]);
         if (empresaRows.length === 0 || !empresaRows[0].slug) {
@@ -39,23 +37,21 @@ exports.criar = async (req, res) => {
                     console.error('Erro no upload para Cloudinary:', error);
                     return res.status(500).json({ message: 'Erro ao fazer upload da imagem.' });
                 }
-
                 const [dbResult] = await pool.query(
                     'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, foto_url, foto_public_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                     [empresa_id, nome, descricao, preco, estoque, categoria, result.secure_url, result.public_id]
                 );
-
                 res.status(201).json({ message: 'Produto criado com sucesso!', produtoId: dbResult.insertId });
             }
         );
         uploadStream.end(req.file.buffer);
-
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor ao criar produto.' });
     }
 };
 
+// ... (as outras funções como listarTodos, obterPorId, etc., continuam iguais)
 // Listar todos os produtos ATIVOS da empresa logada
 exports.listarTodos = async (req, res) => {
     const empresa_id = req.empresaId;
@@ -125,7 +121,6 @@ exports.atualizar = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao atualizar produto.' });
     }
 };
-
 // Inativar um produto
 exports.excluir = async (req, res) => {
     const { id } = req.params;
@@ -169,6 +164,33 @@ exports.reativar = async (req, res) => {
     }
 };
 
+// NOVA FUNÇÃO: Inativar múltiplos produtos (em massa)
+exports.inativarEmMassa = async (req, res) => {
+    const { ids } = req.body; // Espera um array de IDs: { ids: [1, 2, 3] }
+    const empresa_id = req.empresaId;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: 'A lista de IDs de produtos é inválida.' });
+    }
+
+    try {
+        // O driver 'mysql2' lida com a formatação do array para a cláusula IN
+        const [result] = await pool.query(
+            'UPDATE produtos SET ativo = 0 WHERE id IN (?) AND empresa_id = ?',
+            [ids, empresa_id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Nenhum dos produtos selecionados foi encontrado ou eles não pertencem à sua empresa.' });
+        }
+
+        res.status(200).json({ message: `${result.affectedRows} produtos foram inativados com sucesso.` });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor ao inativar produtos.' });
+    }
+};
+
 // Importar produtos via CSV
 exports.importarCSV = async (req, res) => {
     const empresa_id = req.empresaId;
@@ -178,16 +200,15 @@ exports.importarCSV = async (req, res) => {
     }
 
     const produtos = [];
-    // Decodifica o buffer do arquivo usando 'latin1' para suportar acentuação
-    const fileContent = iconv.decode(req.file.buffer, 'latin1');
+    // ALTERAÇÃO: Lê o buffer do arquivo diretamente como string UTF-8
+    const fileContent = req.file.buffer.toString('utf8');
     const stream = Readable.from(fileContent);
 
     stream
-        // CORREÇÃO: Define explicitamente os cabeçalhos e pula a primeira linha
         .pipe(csv({
             headers: ['nome', 'preco', 'estoque', 'categoria', 'descricao'],
             skipLines: 1,
-            mapHeaders: ({ header }) => header.trim() // Remove espaços em branco dos cabeçalhos
+            mapHeaders: ({ header }) => header.trim()
         }))
         .on('data', (row) => {
             produtos.push(row);
@@ -201,7 +222,6 @@ exports.importarCSV = async (req, res) => {
             try {
                 await connection.beginTransaction();
                 for (const produto of produtos) {
-                    // Garante que os campos obrigatórios não sejam nulos
                     const nome = produto.nome || '';
                     const preco = parseFloat(produto.preco) || 0;
                     const estoque = parseInt(produto.estoque, 10) || 0;
