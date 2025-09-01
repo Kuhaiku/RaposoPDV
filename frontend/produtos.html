@@ -44,9 +44,13 @@
             <section class="card">
                 <h2>Adicionar Novo Produto</h2>
                 <form id="add-produto-form" class="form-grid">
-                    <div class="input-group full-width">
+                    <div class="input-group">
                         <label for="nome">Nome do Produto</label>
                         <input type="text" id="nome" required />
+                    </div>
+                     <div class="input-group">
+                        <label for="codigo">Código (Opcional)</label>
+                        <input type="text" id="codigo" />
                     </div>
                     <div class="input-group">
                         <label for="preco">Preço</label>
@@ -81,6 +85,7 @@
                         <thead>
                             <tr>
                                 <th class="col-img">Foto</th>
+                                <th>Código</th>
                                 <th>Nome</th>
                                 <th>Preço</th>
                                 <th>Estoque</th>
@@ -110,9 +115,13 @@
             <h2>Editar Produto</h2>
             <form id="edit-produto-form" class="form-grid">
                 <input type="hidden" id="edit-produto-id" />
-                <div class="input-group full-width">
+                <div class="input-group">
                     <label for="edit-nome">Nome do Produto</label>
                     <input type="text" id="edit-nome" required />
+                </div>
+                <div class="input-group">
+                    <label for="edit-codigo">Código (Opcional)</label>
+                    <input type="text" id="edit-codigo" />
                 </div>
                 <div class="input-group">
                     <label for="edit-preco">Preço</label>

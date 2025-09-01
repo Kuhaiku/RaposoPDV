@@ -3,18 +3,18 @@ const cloudinary = require('../config/cloudinary');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
 
-// NOTE: A dependência 'iconv-lite' não é mais necessária aqui
-
 // Criar um novo produto
 exports.criar = async (req, res) => {
     const empresa_id = req.empresaId;
-    const { nome, descricao, preco, estoque, categoria } = req.body;
+    // Adiciona 'codigo' à desestruturação
+    const { nome, descricao, preco, estoque, categoria, codigo } = req.body;
+    const codigoFinal = codigo || '0'; // Define '0' se o código for nulo ou vazio
 
     if (!req.file) {
         try {
             const [dbResult] = await pool.query(
-                'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria) VALUES (?, ?, ?, ?, ?, ?)',
-                [empresa_id, nome, descricao, preco, estoque, categoria]
+                'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [empresa_id, nome, descricao, preco, estoque, categoria, codigoFinal]
             );
             return res.status(201).json({ message: 'Produto criado com sucesso!', produtoId: dbResult.insertId });
         } catch (error) {
@@ -38,8 +38,8 @@ exports.criar = async (req, res) => {
                     return res.status(500).json({ message: 'Erro ao fazer upload da imagem.' });
                 }
                 const [dbResult] = await pool.query(
-                    'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, foto_url, foto_public_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [empresa_id, nome, descricao, preco, estoque, categoria, result.secure_url, result.public_id]
+                    'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, foto_url, foto_public_id, codigo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [empresa_id, nome, descricao, preco, estoque, categoria, result.secure_url, result.public_id, codigoFinal]
                 );
                 res.status(201).json({ message: 'Produto criado com sucesso!', produtoId: dbResult.insertId });
             }
@@ -51,12 +51,12 @@ exports.criar = async (req, res) => {
     }
 };
 
-// ... (as outras funções como listarTodos, obterPorId, etc., continuam iguais)
 // Listar todos os produtos ATIVOS da empresa logada
 exports.listarTodos = async (req, res) => {
     const empresa_id = req.empresaId;
     try {
-        const [rows] = await pool.query('SELECT * FROM produtos WHERE ativo = 1 AND empresa_id = ? ORDER BY nome ASC', [empresa_id]);
+        // Adiciona o campo 'codigo' na query
+        const [rows] = await pool.query('SELECT id, nome, preco, estoque, foto_url, codigo FROM produtos WHERE ativo = 1 AND empresa_id = ? ORDER BY nome ASC', [empresa_id]);
         res.status(200).json(rows);
     } catch (error) {
         res.status(500).json({ message: 'Erro ao listar produtos.' });
@@ -68,6 +68,7 @@ exports.obterPorId = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
     try {
+        // Adiciona o campo 'codigo' na query
         const [rows] = await pool.query('SELECT * FROM produtos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Produto não encontrado.' });
@@ -78,11 +79,14 @@ exports.obterPorId = async (req, res) => {
     }
 };
 
-// Atualizar um produto existente (com pasta dinâmica no Cloudinary)
+// Atualizar um produto existente
 exports.atualizar = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
-    const { nome, descricao, preco, estoque, categoria } = req.body;
+    // Adiciona 'codigo' à desestruturação
+    const { nome, descricao, preco, estoque, categoria, codigo } = req.body;
+    const codigoFinal = codigo || '0';
+
     try {
         let produtoAtualResult = await pool.query('SELECT foto_url, foto_public_id FROM produtos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
         if (produtoAtualResult[0].length === 0) {
@@ -112,8 +116,8 @@ exports.atualizar = async (req, res) => {
         }
 
         await pool.query(
-            'UPDATE produtos SET nome = ?, descricao = ?, preco = ?, estoque = ?, categoria = ?, foto_url = ?, foto_public_id = ? WHERE id = ? AND empresa_id = ?',
-            [nome, descricao, preco, estoque, categoria, foto_url, foto_public_id, id, empresa_id]
+            'UPDATE produtos SET nome = ?, descricao = ?, preco = ?, estoque = ?, categoria = ?, foto_url = ?, foto_public_id = ?, codigo = ? WHERE id = ? AND empresa_id = ?',
+            [nome, descricao, preco, estoque, categoria, foto_url, foto_public_id, codigoFinal, id, empresa_id]
         );
         res.status(200).json({ message: 'Produto atualizado com sucesso!' });
     } catch (error) {
@@ -121,6 +125,7 @@ exports.atualizar = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao atualizar produto.' });
     }
 };
+
 // Inativar um produto
 exports.excluir = async (req, res) => {
     const { id } = req.params;
@@ -166,7 +171,7 @@ exports.reativar = async (req, res) => {
 
 // NOVA FUNÇÃO: Inativar múltiplos produtos (em massa)
 exports.inativarEmMassa = async (req, res) => {
-    const { ids } = req.body; // Espera um array de IDs: { ids: [1, 2, 3] }
+    const { ids } = req.body;
     const empresa_id = req.empresaId;
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -174,14 +179,13 @@ exports.inativarEmMassa = async (req, res) => {
     }
 
     try {
-        // O driver 'mysql2' lida com a formatação do array para a cláusula IN
         const [result] = await pool.query(
             'UPDATE produtos SET ativo = 0 WHERE id IN (?) AND empresa_id = ?',
             [ids, empresa_id]
         );
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Nenhum dos produtos selecionados foi encontrado ou eles não pertencem à sua empresa.' });
+            return res.status(404).json({ message: 'Nenhum dos produtos selecionados foi encontrado.' });
         }
 
         res.status(200).json({ message: `${result.affectedRows} produtos foram inativados com sucesso.` });
@@ -200,13 +204,12 @@ exports.importarCSV = async (req, res) => {
     }
 
     const produtos = [];
-    // ALTERAÇÃO: Lê o buffer do arquivo diretamente como string UTF-8
     const fileContent = req.file.buffer.toString('utf8');
     const stream = Readable.from(fileContent);
 
     stream
         .pipe(csv({
-            headers: ['nome', 'preco', 'estoque', 'categoria', 'descricao'],
+            headers: ['nome', 'preco', 'estoque', 'categoria', 'descricao', 'codigo'], // Adiciona 'codigo'
             skipLines: 1,
             mapHeaders: ({ header }) => header.trim()
         }))
@@ -227,10 +230,11 @@ exports.importarCSV = async (req, res) => {
                     const estoque = parseInt(produto.estoque, 10) || 0;
                     const categoria = produto.categoria || '';
                     const descricao = produto.descricao || '';
+                    const codigo = produto.codigo || '0'; // Adiciona o código
 
                     await connection.query(
-                        'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria) VALUES (?, ?, ?, ?, ?, ?)',
-                        [empresa_id, nome, descricao, preco, estoque, categoria]
+                        'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [empresa_id, nome, descricao, preco, estoque, categoria, codigo]
                     );
                 }
                 await connection.commit();

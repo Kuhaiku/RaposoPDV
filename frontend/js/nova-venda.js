@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancelarBuscaCliente = document.getElementById('btn-cancelar-busca-cliente');
     const inputFiltroCliente = document.getElementById('input-filtro-cliente');
     const listaClientesModal = document.getElementById('lista-clientes-modal');
-    // ... (outros elementos do DOM)
     const logoutBtn = document.getElementById('logout-btn');
     const listaProdutosEl = document.getElementById('lista-produtos');
     const buscaProdutoInput = document.getElementById('busca-produto');
@@ -31,8 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalVenda = 0;
 
     // --- FUNÇÕES DE LÓGICA E RENDERIZAÇÃO ---
-
-    // Carrega clientes e popula o <select>
     async function carregarClientes(selecionarId = null) {
         try {
             const clientesRes = await fetchWithAuth('/api/clientes');
@@ -54,15 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Abre e prepara o modal de busca
     function abrirModalBuscaCliente() {
-        renderizarListaClientesModal(); // Renderiza a lista completa
+        renderizarListaClientesModal();
         modalBuscaCliente.style.display = 'flex';
         inputFiltroCliente.value = '';
         inputFiltroCliente.focus();
     }
 
-    // Renderiza a lista de clientes dentro do modal de busca
     function renderizarListaClientesModal(filtro = '') {
         listaClientesModal.innerHTML = '';
         const termoBusca = filtro.toLowerCase();
@@ -82,12 +77,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // O restante do seu código JS continua aqui...
     function renderizarProdutos(produtos) {
         listaProdutosEl.innerHTML = '';
         const termoBusca = buscaProdutoInput.value.toLowerCase();
         produtos
-            .filter(p => p.nome.toLowerCase().includes(termoBusca))
+            .filter(p => 
+                p.nome.toLowerCase().includes(termoBusca) ||
+                (p.codigo && p.codigo.toLowerCase().includes(termoBusca))
+            )
             .forEach(produto => {
                 const itemNoCarrinho = carrinho.find(item => item.id === produto.id);
                 const quantidadeNoCarrinho = itemNoCarrinho ? itemNoCarrinho.quantidade : 0;
@@ -234,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- EVENT LISTENERS ---
+    buscaProdutoInput.addEventListener('input', () => renderizarProdutos(produtosDisponiveis));
     btnAbrirBuscaCliente.addEventListener('click', abrirModalBuscaCliente);
     inputFiltroCliente.addEventListener('keyup', () => renderizarListaClientesModal(inputFiltroCliente.value));
     listaClientesModal.addEventListener('click', (e) => { if (e.target.tagName === 'LI' && e.target.dataset.id) { const clienteId = e.target.dataset.id; selectClienteEl.value = clienteId; modalBuscaCliente.style.display = 'none'; } });

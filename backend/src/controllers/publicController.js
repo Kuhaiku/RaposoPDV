@@ -14,7 +14,7 @@ exports.obterCatalogoPorSlug = async (req, res) => {
 
         // 2. Busca os produtos ativos daquela empresa
         const [produtos] = await pool.query(
-            'SELECT nome, descricao, preco, foto_url FROM produtos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome ASC',
+            'SELECT nome, descricao, preco, foto_url, codigo FROM produtos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome ASC',
             [empresa.id]
         );
 

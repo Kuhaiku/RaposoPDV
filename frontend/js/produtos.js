@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.slug) {
                 verCatalogoBtn.href = `catalogo.html?empresa=${data.slug}`;
             } else {
-                verCatalogoBtn.style.display = 'none'; // Esconde o botão se a empresa não tiver slug
+                verCatalogoBtn.style.display = 'none';
             }
         } catch (error) {
             console.error('Erro ao buscar slug da empresa:', error);
@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tr.dataset.produtoId = produto.id; 
                 tr.innerHTML = `
                     <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
+                    <td>${produto.codigo || 'N/A'}</td>
                     <td>${produto.nome}</td>
                     <td>R$ ${parseFloat(produto.preco).toFixed(2)}</td>
                     <td>${produto.estoque}</td>
@@ -70,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
         const formData = new FormData();
         formData.append('nome', document.getElementById('nome').value);
+        formData.append('codigo', document.getElementById('codigo').value);
         formData.append('preco', document.getElementById('preco').value);
         formData.append('estoque', document.getElementById('estoque').value);
         formData.append('categoria', document.getElementById('categoria').value);
@@ -98,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = document.getElementById('edit-produto-id').value;
         const formData = new FormData();
         formData.append('nome', document.getElementById('edit-nome').value);
+        formData.append('codigo', document.getElementById('edit-codigo').value);
         formData.append('preco', document.getElementById('edit-preco').value);
         formData.append('estoque', document.getElementById('edit-estoque').value);
         formData.append('categoria', document.getElementById('edit-categoria').value);
@@ -149,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 document.getElementById('edit-produto-id').value = produto.id;
                 document.getElementById('edit-nome').value = produto.nome;
+                document.getElementById('edit-codigo').value = produto.codigo;
                 document.getElementById('edit-preco').value = produto.preco;
                 document.getElementById('edit-estoque').value = produto.estoque;
                 document.getElementById('edit-categoria').value = produto.categoria;
@@ -182,8 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(data.message);
 
             alert(data.message);
-            csvFileInput.value = ''; // Limpa o input do arquivo
-            carregarProdutos(); // Recarrega a lista de produtos
+            csvFileInput.value = ''; 
+            carregarProdutos();
         } catch (error) {
             alert(`Erro ao importar: ${error.message}`);
         }
@@ -191,8 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listener para o botão de baixar modelo CSV
     downloadCsvTemplateBtn.addEventListener('click', () => {
-        const csvContent = "nome,preco,estoque,categoria,descricao\n" +
-             "exemplo ,99.99,99,exemplo , exemplo, exemplo.\n";
+        const csvContent = "nome,codigo,preco,estoque,categoria,descricao\n" +
+             "Exemplo Produto,EX001,99.99,10,Exemplo Categoria,Descrição de exemplo.\n";
         
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
