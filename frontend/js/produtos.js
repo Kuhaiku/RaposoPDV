@@ -13,11 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const importCsvBtn = document.getElementById('import-csv-btn');
     const csvFileInput = document.getElementById('csv-file');
     const downloadCsvTemplateBtn = document.getElementById('download-csv-template-btn');
-    // ===== NOVO ELEMENTO =====
     const botoesOrdenacao = document.getElementById('botoes-ordenacao');
 
-    // ===== NOVA VARIÁVEL DE ESTADO =====
-    let ordenacaoAtual = 'nome-asc'; // Padrão
+    // Variável de estado para a ordenação
+    let ordenacaoAtual = 'nome-asc'; // Padrão inicial
 
     // Busca o slug da empresa e configura o link do botão
     async function configurarLinkCatalogo() {
@@ -40,11 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ===== FUNÇÃO ATUALIZADA =====
     // Carrega e exibe a lista de produtos, agora com o parâmetro de ordenação
     async function carregarProdutos() {
         try {
-            // Adiciona o parâmetro de ordenação na requisição
             const response = await fetchWithAuth(`/api/produtos?sortBy=${ordenacaoAtual}`);
             if (!response.ok) throw new Error('Erro ao buscar produtos.');
 
@@ -172,10 +169,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ===== NOVO EVENT LISTENER =====
-    // Adiciona o listener para os botões de ordenação
+    // Listener para os botões de ordenação
     botoesOrdenacao.addEventListener('click', (event) => {
         if (event.target.tagName === 'BUTTON') {
+            // Remove a classe 'active' de todos os botões
+            botoesOrdenacao.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            // Adiciona a classe 'active' ao botão clicado
+            event.target.classList.add('active');
+            
             ordenacaoAtual = event.target.dataset.sort;
             carregarProdutos();
         }
