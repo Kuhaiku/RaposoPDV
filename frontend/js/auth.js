@@ -34,14 +34,37 @@ async function fetchWithAuth(endpoint, options = {}) {
     return response;
 }
 
-// --- NOVO CÓDIGO ADICIONADO ABAIXO ---
+// --- LÓGICA DE RESPONSIVIDADE INTEGRADA ---
 
-// Função auto-executável para injetar o script de responsividade.
 (function() {
-    // Garante que o script só seja adicionado uma vez.
-    if (!document.querySelector('script[src="js/responsividade.js"]')) {
-        const responsiveScript = document.createElement('script');
-        responsiveScript.src = 'js/responsividade.js';
-        document.body.appendChild(responsiveScript);
+    // Função que executa toda a lógica de responsividade
+    function setupResponsiveFeatures() {
+        // Se a tela for maior que 767px (desktop), não faz nada.
+        if (window.innerWidth > 767) {
+            return;
+        }
+
+        // 1. Injeta a tag <link> para o mobile.css no <head>
+        const mobileCssLink = document.createElement('link');
+        mobileCssLink.rel = 'stylesheet';
+        mobileCssLink.href = 'css/mobile.css';
+        document.head.appendChild(mobileCssLink);
+
+        // 2. Cria e injeta o botão do menu (apenas se houver uma sidebar na página)
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            const menuToggle = document.createElement('button');
+            menuToggle.innerHTML = '&#9776;'; // Ícone de hambúrguer
+            menuToggle.className = 'menu-toggle';
+            document.body.appendChild(menuToggle);
+
+            // 3. Adiciona a funcionalidade de clique ao botão
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+            });
+        }
     }
+
+    // Executa a função assim que o DOM estiver pronto
+    document.addEventListener('DOMContentLoaded', setupResponsiveFeatures);
 })();
