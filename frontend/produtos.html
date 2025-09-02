@@ -77,9 +77,18 @@
                         <button type="submit" class="btn">Salvar Produto</button>
                     </div>
                 </form>
-            </section>         
+            </section>
             <section class="card">
                 <h2>Lista de Produtos Ativos</h2>
+
+                <div class="header-com-acoes" style="margin-bottom: 20px;">
+                    <h3 style="margin: 0;">Ordenar por:</h3>
+                    <div id="botoes-ordenacao" class="header-actions">
+                        <button class="btn btn-secondary" data-sort="preco-asc">Menor Preço</button>
+                        <button class="btn btn-secondary" data-sort="preco-desc">Maior Preço</button>
+                        <button class="btn btn-secondary" data-sort="nome-asc">Ordem Alfabética</button>
+                    </div>
+                </div>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -151,9 +160,8 @@
                 </div>
             </form>
         </div>
-        
     </div>
-   
+
     <script src="js/auth.js"></script>
     <script src="js/produtos.js"></script>
 </body>
