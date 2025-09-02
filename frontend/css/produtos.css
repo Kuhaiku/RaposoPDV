@@ -31,3 +31,73 @@ textarea {
     font-family: Arial, sans-serif;
     resize: vertical;
 }
+/* Estilos para o formulário em grid */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Cria 2 colunas */
+    gap: 20px;
+}
+
+/* Faz esses campos ocuparem as duas colunas */
+.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Tabela de Produtos */
+.col-img { width: 80px; }
+.col-actions { width: 150px; }
+
+.produto-img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid #eee;
+}
+
+textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    font-family: Arial, sans-serif;
+    resize: vertical;
+}
+
+
+/* ===== NOVOS ESTILOS PARA O BOTÃO DE ORDENAÇÃO ===== */
+
+.ordenacao-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-ordenacao {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.btn-ordenacao:hover {
+    background-color: #e9ecef;
+}
+
+.btn-ordenacao svg {
+    width: 20px;
+    height: 20px;
+    fill: #555;
+}
+
+#texto-ordenacao {
+    font-weight: bold;
+    color: var(--primary-color);
+}
