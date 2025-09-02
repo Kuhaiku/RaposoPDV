@@ -20,9 +20,6 @@ async function fetchWithAuth(endpoint, options = {}) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // LÓGICA ATUALIZADA AQUI
-    // Se o body é um FormData, não definimos o Content-Type.
-    // O navegador fará isso automaticamente com o boundary correto.
     if (!(options.body instanceof FormData)) {
         headers['Content-Type'] = 'application/json';
     }
@@ -36,3 +33,15 @@ async function fetchWithAuth(endpoint, options = {}) {
     
     return response;
 }
+
+// --- NOVO CÓDIGO ADICIONADO ABAIXO ---
+
+// Função auto-executável para injetar o script de responsividade.
+(function() {
+    // Garante que o script só seja adicionado uma vez.
+    if (!document.querySelector('script[src="js/responsividade.js"]')) {
+        const responsiveScript = document.createElement('script');
+        responsiveScript.src = 'js/responsividade.js';
+        document.body.appendChild(responsiveScript);
+    }
+})();
