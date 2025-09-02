@@ -81,12 +81,14 @@
             <section class="card">
                 <h2>Lista de Produtos Ativos</h2>
 
-                <div class="header-com-acoes" style="margin-bottom: 20px;">
-                    <h3 style="margin: 0;">Ordenar por:</h3>
+                <div class="header-com-acoes" style="margin-bottom: 20px; justify-content: flex-start;">
+                    <h3 style="margin: 0; margin-right: 15px;">Ordenar por:</h3>
                     <div id="botoes-ordenacao" class="header-actions">
-                        <button class="btn btn-secondary" data-sort="preco-asc">Menor Preço</button>
+                        <button class="btn btn-secondary" data-sort="id-desc">Mais Recentes</button>
+                        <button class="btn btn-secondary" data-sort="id-asc">Mais Antigos</button>
                         <button class="btn btn-secondary" data-sort="preco-desc">Maior Preço</button>
-                        <button class="btn btn-secondary" data-sort="nome-asc">Ordem Alfabética</button>
+                        <button class="btn btn-secondary" data-sort="preco-asc">Menor Preço</button>
+                        <button class="btn btn-secondary active" data-sort="nome-asc">Ordem Alfabética</button>
                     </div>
                 </div>
                 <div class="table-container">
