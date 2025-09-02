@@ -209,7 +209,8 @@ exports.importarCSV = async (req, res) => {
 
     stream
         .pipe(csv({
-            headers: ['nome', 'preco', 'estoque', 'categoria', 'descricao', 'codigo'], // Adiciona 'codigo'
+            // ===== CORREÇÃO APLICADA AQUI =====
+            headers: ['nome', 'codigo', 'preco', 'estoque', 'categoria', 'descricao'],
             skipLines: 1,
             mapHeaders: ({ header }) => header.trim()
         }))
@@ -230,7 +231,7 @@ exports.importarCSV = async (req, res) => {
                     const estoque = parseInt(produto.estoque, 10) || 0;
                     const categoria = produto.categoria || '';
                     const descricao = produto.descricao || '';
-                    const codigo = produto.codigo || '0'; // Adiciona o código
+                    const codigo = produto.codigo || '0'; 
 
                     await connection.query(
                         'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
