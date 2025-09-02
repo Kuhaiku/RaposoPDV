@@ -52,22 +52,21 @@ exports.criar = async (req, res) => {
 };
 
 
-// ===== FUNÇÃO ATUALIZADA E CORRIGIDA =====
+// ===== VERSÃO FINALMENTE CORRIGIDA =====
 // Listar todos os produtos ATIVOS da empresa logada
 exports.listarTodos = async (req, res) => {
     const empresa_id = req.empresaId;
-    const { sortBy = 'nome-asc' } = req.query; 
+    const { sortBy = 'nome-asc' } = req.query;
 
     // Mapeia os valores do frontend para cláusulas SQL seguras
     const ordenacaoMap = {
         'preco-asc': 'preco ASC',
         'preco-desc': 'preco DESC',
         'nome-asc': 'nome ASC',
-        'id-asc': 'id ASC',       // Ordem de adição crescente (mais antigos)
-        'id-desc': 'id DESC'      // Ordem de adição decrescente (mais novos)
+        'id-asc': 'id ASC',       // CORREÇÃO: Voltamos a usar 'id'
+        'id-desc': 'id DESC'      // CORREÇÃO: Voltamos a usar 'id'
     };
 
-    // Usa a ordenação do mapa ou a padrão para evitar SQL Injection
     const orderByClause = ordenacaoMap[sortBy] || 'nome ASC';
 
     try {
@@ -91,7 +90,6 @@ exports.obterPorId = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
     try {
-        // Adiciona o campo 'codigo' na query
         const [rows] = await pool.query('SELECT * FROM produtos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Produto não encontrado.' });
@@ -106,7 +104,6 @@ exports.obterPorId = async (req, res) => {
 exports.atualizar = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
-    // Adiciona 'codigo' à desestruturação
     const { nome, descricao, preco, estoque, categoria, codigo } = req.body;
     const codigoFinal = codigo || '0';
 
@@ -232,7 +229,7 @@ exports.importarCSV = async (req, res) => {
 
     stream
         .pipe(csv({
-            headers: ['nome', 'codigo', 'preco', 'estoque', 'categoria', 'descricao'], // Adiciona 'codigo'
+            headers: ['nome', 'codigo', 'preco', 'estoque', 'categoria', 'descricao'],
             skipLines: 1,
             mapHeaders: ({ header }) => header.trim()
         }))
@@ -253,7 +250,7 @@ exports.importarCSV = async (req, res) => {
                     const estoque = parseInt(produto.estoque, 10) || 0;
                     const categoria = produto.categoria || '';
                     const descricao = produto.descricao || '';
-                    const codigo = produto.codigo || '0'; // Adiciona o código
+                    const codigo = produto.codigo || '0';
 
                     await connection.query(
                         'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
