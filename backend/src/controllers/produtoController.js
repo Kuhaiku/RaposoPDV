@@ -52,17 +52,19 @@ exports.criar = async (req, res) => {
 };
 
 
-// ===== FUNÇÃO ATUALIZADA =====
+// ===== FUNÇÃO ATUALIZADA E CORRIGIDA =====
 // Listar todos os produtos ATIVOS da empresa logada
 exports.listarTodos = async (req, res) => {
     const empresa_id = req.empresaId;
-    const { sortBy = 'nome-asc' } = req.query; // Pega o parâmetro, com 'nome-asc' como padrão
+    const { sortBy = 'nome-asc' } = req.query; 
 
     // Mapeia os valores do frontend para cláusulas SQL seguras
     const ordenacaoMap = {
         'preco-asc': 'preco ASC',
         'preco-desc': 'preco DESC',
         'nome-asc': 'nome ASC',
+        'id-asc': 'id ASC',       // Ordem de adição crescente (mais antigos)
+        'id-desc': 'id DESC'      // Ordem de adição decrescente (mais novos)
     };
 
     // Usa a ordenação do mapa ou a padrão para evitar SQL Injection
