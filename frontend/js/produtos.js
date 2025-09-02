@@ -13,6 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const importCsvBtn = document.getElementById('import-csv-btn');
     const csvFileInput = document.getElementById('csv-file');
     const downloadCsvTemplateBtn = document.getElementById('download-csv-template-btn');
+    // ===== NOVO ELEMENTO =====
+    const botoesOrdenacao = document.getElementById('botoes-ordenacao');
+
+    // ===== NOVA VARIÁVEL DE ESTADO =====
+    let ordenacaoAtual = 'nome-asc'; // Padrão
 
     // Busca o slug da empresa e configura o link do botão
     async function configurarLinkCatalogo() {
@@ -23,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const data = await response.json();
-            
+
             if (data.slug) {
                 verCatalogoBtn.href = `catalogo.html?empresa=${data.slug}`;
             } else {
@@ -35,18 +40,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Carrega e exibe a lista de produtos
+    // ===== FUNÇÃO ATUALIZADA =====
+    // Carrega e exibe a lista de produtos, agora com o parâmetro de ordenação
     async function carregarProdutos() {
         try {
-            const response = await fetchWithAuth('/api/produtos');
+            // Adiciona o parâmetro de ordenação na requisição
+            const response = await fetchWithAuth(`/api/produtos?sortBy=${ordenacaoAtual}`);
             if (!response.ok) throw new Error('Erro ao buscar produtos.');
-            
+
             const produtos = await response.json();
-            produtosTableBody.innerHTML = ''; 
+            produtosTableBody.innerHTML = '';
 
             produtos.forEach(produto => {
                 const tr = document.createElement('tr');
-                tr.dataset.produtoId = produto.id; 
+                tr.dataset.produtoId = produto.id;
                 tr.innerHTML = `
                     <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
                     <td>${produto.codigo || 'N/A'}</td>
@@ -141,15 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-        
+
         // Ação de Editar
         if (target.classList.contains('btn-edit')) {
             try {
                 const response = await fetchWithAuth(`/api/produtos/${produtoId}`);
                 if (!response.ok) throw new Error('Erro ao buscar dados do produto.');
-                
+
                 const produto = await response.json();
-                
+
                 document.getElementById('edit-produto-id').value = produto.id;
                 document.getElementById('edit-nome').value = produto.nome;
                 document.getElementById('edit-codigo').value = produto.codigo;
@@ -157,11 +164,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('edit-estoque').value = produto.estoque;
                 document.getElementById('edit-categoria').value = produto.categoria;
                 document.getElementById('edit-descricao').value = produto.descricao;
-                
+
                 editModal.style.display = 'flex';
             } catch (error) {
                 alert(error.message);
             }
+        }
+    });
+
+    // ===== NOVO EVENT LISTENER =====
+    // Adiciona o listener para os botões de ordenação
+    botoesOrdenacao.addEventListener('click', (event) => {
+        if (event.target.tagName === 'BUTTON') {
+            ordenacaoAtual = event.target.dataset.sort;
+            carregarProdutos();
         }
     });
 
@@ -186,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(data.message);
 
             alert(data.message);
-            csvFileInput.value = ''; 
+            csvFileInput.value = '';
             carregarProdutos();
         } catch (error) {
             alert(`Erro ao importar: ${error.message}`);
@@ -197,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     downloadCsvTemplateBtn.addEventListener('click', () => {
         const csvContent = "nome,codigo,preco,estoque,categoria,descricao\n" +
              "Exemplo Produto,EX001,99.99,10,Exemplo Categoria,Descrição de exemplo.\n";
-        
+
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
@@ -212,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listeners gerais
     cancelEditBtn.addEventListener('click', () => { editModal.style.display = 'none'; });
     logoutBtn.addEventListener('click', logout);
-    
+
     // Inicialização da página
     carregarProdutos();
     configurarLinkCatalogo();
