@@ -51,17 +51,38 @@ exports.criar = async (req, res) => {
     }
 };
 
+
+// ===== FUNÇÃO ATUALIZADA =====
 // Listar todos os produtos ATIVOS da empresa logada
 exports.listarTodos = async (req, res) => {
     const empresa_id = req.empresaId;
+    const { sortBy = 'nome-asc' } = req.query; // Pega o parâmetro, com 'nome-asc' como padrão
+
+    // Mapeia os valores do frontend para cláusulas SQL seguras
+    const ordenacaoMap = {
+        'preco-asc': 'preco ASC',
+        'preco-desc': 'preco DESC',
+        'nome-asc': 'nome ASC',
+    };
+
+    // Usa a ordenação do mapa ou a padrão para evitar SQL Injection
+    const orderByClause = ordenacaoMap[sortBy] || 'nome ASC';
+
     try {
-        // Adiciona o campo 'codigo' na query
-        const [rows] = await pool.query('SELECT id, nome, preco, estoque, foto_url, codigo FROM produtos WHERE ativo = 1 AND empresa_id = ? ORDER BY nome ASC', [empresa_id]);
+        const query = `
+            SELECT id, nome, preco, estoque, foto_url, codigo 
+            FROM produtos 
+            WHERE ativo = 1 AND empresa_id = ? 
+            ORDER BY ${orderByClause}
+        `;
+        const [rows] = await pool.query(query, [empresa_id]);
         res.status(200).json(rows);
     } catch (error) {
+        console.error(error)
         res.status(500).json({ message: 'Erro ao listar produtos.' });
     }
 };
+
 
 // Obter um produto específico por ID
 exports.obterPorId = async (req, res) => {
@@ -209,8 +230,7 @@ exports.importarCSV = async (req, res) => {
 
     stream
         .pipe(csv({
-            // ===== CORREÇÃO APLICADA AQUI =====
-            headers: ['nome', 'codigo', 'preco', 'estoque', 'categoria', 'descricao'],
+            headers: ['nome', 'codigo', 'preco', 'estoque', 'categoria', 'descricao'], // Adiciona 'codigo'
             skipLines: 1,
             mapHeaders: ({ header }) => header.trim()
         }))
@@ -231,7 +251,7 @@ exports.importarCSV = async (req, res) => {
                     const estoque = parseInt(produto.estoque, 10) || 0;
                     const categoria = produto.categoria || '';
                     const descricao = produto.descricao || '';
-                    const codigo = produto.codigo || '0'; 
+                    const codigo = produto.codigo || '0'; // Adiciona o código
 
                     await connection.query(
                         'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
