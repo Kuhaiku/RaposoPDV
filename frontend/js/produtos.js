@@ -13,36 +13,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const importCsvBtn = document.getElementById('import-csv-btn');
     const csvFileInput = document.getElementById('csv-file');
     const downloadCsvTemplateBtn = document.getElementById('download-csv-template-btn');
-    const botoesOrdenacao = document.getElementById('botoes-ordenacao');
+    const btnOrdenacao = document.getElementById('btn-ordenacao');
+    const textoOrdenacao = document.getElementById('texto-ordenacao');
 
-    // Variável de estado para a ordenação
-    let ordenacaoAtual = 'nome-asc'; // Padrão inicial
+    // ===== LÓGICA DO BOTÃO CÍCLICO DE ORDENAÇÃO =====
+    const estadosOrdenacao = [
+        { id: 'nome-asc', texto: 'Ordem Alfabética', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41zm255-105L177 64c-9.4-9.4-24.6-9.4-33.9 0L24 183c-15.1 15.1-4.4 41 17 41h238c21.4 0 32.1-25.9 17-41z"/></svg>` },
+        { id: 'preco-desc', texto: 'Maior Preço', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41z"/></svg>` },
+        { id: 'preco-asc', texto: 'Menor Preço', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M279 224H41c-21.4 0-32.1-25.9-17-41L143 64c9.4-9.4 24.6-9.4 33.9 0l119 119c15.2 15.1 4.5 41-16.9 41z"/></svg>` },
+        { id: 'id-desc', texto: 'Mais Recentes', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M96 32V64H48C21.5 64 0 85.5 0 112v48H448V112c0-26.5-21.5-48-48-48H352V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V64H160V32c0-17.7-14.3-32-32-32S96 14.3 96 32zM448 192H0V464c0 26.5 21.5 48 48 48H400c26.5 0 48-21.5 48-48V192zM224 340c-6.8 0-13.3 1.6-19.2 4.6l-48 24c-11.2 5.6-15.3 19.3-9.8 30.5s19.3 15.3 30.5 9.8l26-13V424c0 13.3 10.7 24 24 24s24-10.7 24-24V381.5l26 13c11.2 5.6 24.9 1.5 30.5-9.8s1.5-24.9-9.8-30.5l-48-24c-5.9-3-12.4-4.6-19.2-4.6z"/></svg>` },
+        { id: 'id-asc', texto: 'Mais Antigos', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M96 32V64H48C21.5 64 0 85.5 0 112v48H448V112c0-26.5-21.5-48-48-48H352V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V64H160V32c0-17.7-14.3-32-32-32S96 14.3 96 32zM448 192H0V464c0 26.5 21.5 48 48 48H400c26.5 0 48-21.5 48-48V192zM224 276c-6.8 0-13.3-1.6-19.2-4.6l-48-24c-11.2-5.6-15.3-19.3-9.8-30.5s19.3-15.3 30.5-9.8l26 13V200c0-13.3 10.7-24 24-24s24 10.7 24-24v20.5l26-13c11.2-5.6 24.9-1.5 30.5 9.8s1.5 24.9-9.8 30.5l-48 24c-5.9 3-12.4 4.6-19.2 4.6z"/></svg>` },
+    ];
+    let indiceOrdenacaoAtual = 0; // Começa em 'Ordem Alfabética'
 
-    // Busca o slug da empresa e configura o link do botão
-    async function configurarLinkCatalogo() {
-        try {
-            const response = await fetchWithAuth('/api/empresas/meus-dados');
-            if (!response.ok) {
-                verCatalogoBtn.style.display = 'none';
-                return;
-            }
-            const data = await response.json();
-
-            if (data.slug) {
-                verCatalogoBtn.href = `catalogo.html?empresa=${data.slug}`;
-            } else {
-                verCatalogoBtn.style.display = 'none';
-            }
-        } catch (error) {
-            console.error('Erro ao buscar slug da empresa:', error);
-            verCatalogoBtn.style.display = 'none';
-        }
+    function atualizarBotaoOrdenacao() {
+        const estado = estadosOrdenacao[indiceOrdenacaoAtual];
+        btnOrdenacao.innerHTML = estado.icone;
+        textoOrdenacao.textContent = estado.texto;
+        btnOrdenacao.title = `Ordenar por: ${estado.texto}`;
     }
 
-    // Carrega e exibe a lista de produtos, agora com o parâmetro de ordenação
+    // Carrega e exibe a lista de produtos
     async function carregarProdutos() {
         try {
-            const response = await fetchWithAuth(`/api/produtos?sortBy=${ordenacaoAtual}`);
+            const ordenacaoAtualId = estadosOrdenacao[indiceOrdenacaoAtual].id;
+            const response = await fetchWithAuth(`/api/produtos?sortBy=${ordenacaoAtualId}`);
             if (!response.ok) throw new Error('Erro ao buscar produtos.');
 
             const produtos = await response.json();
@@ -70,7 +65,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Listener do formulário de adição
+    // Adiciona o listener para o botão de ordenação
+    btnOrdenacao.addEventListener('click', () => {
+        // Avança para o próximo estado, voltando ao início se chegar ao fim
+        indiceOrdenacaoAtual = (indiceOrdenacaoAtual + 1) % estadosOrdenacao.length;
+        atualizarBotaoOrdenacao();
+        carregarProdutos();
+    });
+
+    // --- O RESTANTE DO CÓDIGO CONTINUA IGUAL ---
+    
+    async function configurarLinkCatalogo() {
+        try {
+            const response = await fetchWithAuth('/api/empresas/meus-dados');
+            if (!response.ok) {
+                verCatalogoBtn.style.display = 'none';
+                return;
+            }
+            const data = await response.json();
+
+            if (data.slug) {
+                verCatalogoBtn.href = `catalogo.html?empresa=${data.slug}`;
+            } else {
+                verCatalogoBtn.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Erro ao buscar slug da empresa:', error);
+            verCatalogoBtn.style.display = 'none';
+        }
+    }
+
     addProdutoForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const formData = new FormData();
@@ -98,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Listener do formulário de edição
     editForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const id = document.getElementById('edit-produto-id').value;
@@ -124,15 +147,13 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(error.message);
         }
     });
-
-    // Listener para os botões da tabela (Editar/Inativar)
+    
     produtosTableBody.addEventListener('click', async (event) => {
         const target = event.target;
         const tr = target.closest('tr');
         if (!tr) return;
         const produtoId = tr.dataset.produtoId;
 
-        // Ação de Inativar
         if (target.classList.contains('btn-delete')) {
             if (confirm('Tem certeza que deseja INATIVAR este produto? Ele não aparecerá mais para novas vendas.')) {
                 try {
@@ -145,8 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-
-        // Ação de Editar
+        
         if (target.classList.contains('btn-edit')) {
             try {
                 const response = await fetchWithAuth(`/api/produtos/${produtoId}`);
@@ -169,20 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Listener para os botões de ordenação
-    botoesOrdenacao.addEventListener('click', (event) => {
-        if (event.target.tagName === 'BUTTON') {
-            // Remove a classe 'active' de todos os botões
-            botoesOrdenacao.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-            // Adiciona a classe 'active' ao botão clicado
-            event.target.classList.add('active');
-            
-            ordenacaoAtual = event.target.dataset.sort;
-            carregarProdutos();
-        }
-    });
-
-    // Listener para o botão de importar CSV
     importCsvBtn.addEventListener('click', async () => {
         const file = csvFileInput.files[0];
         if (!file) {
@@ -210,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Listener para o botão de baixar modelo CSV
     downloadCsvTemplateBtn.addEventListener('click', () => {
         const csvContent = "nome,codigo,preco,estoque,categoria,descricao\n" +
              "Exemplo Produto,EX001,99.99,10,Exemplo Categoria,Descrição de exemplo.\n";
@@ -226,11 +231,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(link);
     });
 
-    // Listeners gerais
     cancelEditBtn.addEventListener('click', () => { editModal.style.display = 'none'; });
     logoutBtn.addEventListener('click', logout);
 
     // Inicialização da página
+    atualizarBotaoOrdenacao(); // Define o estado inicial do botão
     carregarProdutos();
     configurarLinkCatalogo();
 });
