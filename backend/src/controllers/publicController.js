@@ -14,14 +14,23 @@ exports.obterCatalogoPorSlug = async (req, res) => {
 
         // 2. Busca os produtos ativos daquela empresa
         const [produtos] = await pool.query(
-            'SELECT nome, descricao, preco, foto_url, codigo FROM produtos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome ASC',
+            'SELECT nome, descricao, preco, foto_url, codigo, categoria FROM produtos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome ASC',
             [empresa.id]
         );
 
-        // 3. Retorna tudo em uma única resposta
+        // 3. Busca todas as categorias únicas e não nulas da empresa
+        const [categoriasRows] = await pool.query(
+            'SELECT DISTINCT categoria FROM produtos WHERE empresa_id = ? AND ativo = 1 AND categoria IS NOT NULL AND categoria != "" ORDER BY categoria ASC',
+            [empresa.id]
+        );
+        const categorias = categoriasRows.map(row => row.categoria);
+
+
+        // 4. Retorna tudo em uma única resposta
         res.status(200).json({
             nome_empresa: empresa.nome_empresa,
-            produtos: produtos
+            produtos: produtos,
+            categorias: categorias
         });
 
     } catch (error) {
