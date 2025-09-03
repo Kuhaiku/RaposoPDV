@@ -229,7 +229,7 @@ exports.importarCSV = async (req, res) => {
 
     stream
         .pipe(csv({
-            headers: ['nome', 'codigo', 'preco', 'estoque', 'categoria', 'descricao'],
+            headers: ['nome', 'codigo', 'preco', 'estoque', 'categoria', 'descricao', 'foto_url', 'foto_public_id'],
             skipLines: 1,
             mapHeaders: ({ header }) => header.trim()
         }))
@@ -251,10 +251,12 @@ exports.importarCSV = async (req, res) => {
                     const categoria = produto.categoria || '';
                     const descricao = produto.descricao || '';
                     const codigo = produto.codigo || '0';
+                    const foto_url = produto.foto_url || null;
+                    const foto_public_id = produto.foto_public_id || null;
 
                     await connection.query(
-                        'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                        [empresa_id, nome, descricao, preco, estoque, categoria, codigo]
+                        'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo, foto_url, foto_public_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [empresa_id, nome, descricao, preco, estoque, categoria, codigo, foto_url, foto_public_id]
                     );
                 }
                 await connection.commit();
