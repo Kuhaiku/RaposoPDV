@@ -36,7 +36,10 @@ async function carregarVendas(queryParams = '') {
                 <td>${venda.usuario_nome}</td>
                 <td>R$ ${parseFloat(venda.valor_total).toFixed(2)}</td>
                 <td>${formatarData(venda.data_venda)}</td>
-                <td><button class="btn-action btn-edit">Ver Detalhes</button></td>
+                <td>
+                    <button class="btn-action btn-edit">Ver Detalhes</button>
+                    <button class="btn-action btn-delete btn-cancelar">Cancelar</button>
+                </td>
             `;
             vendasTableBody.appendChild(tr);
         });
@@ -63,6 +66,28 @@ async function carregarVendedores() {
     }
 }
 
+// Ação a ser executada quando o botão de cancelar for clicado
+async function handleCancelClick(vendaId) {
+    if (!confirm(`Tem certeza que deseja cancelar a venda #${vendaId}? Essa ação não pode ser desfeita.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetchWithAuth(`/api/vendas/${vendaId}`, { method: 'DELETE' });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message);
+        }
+
+        alert(data.message);
+        carregarVendas(); // Recarrega a tabela de vendas
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+
 filtrosForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const params = new URLSearchParams();
@@ -85,8 +110,6 @@ limparFiltrosBtn.addEventListener('click', () => {
     carregarVendas();
 });
 
-
-// ... a lógica do modal continua a mesma ...
 async function abrirModalDetalhes(vendaId) {
     try {
         const response = await fetchWithAuth(`/api/vendas/${vendaId}`);
@@ -108,12 +131,18 @@ async function abrirModalDetalhes(vendaId) {
         alert('Não foi possível carregar os detalhes da venda.');
     }
 }
+
+// NOVO: Event listener para o botão de cancelar e para o botão de ver detalhes
 vendasTableBody.addEventListener('click', (event) => {
-    if (event.target.classList.contains('btn-edit')) {
+    if (event.target.classList.contains('btn-cancelar')) {
+        const vendaId = event.target.closest('tr').dataset.vendaId;
+        handleCancelClick(vendaId);
+    } else if (event.target.classList.contains('btn-edit')) {
         const vendaId = event.target.closest('tr').dataset.vendaId;
         abrirModalDetalhes(vendaId);
     }
 });
+
 closeModalBtn.addEventListener('click', () => { detailsModal.style.display = 'none'; });
 detailsModal.addEventListener('click', (event) => {
     if (event.target === detailsModal) {
