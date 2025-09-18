@@ -14,4 +14,7 @@ router.get('/', vendaController.listarTodas);
 // Rota para ver detalhes de uma venda
 router.get('/:id', vendaController.obterPorId);
 
+// NOVO: Rota para cancelar uma venda
+router.delete('/:id', vendaController.cancelar);
+
 module.exports = router;
