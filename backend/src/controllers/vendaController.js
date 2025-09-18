@@ -35,7 +35,7 @@ exports.criar = async (req, res) => {
         );
         const venda_id = vendaResult.insertId;
 
-        // 2. Insere os itens da venda
+        // 2. Insere os itens da venda e atualiza o estoque
         for (const item of itens) {
             const [rows] = await connection.query('SELECT preco FROM produtos WHERE id = ?', [item.produto_id]);
             await connection.query(
@@ -43,6 +43,12 @@ exports.criar = async (req, res) => {
                 [venda_id, item.produto_id, item.quantidade, rows[0].preco]
             );
             await connection.query('UPDATE produtos SET estoque = estoque - ? WHERE id = ?', [item.quantidade, item.produto_id]);
+            
+            // NOVO: Verifica se o estoque chegou a zero e inativa o produto
+            const [estoqueAtual] = await connection.query('SELECT estoque FROM produtos WHERE id = ?', [item.produto_id]);
+            if (estoqueAtual[0].estoque === 0) {
+                await connection.query('UPDATE produtos SET ativo = 0 WHERE id = ?', [item.produto_id]);
+            }
         }
 
         // 3. Insere os métodos de pagamento
@@ -140,5 +146,43 @@ exports.listarTodas = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro ao listar vendas.' });
+    }
+};
+
+// Nova função para cancelar uma venda
+exports.cancelar = async (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.empresaId;
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Obtém os itens da venda para reverter o estoque
+        const [itens] = await connection.query('SELECT produto_id, quantidade FROM venda_itens WHERE venda_id = ?', [id]);
+        if (itens.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'Venda não encontrada ou já cancelada.' });
+        }
+
+        // 2. Reverte o estoque para cada produto
+        for (const item of itens) {
+            await connection.query('UPDATE produtos SET estoque = estoque + ? WHERE id = ? AND empresa_id = ?', [item.quantidade, item.produto_id, empresa_id]);
+        }
+
+        // 3. Exclui os pagamentos, itens da venda e a própria venda
+        await connection.query('DELETE FROM venda_pagamentos WHERE venda_id = ?', [id]);
+        await connection.query('DELETE FROM venda_itens WHERE venda_id = ?', [id]);
+        await connection.query('DELETE FROM vendas WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+        
+        await connection.commit();
+        res.status(200).json({ message: 'Venda cancelada e estoque revertido com sucesso.' });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor ao cancelar a venda.' });
+    } finally {
+        if (connection) connection.release();
     }
 };
