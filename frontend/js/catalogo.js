@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+
     const API_URL = '';
 
     const catalogoGrid = document.getElementById('catalogo-grid');
@@ -131,10 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     nextEl: '.swiper-button-next',
                     prevEl: '.swiper-button-prev',
                 },
-                autoplay: {
-                    delay: 5000,
-                    disableOnInteraction: false,
-                },
+                autoplay: false,
             });
 
             lightboxOverlay.style.display = 'flex';

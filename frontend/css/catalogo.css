@@ -128,19 +128,34 @@ body {
     z-index: 2000;
 }
 
-.lightbox-content {
-    position: relative;
+#lightbox-swiper-container {
     max-width: 90vw;
     max-height: 90vh;
-    background-color: #fff;
+    background-color: transparent;
     border-radius: 8px;
     overflow: hidden;
+    position: relative;
+}
+
+.swiper-slide {
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.swiper-slide img {
+    max-width: 100%;
+    max-height: 500px;
+    width: auto;
+    object-fit: contain;
 }
 
 .lightbox-close {
     position: absolute;
-    top: -15px;
-    right: -15px;
+    top: 20px;
+    right: 20px;
     color: white;
     font-size: 40px;
     font-weight: bold;
@@ -154,25 +169,6 @@ body {
     color: #bbb;
 }
 
-#lightbox-swiper-container {
-    width: 100%;
-    height: 100%;
-}
-
-.swiper-slide {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-}
-
-.swiper-slide img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-}
-
 .swiper-button-next,
 .swiper-button-prev {
     color: white;
@@ -182,12 +178,11 @@ body {
     top: 50%;
     transform: translateY(-50%);
     transition: background-color 0.3s;
+    /* Posição corrigida */
+    position: absolute;
+    z-index: 10;
 }
 
-.swiper-button-next:hover,
-.swiper-button-prev:hover {
-    background-color: rgba(0, 0, 0, 0.8);
-}
 
 @media (max-width: 768px) {
     .catalogo-header h1 {
