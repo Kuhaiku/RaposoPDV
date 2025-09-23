@@ -32,4 +32,3 @@ const uploadCsv = multer({
 }).single('csvfile');
 
 module.exports = { uploadImages, uploadCsv };
-// teste
