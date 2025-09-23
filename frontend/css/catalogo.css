@@ -114,7 +114,7 @@ body {
     color: #777;
 }
 
-/* NOVOS ESTILOS DO MODAL E DO CARROSSEL DENTRO DELE */
+/* Estilos Corrigidos do Modal */
 
 .lightbox-overlay {
     position: fixed;
@@ -131,23 +131,25 @@ body {
 }
 
 .lightbox-content {
-    position: relative; /* Necessário para posicionar as setas */
+    position: relative;
     max-width: 90%;
-    width: 800px; /* Largura máxima para o carrossel */
-    max-height: 90%;
-    border-radius: 5px;
+    max-height: 90vh; /* Permite que o modal se adapte à altura da tela */
+    width: auto; /* Remove a largura fixa para se adaptar ao conteúdo */
+    background-color: #fff;
+    border-radius: 8px;
 }
 
 .lightbox-close {
     position: absolute;
-    top: 20px;
-    right: 35px;
+    top: -15px;
+    right: -15px;
     color: white;
     font-size: 40px;
     font-weight: bold;
     cursor: pointer;
     transition: color 0.3s ease;
-    z-index: 2001; /* Garante que o botão de fechar fique acima das setas */
+    z-index: 2001;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
 .lightbox-close:hover {
@@ -155,14 +157,13 @@ body {
 }
 
 #lightbox-swiper-container {
-    height: 600px; /* Ajuste a altura do carrossel no modal */
-    background-color: #fff;
-    border-radius: 8px;
+    width: 100%;
+    height: auto; /* Remove a altura fixa */
+    min-height: 200px; /* Altura mínima para o carrossel */
+    max-height: 90vh; /* Altura máxima para não passar da tela */
 }
 
 .swiper-slide {
-    width: 100%;
-    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -171,7 +172,7 @@ body {
 .swiper-slide img {
     max-width: 100%;
     max-height: 100%;
-    object-fit: contain;
+    object-fit: contain; /* Mantém o object-fit para evitar distorção */
 }
 
 .swiper-button-next,
