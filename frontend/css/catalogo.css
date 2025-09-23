@@ -133,8 +133,8 @@ body {
 .lightbox-content {
     position: relative;
     max-width: 90%;
-    max-height: 90vh; /* Permite que o modal se adapte à altura da tela */
-    width: auto; /* Remove a largura fixa para se adaptar ao conteúdo */
+    max-height: 90vh; 
+    width: auto;
     background-color: #fff;
     border-radius: 8px;
 }
@@ -158,9 +158,9 @@ body {
 
 #lightbox-swiper-container {
     width: 100%;
-    height: auto; /* Remove a altura fixa */
-    min-height: 200px; /* Altura mínima para o carrossel */
-    max-height: 90vh; /* Altura máxima para não passar da tela */
+    height: auto; 
+    min-height: 200px; 
+    max-height: 90vh;
 }
 
 .swiper-slide {
@@ -172,7 +172,7 @@ body {
 .swiper-slide img {
     max-width: 100%;
     max-height: 100%;
-    object-fit: contain; /* Mantém o object-fit para evitar distorção */
+    object-fit: contain; 
 }
 
 .swiper-button-next,

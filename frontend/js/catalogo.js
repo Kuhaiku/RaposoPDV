@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
             card.className = 'produto-card';
             card.dataset.produtoId = produto.id;
             
-            // Renderiza apenas a primeira imagem na página principal
             const fotoUrl = produto.fotos && produto.fotos.length > 0 ? produto.fotos[0] : 'img/placeholder.png';
 
             card.innerHTML = `
@@ -98,7 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // NOVO: Lógica para carregar o carrossel no modal
     catalogoGrid.addEventListener('click', async (event) => {
         const card = event.target.closest('.produto-card');
         if (card) {
@@ -106,11 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const produto = todosProdutos.find(p => p.id == produtoId);
             if (!produto) return;
 
-            // Limpa slides anteriores
             const swiperWrapper = lightboxSwiperContainer.querySelector('.swiper-wrapper');
             swiperWrapper.innerHTML = '';
 
-            // Adiciona slides com as fotos do produto
             if (produto.fotos && produto.fotos.length > 0) {
                 produto.fotos.forEach(url => {
                     const slide = document.createElement('div');
@@ -125,12 +121,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     swiperWrapper.appendChild(slide);
             }
 
-            // Destrói a instância anterior do Swiper, se existir
             if (lightboxSwiper) {
                 lightboxSwiper.destroy(true, true);
             }
 
-            // Inicializa o novo Swiper
             lightboxSwiper = new Swiper(lightboxSwiperContainer, {
                 loop: true,
                 navigation: {
@@ -150,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function fecharLightbox() {
         lightboxOverlay.style.display = 'none';
         if (lightboxSwiper) {
-            lightboxSwiper.destroy(true, true); // Destroi o carrossel ao fechar
+            lightboxSwiper.destroy(true, true);
             lightboxSwiper = null;
         }
     }
