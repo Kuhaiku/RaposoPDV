@@ -4,13 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const catalogoGrid = document.getElementById('catalogo-grid');
     const nomeEmpresaHeader = document.getElementById('nome-empresa-header');
     const lightboxOverlay = document.getElementById('lightbox-overlay');
-    const lightboxImage = document.getElementById('lightbox-image');
+    const lightboxSwiperContainer = document.getElementById('lightbox-swiper-container');
     const lightboxClose = document.querySelector('.lightbox-close');
     const buscaProdutoInput = document.getElementById('busca-produto-catalogo');
     const filtrosCategoriaContainer = document.getElementById('filtros-categoria');
 
     let todosProdutos = [];
     let categoriaAtiva = 'todos';
+    let lightboxSwiper = null;
 
     function renderizarProdutos() {
         catalogoGrid.innerHTML = '';
@@ -30,31 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
         produtosFiltrados.forEach((produto, index) => {
             const card = document.createElement('div');
             card.className = 'produto-card';
+            card.dataset.produtoId = produto.id;
             
-            // Lógica para renderizar o carrossel ou a imagem única
-            let imagensHTML = '';
-            if (produto.fotos && produto.fotos.length > 1) {
-                // Cria IDs únicos para cada Swiper e seus botões
-                const swiperId = `swiper-${index}`;
-                const nextBtnId = `next-${index}`;
-                const prevBtnId = `prev-${index}`;
-                
-                imagensHTML = `
-                    <div class="swiper-container" id="${swiperId}">
-                        <div class="swiper-wrapper">
-                            ${produto.fotos.map(url => `<div class="swiper-slide"><img src="${url}" class="produto-card-imagem" alt="${produto.nome}"></div>`).join('')}
-                        </div>
-                        <div class="swiper-button-next" id="${nextBtnId}"></div>
-                        <div class="swiper-button-prev" id="${prevBtnId}"></div>
-                    </div>
-                `;
-            } else {
-                const fotoUrl = produto.fotos && produto.fotos.length > 0 ? produto.fotos[0] : 'img/placeholder.png';
-                imagensHTML = `<img src="${fotoUrl}" alt="${produto.nome}" class="produto-card-imagem">`;
-            }
+            // Renderiza apenas a primeira imagem na página principal
+            const fotoUrl = produto.fotos && produto.fotos.length > 0 ? produto.fotos[0] : 'img/placeholder.png';
 
             card.innerHTML = `
-                ${imagensHTML}
+                <img src="${fotoUrl}" alt="${produto.nome}" class="produto-card-imagem">
                 <div class="produto-card-info">
                     <h3 class="produto-card-nome">${produto.nome}</h3>
                     <p class="produto-card-descricao">${produto.descricao || ''}</p>
@@ -62,22 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             catalogoGrid.appendChild(card);
-        });
-
-        // Inicializa o Swiper para cada carrossel
-        const swipers = document.querySelectorAll('.swiper-container');
-        swipers.forEach(sw => {
-            new Swiper(sw, {
-                loop: true,
-                autoplay: {
-                    delay: 5000,
-                    disableOnInteraction: false,
-                },
-                navigation: {
-                    nextEl: sw.querySelector('.swiper-button-next'),
-                    prevEl: sw.querySelector('.swiper-button-prev'),
-                },
-            });
         });
     }
 
@@ -130,21 +97,62 @@ document.addEventListener('DOMContentLoaded', () => {
             catalogoGrid.innerHTML = `<p>${error.message}</p>`;
         }
     }
-
-    catalogoGrid.addEventListener('click', (event) => {
+    
+    // NOVO: Lógica para carregar o carrossel no modal
+    catalogoGrid.addEventListener('click', async (event) => {
         const card = event.target.closest('.produto-card');
         if (card) {
-            const swiperSlide = event.target.closest('.swiper-slide');
-            const img = swiperSlide ? swiperSlide.querySelector('.produto-card-imagem') : card.querySelector('.produto-card-imagem');
-            if (img && img.src) {
-                lightboxImage.src = img.src;
-                lightboxOverlay.style.display = 'flex';
+            const produtoId = card.dataset.produtoId;
+            const produto = todosProdutos.find(p => p.id == produtoId);
+            if (!produto) return;
+
+            // Limpa slides anteriores
+            const swiperWrapper = lightboxSwiperContainer.querySelector('.swiper-wrapper');
+            swiperWrapper.innerHTML = '';
+
+            // Adiciona slides com as fotos do produto
+            if (produto.fotos && produto.fotos.length > 0) {
+                produto.fotos.forEach(url => {
+                    const slide = document.createElement('div');
+                    slide.className = 'swiper-slide';
+                    slide.innerHTML = `<img src="${url}" alt="${produto.nome}">`;
+                    swiperWrapper.appendChild(slide);
+                });
+            } else {
+                 const slide = document.createElement('div');
+                    slide.className = 'swiper-slide';
+                    slide.innerHTML = `<img src="img/placeholder.png" alt="Sem foto">`;
+                    swiperWrapper.appendChild(slide);
             }
+
+            // Destrói a instância anterior do Swiper, se existir
+            if (lightboxSwiper) {
+                lightboxSwiper.destroy(true, true);
+            }
+
+            // Inicializa o novo Swiper
+            lightboxSwiper = new Swiper(lightboxSwiperContainer, {
+                loop: true,
+                navigation: {
+                    nextEl: '.swiper-button-next',
+                    prevEl: '.swiper-button-prev',
+                },
+                autoplay: {
+                    delay: 5000,
+                    disableOnInteraction: false,
+                },
+            });
+
+            lightboxOverlay.style.display = 'flex';
         }
     });
 
     function fecharLightbox() {
         lightboxOverlay.style.display = 'none';
+        if (lightboxSwiper) {
+            lightboxSwiper.destroy(true, true); // Destroi o carrossel ao fechar
+            lightboxSwiper = null;
+        }
     }
 
     buscaProdutoInput.addEventListener('input', renderizarProdutos);
