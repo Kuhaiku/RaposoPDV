@@ -115,7 +115,6 @@ body {
 }
 
 /* Estilos Corrigidos do Modal */
-
 .lightbox-overlay {
     position: fixed;
     top: 0;
@@ -127,16 +126,15 @@ body {
     justify-content: center;
     align-items: center;
     z-index: 2000;
-    padding: 20px;
 }
 
 .lightbox-content {
     position: relative;
-    max-width: 90%;
-    max-height: 90vh; 
-    width: auto;
+    max-width: 90vw;
+    max-height: 90vh;
     background-color: #fff;
     border-radius: 8px;
+    overflow: hidden; /* Garante que nada transborde do modal */
 }
 
 .lightbox-close {
@@ -158,21 +156,22 @@ body {
 
 #lightbox-swiper-container {
     width: 100%;
-    height: auto; 
-    min-height: 200px; 
-    max-height: 90vh;
+    height: 100%;
 }
 
 .swiper-slide {
     display: flex;
     justify-content: center;
     align-items: center;
+    /* Ajustado para preencher a tela */
+    width: 100%;
+    height: 100%;
 }
 
 .swiper-slide img {
     max-width: 100%;
     max-height: 100%;
-    object-fit: contain; 
+    object-fit: contain;
 }
 
 .swiper-button-next,
