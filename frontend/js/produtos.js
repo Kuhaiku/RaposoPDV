@@ -1,7 +1,6 @@
 checkAuth();
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Mapeamento dos elementos do DOM
     const logoutBtn = document.getElementById('logout-btn');
     const produtosTableBody = document.getElementById('produtos-table-body');
     const addProdutoForm = document.getElementById('add-produto-form');
@@ -16,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnOrdenacao = document.getElementById('btn-ordenacao');
     const textoOrdenacao = document.getElementById('texto-ordenacao');
 
-    // ===== LÓGICA DO BOTÃO CÍCLICO DE ORDENAÇÃO =====
     const estadosOrdenacao = [
         { id: 'nome-asc', texto: 'Ordem Alfabética', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41zm255-105L177 64c-9.4-9.4-24.6-9.4-33.9 0L24 183c-15.1 15.1-4.4 41 17 41h238c21.4 0 32.1 25.9 17-41z"/></svg>` },
         { id: 'preco-desc', texto: 'Maior Preço', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41z"/></svg>` },
@@ -24,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'id-desc', texto: 'Mais Recentes', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M96 32V64H48C21.5 64 0 85.5 0 112v48H448V112c0-26.5-21.5-48-48-48H352V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V64H160V32c0-17.7-14.3-32-32-32S96 14.3 96 32zM448 192H0V464c0 26.5 21.5 48 48 48H400c26.5 0 48-21.5 48-48V192zM224 340c-6.8 0-13.3 1.6-19.2 4.6l-48 24c-11.2 5.6-15.3 19.3-9.8 30.5s19.3 15.3 30.5 9.8l26-13V424c0 13.3 10.7 24 24 24s24-10.7 24-24V381.5l26 13c11.2 5.6 24.9 1.5 30.5-9.8s1.5-24.9-9.8-30.5l-48-24c-5.9-3-12.4-4.6-19.2-4.6z"/></svg>` },
         { id: 'id-asc', texto: 'Mais Antigos', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M96 32V64H48C21.5 64 0 85.5 0 112v48H448V112c0-26.5-21.5-48-48-48H352V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V64H160V32c0-17.7-14.3-32-32-32S96 14.3 96 32zM448 192H0V464c0 26.5 21.5 48 48 48H400c26.5 0 48-21.5 48-48V192zM224 276c-6.8 0-13.3-1.6-19.2-4.6l-48-24c-11.2-5.6-15.3-19.3-9.8-30.5s19.3-15.3 30.5-9.8l26 13V200c0-13.3 10.7-24 24-24s24 10.7 24-24v20.5l26-13c11.2-5.6 24.9-1.5 30.5 9.8s1.5 24.9-9.8 30.5l-48 24c-5.9 3-12.4 4.6-19.2 4.6z"/></svg>` },
     ];
-    let indiceOrdenacaoAtual = 0; // Começa em 'Ordem Alfabética'
+    let indiceOrdenacaoAtual = 0;
 
     function atualizarBotaoOrdenacao() {
         const estado = estadosOrdenacao[indiceOrdenacaoAtual];
@@ -33,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnOrdenacao.title = `Ordenar por: ${estado.texto}`;
     }
 
-    // Carrega e exibe a lista de produtos
     async function carregarProdutos() {
         try {
             const ordenacaoAtualId = estadosOrdenacao[indiceOrdenacaoAtual].id;
@@ -65,16 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Adiciona o listener para o botão de ordenação
     btnOrdenacao.addEventListener('click', () => {
-        // Avança para o próximo estado, voltando ao início se chegar ao fim
         indiceOrdenacaoAtual = (indiceOrdenacaoAtual + 1) % estadosOrdenacao.length;
         atualizarBotaoOrdenacao();
         carregarProdutos();
     });
 
-    // --- O RESTANTE DO CÓDIGO CONTINUA IGUAL ---
-    
     async function configurarLinkCatalogo() {
         try {
             const response = await fetchWithAuth('/api/empresas/meus-dados');
@@ -83,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const data = await response.json();
-
             if (data.slug) {
                 verCatalogoBtn.href = `catalogo.html?empresa=${data.slug}`;
             } else {
@@ -105,14 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('categoria', document.getElementById('categoria').value);
         formData.append('descricao', document.getElementById('descricao').value);
         const imagemInput = document.getElementById('imagem');
-        if (imagemInput.files[0]) {
-            formData.append('imagem', imagemInput.files[0]);
+        for (const file of imagemInput.files) {
+            formData.append('imagens', file);
         }
         try {
             const response = await fetchWithAuth('/api/produtos', { method: 'POST', body: formData });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
-
             carregarProdutos();
             addProdutoForm.reset();
             successMessageDiv.textContent = 'Produto salvo com sucesso!';
@@ -133,21 +124,20 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('categoria', document.getElementById('edit-categoria').value);
         formData.append('descricao', document.getElementById('edit-descricao').value);
         const imagemInput = document.getElementById('edit-imagem');
-        if (imagemInput.files[0]) {
-            formData.append('imagem', imagemInput.files[0]);
+        for (const file of imagemInput.files) {
+            formData.append('imagens', file);
         }
         try {
             const response = await fetchWithAuth(`/api/produtos/${id}`, { method: 'PUT', body: formData });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
-
             editModal.style.display = 'none';
             carregarProdutos();
         } catch (error) {
             alert(error.message);
         }
     });
-    
+
     produtosTableBody.addEventListener('click', async (event) => {
         const target = event.target;
         const tr = target.closest('tr');
@@ -234,8 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelEditBtn.addEventListener('click', () => { editModal.style.display = 'none'; });
     logoutBtn.addEventListener('click', logout);
 
-    // Inicialização da página
-    atualizarBotaoOrdenacao(); // Define o estado inicial do botão
+    atualizarBotaoOrdenacao();
     carregarProdutos();
     configurarLinkCatalogo();
 });

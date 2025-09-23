@@ -6,84 +6,93 @@ const { Readable } = require('stream');
 // Criar um novo produto
 exports.criar = async (req, res) => {
     const empresa_id = req.empresaId;
-    // Adiciona 'codigo' à desestruturação
     const { nome, descricao, preco, estoque, categoria, codigo } = req.body;
-    const codigoFinal = codigo || '0'; // Define '0' se o código for nulo ou vazio
+    const codigoFinal = codigo || '0';
+    const files = req.files || [];
+    let connection;
 
-    if (!req.file) {
-        try {
-            const [dbResult] = await pool.query(
-                'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [empresa_id, nome, descricao, preco, estoque, categoria, codigoFinal]
-            );
-            return res.status(201).json({ message: 'Produto criado com sucesso!', produtoId: dbResult.insertId });
-        } catch (error) {
-            console.error(error);
-            return res.status(500).json({ message: 'Erro no servidor ao criar produto sem imagem.' });
-        }
+    if (!nome || !preco || !estoque) {
+        return res.status(400).json({ message: 'Nome, preço e estoque são obrigatórios.' });
     }
 
     try {
-        const [empresaRows] = await pool.query('SELECT slug FROM empresas WHERE id = ?', [empresa_id]);
-        if (empresaRows.length === 0 || !empresaRows[0].slug) {
-            return res.status(404).json({ message: 'Diretório da empresa não encontrado.' });
-        }
-        const folderPath = `raposopdv/${empresaRows[0].slug}/produtos`;
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
 
-        const uploadStream = cloudinary.uploader.upload_stream(
-            { folder: folderPath },
-            async (error, result) => {
-                if (error) {
-                    console.error('Erro no upload para Cloudinary:', error);
-                    return res.status(500).json({ message: 'Erro ao fazer upload da imagem.' });
-                }
-                const [dbResult] = await pool.query(
-                    'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, foto_url, foto_public_id, codigo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [empresa_id, nome, descricao, preco, estoque, categoria, result.secure_url, result.public_id, codigoFinal]
-                );
-                res.status(201).json({ message: 'Produto criado com sucesso!', produtoId: dbResult.insertId });
-            }
+        const [dbResult] = await connection.query(
+            'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [empresa_id, nome, descricao, preco, estoque, categoria, codigoFinal]
         );
-        uploadStream.end(req.file.buffer);
+        const produtoId = dbResult.insertId;
+
+        if (files.length > 0) {
+            const [empresaRows] = await connection.query('SELECT slug FROM empresas WHERE id = ?', [empresa_id]);
+            if (empresaRows.length === 0 || !empresaRows[0].slug) {
+                throw new Error('Diretório da empresa não encontrado.');
+            }
+            const folderPath = `raposopdv/${empresaRows[0].slug}/produtos`;
+
+            const uploadPromises = files.map(file => {
+                return new Promise((resolve, reject) => {
+                    const uploadStream = cloudinary.uploader.upload_stream(
+                        { folder: folderPath },
+                        (error, result) => {
+                            if (error) reject(error);
+                            else resolve(result);
+                        }
+                    );
+                    uploadStream.end(file.buffer);
+                });
+            });
+
+            const results = await Promise.all(uploadPromises);
+            const fotosParaSalvar = results.map(result => [produtoId, result.secure_url, result.public_id]);
+            await connection.query(
+                'INSERT INTO produto_fotos (produto_id, url, public_id) VALUES ?',
+                [fotosParaSalvar]
+            );
+        }
+
+        await connection.commit();
+        res.status(201).json({ message: 'Produto criado com sucesso!', produtoId: produtoId });
     } catch (error) {
+        if (connection) await connection.rollback();
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor ao criar produto.' });
+    } finally {
+        if (connection) connection.release();
     }
 };
 
-
-// ===== VERSÃO FINALMENTE CORRIGIDA =====
 // Listar todos os produtos ATIVOS da empresa logada
 exports.listarTodos = async (req, res) => {
     const empresa_id = req.empresaId;
     const { sortBy = 'nome-asc' } = req.query;
 
-    // Mapeia os valores do frontend para cláusulas SQL seguras
     const ordenacaoMap = {
-        'preco-asc': 'preco ASC',
-        'preco-desc': 'preco DESC',
-        'nome-asc': 'nome ASC',
-        'id-asc': 'id ASC',       // CORREÇÃO: Voltamos a usar 'id'
-        'id-desc': 'id DESC'      // CORREÇÃO: Voltamos a usar 'id'
+        'preco-asc': 'p.preco ASC',
+        'preco-desc': 'p.preco DESC',
+        'nome-asc': 'p.nome ASC',
+        'id-asc': 'p.id ASC',
+        'id-desc': 'p.id DESC'
     };
 
-    const orderByClause = ordenacaoMap[sortBy] || 'nome ASC';
+    const orderByClause = ordenacaoMap[sortBy] || 'p.nome ASC';
 
     try {
-        const query = `
-            SELECT id, nome, preco, estoque, foto_url, codigo 
-            FROM produtos 
-            WHERE ativo = 1 AND empresa_id = ? 
+        const [rows] = await pool.query(`
+            SELECT p.id, p.nome, p.preco, p.estoque, p.codigo,
+                   (SELECT url FROM produto_fotos WHERE produto_id = p.id ORDER BY id LIMIT 1) AS foto_url
+            FROM produtos p
+            WHERE p.ativo = 1 AND p.empresa_id = ?
             ORDER BY ${orderByClause}
-        `;
-        const [rows] = await pool.query(query, [empresa_id]);
+        `, [empresa_id]);
         res.status(200).json(rows);
     } catch (error) {
         console.error(error)
         res.status(500).json({ message: 'Erro ao listar produtos.' });
     }
 };
-
 
 // Obter um produto específico por ID
 exports.obterPorId = async (req, res) => {
@@ -94,7 +103,9 @@ exports.obterPorId = async (req, res) => {
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Produto não encontrado.' });
         }
-        res.status(200).json(rows[0]);
+        const [fotosRows] = await pool.query('SELECT url FROM produto_fotos WHERE produto_id = ?', [id]);
+        const produto = { ...rows[0], fotos: fotosRows.map(f => f.url) };
+        res.status(200).json(produto);
     } catch (error) {
         res.status(500).json({ message: 'Erro ao obter produto.' });
     }
@@ -106,43 +117,62 @@ exports.atualizar = async (req, res) => {
     const empresa_id = req.empresaId;
     const { nome, descricao, preco, estoque, categoria, codigo } = req.body;
     const codigoFinal = codigo || '0';
+    const files = req.files || [];
+    let connection;
 
     try {
-        let produtoAtualResult = await pool.query('SELECT foto_url, foto_public_id FROM produtos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
-        if (produtoAtualResult[0].length === 0) {
-            return res.status(404).json({ message: 'Produto não encontrado.' });
-        }
-        let { foto_url, foto_public_id } = produtoAtualResult[0][0];
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
 
-        if (req.file) {
-            if (foto_public_id) {
-                await cloudinary.uploader.destroy(foto_public_id);
+        const [produtoAtualResult] = await connection.query('SELECT public_id FROM produto_fotos WHERE produto_id = ?', [id]);
+
+        if (files.length > 0) {
+            if (produtoAtualResult.length > 0) {
+                const publicIds = produtoAtualResult.map(f => f.public_id);
+                await cloudinary.api.delete_resources(publicIds);
+                await connection.query('DELETE FROM produto_fotos WHERE produto_id = ?', [id]);
             }
 
-            const [empresaRows] = await pool.query('SELECT slug FROM empresas WHERE id = ?', [empresa_id]);
+            const [empresaRows] = await connection.query('SELECT slug FROM empresas WHERE id = ?', [empresa_id]);
             if (empresaRows.length === 0 || !empresaRows[0].slug) {
-                return res.status(404).json({ message: 'Diretório da empresa não encontrado.' });
+                throw new Error('Diretório da empresa não encontrado.');
             }
             const folderPath = `raposopdv/${empresaRows[0].slug}/produtos`;
 
-            const result = await new Promise((resolve, reject) => {
-                const uploadStream = cloudinary.uploader.upload_stream({ folder: folderPath }, (error, result) => {
-                    if (error) reject(error); else resolve(result);
+            const uploadPromises = files.map(file => {
+                return new Promise((resolve, reject) => {
+                    const uploadStream = cloudinary.uploader.upload_stream(
+                        { folder: folderPath },
+                        (error, result) => {
+                            if (error) reject(error);
+                            else resolve(result);
+                        }
+                    );
+                    uploadStream.end(file.buffer);
                 });
-                uploadStream.end(req.file.buffer);
             });
-            foto_url = result.secure_url;
-            foto_public_id = result.public_id;
+
+            const results = await Promise.all(uploadPromises);
+            const fotosParaSalvar = results.map(result => [id, result.secure_url, result.public_id]);
+            await connection.query(
+                'INSERT INTO produto_fotos (produto_id, url, public_id) VALUES ?',
+                [fotosParaSalvar]
+            );
         }
 
-        await pool.query(
-            'UPDATE produtos SET nome = ?, descricao = ?, preco = ?, estoque = ?, categoria = ?, foto_url = ?, foto_public_id = ?, codigo = ? WHERE id = ? AND empresa_id = ?',
-            [nome, descricao, preco, estoque, categoria, foto_url, foto_public_id, codigoFinal, id, empresa_id]
+        await connection.query(
+            'UPDATE produtos SET nome = ?, descricao = ?, preco = ?, estoque = ?, categoria = ?, codigo = ? WHERE id = ? AND empresa_id = ?',
+            [nome, descricao, preco, estoque, categoria, codigoFinal, id, empresa_id]
         );
+
+        await connection.commit();
         res.status(200).json({ message: 'Produto atualizado com sucesso!' });
     } catch (error) {
+        if (connection) await connection.rollback();
         console.error("Erro ao atualizar produto:", error);
         res.status(500).json({ message: 'Erro no servidor ao atualizar produto.' });
+    } finally {
+        if (connection) connection.release();
     }
 };
 
@@ -189,32 +219,6 @@ exports.reativar = async (req, res) => {
     }
 };
 
-// NOVA FUNÇÃO: Inativar múltiplos produtos (em massa)
-exports.inativarEmMassa = async (req, res) => {
-    const { ids } = req.body;
-    const empresa_id = req.empresaId;
-
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        return res.status(400).json({ message: 'A lista de IDs de produtos é inválida.' });
-    }
-
-    try {
-        const [result] = await pool.query(
-            'UPDATE produtos SET ativo = 0 WHERE id IN (?) AND empresa_id = ?',
-            [ids, empresa_id]
-        );
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Nenhum dos produtos selecionados foi encontrado.' });
-        }
-
-        res.status(200).json({ message: `${result.affectedRows} produtos foram inativados com sucesso.` });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro no servidor ao inativar produtos.' });
-    }
-};
-
 // Importar produtos via CSV
 exports.importarCSV = async (req, res) => {
     const empresa_id = req.empresaId;
@@ -254,10 +258,19 @@ exports.importarCSV = async (req, res) => {
                     const foto_url = produto.foto_url || null;
                     const foto_public_id = produto.foto_public_id || null;
 
-                    await connection.query(
-                        'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo, foto_url, foto_public_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [empresa_id, nome, descricao, preco, estoque, categoria, codigo, foto_url, foto_public_id]
+                    // Lógica para a importação de CSV precisa ser ajustada para a nova tabela
+                    // Esta é uma versão simplificada, que só salva a primeira foto na nova tabela
+                    const [result] = await connection.query(
+                        'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [empresa_id, nome, descricao, preco, estoque, categoria, codigo]
                     );
+
+                    if (foto_url) {
+                        await connection.query(
+                            'INSERT INTO produto_fotos (produto_id, url, public_id) VALUES (?, ?, ?)',
+                            [result.insertId, foto_url, foto_public_id]
+                        );
+                    }
                 }
                 await connection.commit();
                 res.status(201).json({ message: `${produtos.length} produtos importados com sucesso!` });

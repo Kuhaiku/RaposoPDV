@@ -1,8 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-
     const API_URL = '';
 
-    // --- ELEMENTOS DO DOM ---
     const catalogoGrid = document.getElementById('catalogo-grid');
     const nomeEmpresaHeader = document.getElementById('nome-empresa-header');
     const lightboxOverlay = document.getElementById('lightbox-overlay');
@@ -11,16 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const buscaProdutoInput = document.getElementById('busca-produto-catalogo');
     const filtrosCategoriaContainer = document.getElementById('filtros-categoria');
 
-    // --- ESTADO DA APLICAÇÃO ---
     let todosProdutos = [];
     let categoriaAtiva = 'todos';
-
-    // --- FUNÇÕES DE RENDERIZAÇÃO E FILTRO ---
 
     function renderizarProdutos() {
         catalogoGrid.innerHTML = '';
         const termoBusca = buscaProdutoInput.value.toLowerCase();
-
+        
         const produtosFiltrados = todosProdutos.filter(produto => {
             const correspondeBusca = produto.nome.toLowerCase().includes(termoBusca);
             const correspondeCategoria = (categoriaAtiva === 'todos' || produto.categoria === categoriaAtiva);
@@ -35,10 +30,26 @@ document.addEventListener('DOMContentLoaded', () => {
         produtosFiltrados.forEach(produto => {
             const card = document.createElement('div');
             card.className = 'produto-card';
-            card.dataset.imageUrl = produto.foto_url;
             
+            // Lógica para renderizar o carrossel ou a imagem única
+            let imagensHTML = '';
+            if (produto.fotos && produto.fotos.length > 1) {
+                imagensHTML = `
+                    <div class="swiper-container">
+                        <div class="swiper-wrapper">
+                            ${produto.fotos.map(url => `<div class="swiper-slide"><img src="${url}" class="produto-card-imagem" alt="${produto.nome}"></div>`).join('')}
+                        </div>
+                        <div class="swiper-button-next"></div>
+                        <div class="swiper-button-prev"></div>
+                    </div>
+                `;
+            } else {
+                const fotoUrl = produto.fotos && produto.fotos.length > 0 ? produto.fotos[0] : 'img/placeholder.png';
+                imagensHTML = `<img src="${fotoUrl}" alt="${produto.nome}" class="produto-card-imagem">`;
+            }
+
             card.innerHTML = `
-                <img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-card-imagem">
+                ${imagensHTML}
                 <div class="produto-card-info">
                     <h3 class="produto-card-nome">${produto.nome}</h3>
                     <p class="produto-card-descricao">${produto.descricao || ''}</p>
@@ -46,6 +57,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             catalogoGrid.appendChild(card);
+        });
+
+        // Inicializa o Swiper para cada carrossel
+        const swipers = document.querySelectorAll('.swiper-container');
+        swipers.forEach(sw => {
+            new Swiper(sw, {
+                loop: true,
+                autoplay: {
+                    delay: 5000,
+                    disableOnInteraction: false,
+                },
+                navigation: {
+                    nextEl: '.swiper-button-next',
+                    prevEl: '.swiper-button-prev',
+                },
+            });
         });
     }
 
@@ -67,8 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- FUNÇÕES PRINCIPAIS E EVENTOS ---
-
     async function carregarCatalogo() {
         try {
             const urlParams = new URLSearchParams(window.location.search);
@@ -86,7 +111,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.title = `Catálogo | ${data.nome_empresa}`;
             nomeEmpresaHeader.textContent = data.nome_empresa;
-            todosProdutos = data.produtos;
+            todosProdutos = data.produtos.map(p => ({
+                ...p,
+                fotos: Array.isArray(p.fotos) ? p.fotos : JSON.parse(p.fotos)
+            }));
 
             criarBotoesFiltro(data.categorias);
             renderizarProdutos();
@@ -98,12 +126,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- LÓGICA DO LIGHTBOX ---
     catalogoGrid.addEventListener('click', (event) => {
         const card = event.target.closest('.produto-card');
-        if (card && card.dataset.imageUrl) {
-            lightboxImage.src = card.dataset.imageUrl;
-            lightboxOverlay.style.display = 'flex';
+        if (card) {
+            const swiperSlide = event.target.closest('.swiper-slide');
+            const img = swiperSlide ? swiperSlide.querySelector('.produto-card-imagem') : card.querySelector('.produto-card-imagem');
+            if (img && img.src) {
+                lightboxImage.src = img.src;
+                lightboxOverlay.style.display = 'flex';
+            }
         }
     });
 
@@ -111,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lightboxOverlay.style.display = 'none';
     }
 
-    // --- EVENT LISTENERS ---
     buscaProdutoInput.addEventListener('input', renderizarProdutos);
 
     filtrosCategoriaContainer.addEventListener('click', (event) => {
@@ -130,6 +160,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Carrega o catálogo ao iniciar a página
     carregarCatalogo();
 });
