@@ -134,7 +134,7 @@ body {
     max-height: 90vh;
     background-color: #fff;
     border-radius: 8px;
-    overflow: hidden; /* Garante que nada transborde do modal */
+    overflow: hidden;
 }
 
 .lightbox-close {
@@ -163,7 +163,6 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    /* Ajustado para preencher a tela */
     width: 100%;
     height: 100%;
 }
