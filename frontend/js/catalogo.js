@@ -27,20 +27,25 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        produtosFiltrados.forEach(produto => {
+        produtosFiltrados.forEach((produto, index) => {
             const card = document.createElement('div');
             card.className = 'produto-card';
             
             // Lógica para renderizar o carrossel ou a imagem única
             let imagensHTML = '';
             if (produto.fotos && produto.fotos.length > 1) {
+                // Cria IDs únicos para cada Swiper e seus botões
+                const swiperId = `swiper-${index}`;
+                const nextBtnId = `next-${index}`;
+                const prevBtnId = `prev-${index}`;
+                
                 imagensHTML = `
-                    <div class="swiper-container">
+                    <div class="swiper-container" id="${swiperId}">
                         <div class="swiper-wrapper">
                             ${produto.fotos.map(url => `<div class="swiper-slide"><img src="${url}" class="produto-card-imagem" alt="${produto.nome}"></div>`).join('')}
                         </div>
-                        <div class="swiper-button-next"></div>
-                        <div class="swiper-button-prev"></div>
+                        <div class="swiper-button-next" id="${nextBtnId}"></div>
+                        <div class="swiper-button-prev" id="${prevBtnId}"></div>
                     </div>
                 `;
             } else {
@@ -69,8 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     disableOnInteraction: false,
                 },
                 navigation: {
-                    nextEl: '.swiper-button-next',
-                    prevEl: '.swiper-button-prev',
+                    nextEl: sw.querySelector('.swiper-button-next'),
+                    prevEl: sw.querySelector('.swiper-button-prev'),
                 },
             });
         });
