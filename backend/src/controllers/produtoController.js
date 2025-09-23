@@ -82,7 +82,8 @@ exports.listarTodos = async (req, res) => {
     try {
         const [rows] = await pool.query(`
             SELECT p.id, p.nome, p.preco, p.estoque, p.codigo,
-                   (SELECT url FROM produto_fotos WHERE produto_id = p.id ORDER BY id LIMIT 1) AS foto_url
+                   -- Lógica de fallback: tenta a foto da nova tabela, se não houver, usa a da coluna antiga
+                   COALESCE((SELECT url FROM produto_fotos WHERE produto_id = p.id ORDER BY id LIMIT 1), p.foto_url) AS foto_url
             FROM produtos p
             WHERE p.ativo = 1 AND p.empresa_id = ?
             ORDER BY ${orderByClause}
@@ -104,7 +105,14 @@ exports.obterPorId = async (req, res) => {
             return res.status(404).json({ message: 'Produto não encontrado.' });
         }
         const [fotosRows] = await pool.query('SELECT url FROM produto_fotos WHERE produto_id = ?', [id]);
-        const produto = { ...rows[0], fotos: fotosRows.map(f => f.url) };
+        
+        let fotos = fotosRows.map(f => f.url);
+        // Lógica de fallback: se não encontrar fotos na nova tabela, usa a foto da coluna antiga
+        if (fotos.length === 0 && rows[0].foto_url) {
+            fotos.push(rows[0].foto_url);
+        }
+
+        const produto = { ...rows[0], fotos: fotos };
         res.status(200).json(produto);
     } catch (error) {
         res.status(500).json({ message: 'Erro ao obter produto.' });
@@ -131,6 +139,13 @@ exports.atualizar = async (req, res) => {
                 const publicIds = produtoAtualResult.map(f => f.public_id);
                 await cloudinary.api.delete_resources(publicIds);
                 await connection.query('DELETE FROM produto_fotos WHERE produto_id = ?', [id]);
+            }
+            
+            // Lógica para deletar a foto antiga, se existir, e migrá-la
+            const [oldPhotoResult] = await connection.query('SELECT foto_public_id FROM produtos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+            if (oldPhotoResult.length > 0 && oldPhotoResult[0].foto_public_id) {
+                await cloudinary.uploader.destroy(oldPhotoResult[0].foto_public_id);
+                await connection.query('UPDATE produtos SET foto_url = NULL, foto_public_id = NULL WHERE id = ?', [id]);
             }
 
             const [empresaRows] = await connection.query('SELECT slug FROM empresas WHERE id = ?', [empresa_id]);
@@ -258,8 +273,6 @@ exports.importarCSV = async (req, res) => {
                     const foto_url = produto.foto_url || null;
                     const foto_public_id = produto.foto_public_id || null;
 
-                    // Lógica para a importação de CSV precisa ser ajustada para a nova tabela
-                    // Esta é uma versão simplificada, que só salva a primeira foto na nova tabela
                     const [result] = await connection.query(
                         'INSERT INTO produtos (empresa_id, nome, descricao, preco, estoque, categoria, codigo) VALUES (?, ?, ?, ?, ?, ?, ?)',
                         [empresa_id, nome, descricao, preco, estoque, categoria, codigo]
