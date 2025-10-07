@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const numeroVendasEl = document.getElementById('numero-vendas');
     const ticketMedioEl = document.getElementById('ticket-medio');
     const itensVendidosEl = document.getElementById('itens-vendidos');
+    const comissaoVendedorEl = document.getElementById('comissao-vendedor'); // NOVO ELEMENTO
 
     // Listas e Gráfico
     const topProdutosLista = document.getElementById('top-produtos-lista');
@@ -27,7 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES DE RENDERIZAÇÃO ---
     function formatarMoeda(valor) {
-        return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        // Garante a formatação correta, inclusive para 'R$ 0,00'
+        return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
     function preencherMetricas(dados) {
@@ -35,9 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
         numeroVendasEl.textContent = dados.numeroVendas;
         ticketMedioEl.textContent = formatarMoeda(dados.ticketMedio);
         itensVendidosEl.textContent = dados.itensVendidos;
+        comissaoVendedorEl.textContent = formatarMoeda(dados.comissaoVendedor); // NOVO CAMPO
     }
 
     function preencherTopProdutos(produtos) {
+// ... código inalterado
         topProdutosLista.innerHTML = '';
         if (produtos.length === 0) {
             topProdutosLista.innerHTML = '<li>Nenhuma venda no período.</li>';
@@ -51,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function preencherUltimasVendas(vendas) {
+// ... código inalterado
         ultimasVendasBody.innerHTML = '';
         if (vendas.length === 0) {
             ultimasVendasBody.innerHTML = '<tr><td colspan="3">Nenhuma venda registrada.</td></tr>';
@@ -65,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderizarGrafico(graficoData) {
+// ... código inalterado
         if (graficoVendas) {
             graficoVendas.destroy();
         }
@@ -101,6 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('Erro ao buscar dados do perfil.');
             const dados = await response.json();
 
+            // CORREÇÃO E ATUALIZAÇÃO DO NOME DO VENDEDOR
+            if(dados.nomeVendedor) {
+                nomeVendedorHeader.textContent = `Bem-vindo(a), ${dados.nomeVendedor}!`;
+            }
+
             preencherMetricas(dados);
             preencherTopProdutos(dados.topProdutos);
             preencherUltimasVendas(dados.ultimasVendas);
@@ -112,10 +123,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- EVENT LISTENERS ---
+    // --- EVENT LISTENERS (código inalterado) ---
     logoutBtn.addEventListener('click', logout);
 
     filtroPeriodoContainer.addEventListener('click', (event) => {
+// ... código inalterado
         if (event.target.tagName === 'BUTTON') {
             document.querySelectorAll('.btn-periodo').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
@@ -125,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     alterarSenhaForm.addEventListener('submit', async (event) => {
+// ... código inalterado
         event.preventDefault();
         successMessageDiv.textContent = '';
         
@@ -152,14 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INICIALIZAÇÃO ---
     function inicializar() {
-        // Pega o nome do vendedor do token para exibir no header
-        try {
-            const token = localStorage.getItem('authToken');
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            nomeVendedorHeader.textContent = `Bem-vindo(a), ${payload.nome}!`;
-        } catch (e) {
-            nomeVendedorHeader.textContent = 'Meu Perfil';
-        }
+        // Remove a busca de nome do token, que não funciona com acentos. O nome virá do backend.
+        nomeVendedorHeader.textContent = 'Meu Perfil';
         carregarDadosPerfil();
     }
 
