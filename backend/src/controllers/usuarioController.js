@@ -191,6 +191,7 @@ exports.redefinirSenhaPropria = async (req, res) => {
  */
 exports.obterDadosPerfil = async (req, res) => {
     const usuario_id = req.usuarioId;
+    const empresa_id = req.empresaId; // NOVO: Captura o ID da empresa
     const { periodo = 'periodo_atual' } = req.query; // 'hoje', 'semana', 'mes', 'periodo_atual' (novo padrão)
 
     let dateFilter = '';
@@ -202,20 +203,20 @@ exports.obterDadosPerfil = async (req, res) => {
 
         // CORREÇÃO CRÍTICA AQUI: Formata a data para o SQL antes de usar na string da query
         const dataSql = toSqlDatetime(data_inicio_periodo_atual);
-        startQuery = `v.data_venda >= '${dataSql}'`;
+        
+        // NOVO: Filtro de segurança obrigatório (empresa_id) e filtro de data
+        let whereClause = `v.usuario_id = ? AND v.empresa_id = ?`;
+        let params = [usuario_id, empresa_id];
 
-        if (periodo === 'hoje') {
+        if (periodo === 'periodo_atual') {
+            dateFilter = `AND v.data_venda >= ?`;
+            params.push(dataSql);
+        } else if (periodo === 'hoje') {
             dateFilter = 'AND DATE(v.data_venda) = CURDATE()';
-            startQuery = '1=1'; // Ignora a data_inicio_periodo_atual para o filtro 'hoje'
         } else if (periodo === 'semana') {
             dateFilter = 'AND YEARWEEK(v.data_venda, 1) = YEARWEEK(CURDATE(), 1)';
-            startQuery = '1=1';
-        } else if (periodo === 'mes') { // Mantém a lógica original para o filtro 'mes'
+        } else if (periodo === 'mes') { 
             dateFilter = 'AND MONTH(v.data_venda) = MONTH(CURDATE()) AND YEAR(v.data_venda) = YEAR(CURDATE())';
-            startQuery = '1=1';
-        } else { // 'periodo_atual' ou qualquer outro valor usa a nova coluna
-            dateFilter = `AND ${startQuery}`;
-            startQuery = '1=1'; // Desativa o filtro extra na query
         }
 
         const connection = await pool.getConnection();
@@ -228,9 +229,9 @@ exports.obterDadosPerfil = async (req, res) => {
                 IFNULL(SUM(vi.quantidade), 0) AS itensVendidos
             FROM vendas AS v
             LEFT JOIN venda_itens AS vi ON v.id = vi.venda_id
-            WHERE v.usuario_id = ? ${dateFilter};
+            WHERE ${whereClause} ${dateFilter};
         `;
-        const [metricasResult] = await connection.query(queryMetricas, [usuario_id]);
+        const [metricasResult] = await connection.query(queryMetricas, params); // Usa o array params
 
         // 3. Query para top 5 produtos
         const queryTopProdutos = `
@@ -238,35 +239,35 @@ exports.obterDadosPerfil = async (req, res) => {
             FROM venda_itens AS vi
             JOIN vendas AS v ON vi.venda_id = v.id
             JOIN produtos AS p ON vi.produto_id = p.id
-            WHERE v.usuario_id = ? ${dateFilter}
+            WHERE ${whereClause} ${dateFilter}
             GROUP BY p.nome
             ORDER BY totalVendido DESC
             LIMIT 5;
         `;
-        const [topProdutos] = await connection.query(queryTopProdutos, [usuario_id]);
+        const [topProdutos] = await connection.query(queryTopProdutos, params); // Usa o array params
 
-        // 4. Query para últimas 5 vendas (Sempre as últimas, independente do filtro de período)
+        // 4. Query para últimas 5 vendas (Sempre as últimas DA EMPRESA e do VENDEDOR)
         const queryUltimasVendas = `
             SELECT v.data_venda, c.nome AS cliente_nome, v.valor_total
             FROM vendas AS v
             LEFT JOIN clientes AS c ON v.cliente_id = c.id
-            WHERE v.usuario_id = ?
+            WHERE v.usuario_id = ? AND v.empresa_id = ?
             ORDER BY v.data_venda DESC
             LIMIT 5;
         `;
-        const [ultimasVendas] = await connection.query(queryUltimasVendas, [usuario_id]);
+        const [ultimasVendas] = await connection.query(queryUltimasVendas, [usuario_id, empresa_id]); 
 
-        // 5. Query para gráfico de desempenho diário (sempre do mês atual)
+        // 5. Query para gráfico de desempenho diário (sempre do mês atual DA EMPRESA)
         const queryGrafico = `
             SELECT 
                 DAY(data_venda) AS dia, 
                 SUM(valor_total) AS total
             FROM vendas
-            WHERE usuario_id = ? AND MONTH(data_venda) = MONTH(CURDATE()) AND YEAR(data_venda) = YEAR(CURDATE())
+            WHERE usuario_id = ? AND empresa_id = ? AND MONTH(data_venda) = MONTH(CURDATE()) AND YEAR(data_venda) = YEAR(CURDATE())
             GROUP BY DAY(data_venda)
             ORDER BY dia ASC;
         `;
-        const [graficoData] = await connection.query(queryGrafico, [usuario_id]);
+        const [graficoData] = await connection.query(queryGrafico, [usuario_id, empresa_id]);
 
         connection.release();
 
@@ -288,7 +289,7 @@ exports.obterDadosPerfil = async (req, res) => {
             topProdutos,
             ultimasVendas,
             graficoData,
-            dataInicioPeriodo: data_inicio_periodo_atual // Retorna a data como Date object
+            dataInicioPeriodo: data_inicio_periodo_atual 
         });
 
     } catch (error) {
@@ -329,8 +330,8 @@ exports.fecharPeriodo = async (req, res) => {
             return res.status(401).json({ message: 'Senha incorreta. Fechamento de período cancelado.' });
         }
 
-        const data_inicio = toSqlDatetime(usuario.data_inicio_periodo_atual); // CORREÇÃO AQUI
-        const data_fim = toSqlDatetime(new Date()); // CORREÇÃO AQUI
+        const data_inicio = toSqlDatetime(usuario.data_inicio_periodo_atual);
+        const data_fim = toSqlDatetime(new Date());
 
         // 2. Calcular as métricas do período atual
         const queryMetricas = `
@@ -340,10 +341,11 @@ exports.fecharPeriodo = async (req, res) => {
                 IFNULL(SUM(vi.quantidade), 0) AS itensVendidos
             FROM vendas AS v
             LEFT JOIN venda_itens AS vi ON v.id = vi.venda_id
-            WHERE v.usuario_id = ? AND v.data_venda >= ? AND v.data_venda <= NOW();
+            -- CORREÇÃO CRÍTICA AQUI: Adiciona o filtro de empresa
+            WHERE v.usuario_id = ? AND v.empresa_id = ? AND v.data_venda >= ? AND v.data_venda <= NOW();
         `;
-        // Usamos placeholder (?) para data_inicio e data_fim para segurança e para evitar a formatação manual na string
-        const [metricasResult] = await connection.query(queryMetricas, [usuario_id, data_inicio]);
+        // Usa placeholder (?) para os parâmetros
+        const [metricasResult] = await connection.query(queryMetricas, [usuario_id, empresa_id, data_inicio]);
         
         const { totalFaturado, numeroVendas, itensVendidos } = metricasResult[0];
         const faturamento = parseFloat(totalFaturado) || 0;
@@ -378,11 +380,12 @@ exports.fecharPeriodo = async (req, res) => {
  */
 exports.listarHistoricoPeriodos = async (req, res) => {
     const usuario_id = req.usuarioId;
+    const empresa_id = req.empresaId; // Adiciona filtro de empresa
     try {
-        // Assume que a tabela periodos_fechados existe
+        // Filtra por usuario_id E empresa_id
         const [periodos] = await pool.query(
-            'SELECT id, data_inicio, data_fim, total_faturado, numero_vendas, comissao_vendedor FROM periodos_fechados WHERE usuario_id = ? ORDER BY data_fim DESC',
-            [usuario_id]
+            'SELECT id, data_inicio, data_fim, total_faturado, numero_vendas, comissao_vendedor FROM periodos_fechados WHERE usuario_id = ? AND empresa_id = ? ORDER BY data_fim DESC',
+            [usuario_id, empresa_id]
         );
         res.status(200).json(periodos);
     } catch (error) {

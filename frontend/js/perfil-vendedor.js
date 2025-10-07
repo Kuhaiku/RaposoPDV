@@ -5,12 +5,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     const nomeVendedorHeader = document.getElementById('nome-vendedor-header');
     const filtroPeriodoContainer = document.querySelector('.filtro-periodo');
-    const periodoAtualInfo = document.getElementById('periodo-atual-info'); // NOVO
-    const fecharPeriodoBtn = document.getElementById('fechar-periodo-btn'); // NOVO
-    const modalFecharPeriodo = document.getElementById('modal-fechar-periodo'); // NOVO
-    const formFecharPeriodo = document.getElementById('form-fechar-periodo'); // NOVO
-    const cancelarFechamentoBtn = document.getElementById('cancelar-fechamento-btn'); // NOVO
+    const periodoAtualInfo = document.getElementById('periodo-atual-info');
     
+    // Elementos de Ações
+    const fecharPeriodoBtn = document.getElementById('fechar-periodo-btn'); 
+    const verHistoricoBtn = document.getElementById('ver-historico-btn'); // NOVO BOTÃO DE NAVEGAÇÃO
+    const abrirModalSenhaBtn = document.getElementById('abrir-modal-senha-btn'); // NOVO BOTÃO ABRE MODAL
+
+    // Modais de Ações
+    const modalFecharPeriodo = document.getElementById('modal-fechar-periodo');
+    const formFecharPeriodo = document.getElementById('form-fechar-periodo');
+    const cancelarFechamentoBtn = document.getElementById('cancelar-fechamento-btn');
+    
+    const modalAlterarSenha = document.getElementById('modal-alterar-senha'); // NOVO MODAL
+    const formAlterarSenha = document.getElementById('form-alterar-senha'); // NOVO FORM
+    const cancelarAlterarSenhaBtn = document.getElementById('cancelar-alterar-senha-btn'); // NOVO CANCELAR
+    const modalSuccessMessageDiv = document.getElementById('modal-success-message');
+
     // Cards de métricas
     const totalFaturadoEl = document.getElementById('total-faturado');
     const numeroVendasEl = document.getElementById('numero-vendas');
@@ -24,12 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const graficoCanvas = document.getElementById('grafico-desempenho-diario');
     let graficoVendas = null;
 
-    // Formulário de Alterar Senha
-    const alterarSenhaForm = document.getElementById('alterar-senha-form');
-    const successMessageDiv = document.getElementById('success-message');
-
     // --- ESTADO ---
-    let periodoAtual = 'periodo_atual'; // NOVO PADRÃO
+    let periodoAtual = 'periodo_atual'; 
 
     // --- FUNÇÕES DE RENDERIZAÇÃO ---
     function formatarData(dataISO) {
@@ -38,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function formatarMoeda(valor) {
-        // Garante a formatação correta, inclusive para 'R$ 0,00'
         return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
@@ -49,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
         itensVendidosEl.textContent = dados.itensVendidos;
         comissaoVendedorEl.textContent = formatarMoeda(dados.comissaoVendedor);
         
-        // NOVO: Exibe a data de início do período atual
         periodoAtualInfo.textContent = `Período: Desde ${formatarData(dados.dataInicioPeriodo)}`;
     }
 
@@ -113,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES DE DADOS ---
     async function carregarDadosPerfil() {
         try {
-            // Se o período for "periodo_atual", não envia o parâmetro para o backend usar o valor padrão/coluna
             const queryParam = periodoAtual !== 'periodo_atual' ? `?periodo=${periodoAtual}` : '';
             
             const response = await fetchWithAuth(`/api/usuarios/meu-perfil${queryParam}`);
@@ -135,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- LÓGICA DO FECHAMENTO DE PERÍODO ---
+    // --- LÓGICA DO FECHAMENTO DE PERÍODO (MODAL) ---
     fecharPeriodoBtn.addEventListener('click', () => {
         modalFecharPeriodo.style.display = 'flex';
         document.getElementById('senha-fechamento').value = '';
@@ -161,33 +165,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
             alert(data.message);
             modalFecharPeriodo.style.display = 'none';
-            // Força o recarregamento dos dados para o novo período
             carregarDadosPerfil(); 
 
         } catch (error) {
             alert(error.message);
         }
     });
-
-
-    // --- EVENT LISTENERS GERAIS ---
-    logoutBtn.addEventListener('click', logout);
-
-    filtroPeriodoContainer.addEventListener('click', (event) => {
-        if (event.target.tagName === 'BUTTON') {
-            document.querySelectorAll('.btn-periodo').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            periodoAtual = event.target.dataset.periodo;
-            carregarDadosPerfil();
-        }
+    
+    // --- LÓGICA DE ALTERAÇÃO DE SENHA (MODAL) ---
+    abrirModalSenhaBtn.addEventListener('click', () => {
+        modalAlterarSenha.style.display = 'flex';
+        modalSuccessMessageDiv.textContent = '';
+        formAlterarSenha.reset();
     });
 
-    alterarSenhaForm.addEventListener('submit', async (event) => {
+    cancelarAlterarSenhaBtn.addEventListener('click', () => {
+        modalAlterarSenha.style.display = 'none';
+        formAlterarSenha.reset();
+    });
+
+    formAlterarSenha.addEventListener('submit', async (event) => {
         event.preventDefault();
-        successMessageDiv.textContent = '';
+        modalSuccessMessageDiv.textContent = '';
         
-        const senhaAtual = document.getElementById('senha-atual').value;
-        const novaSenha = document.getElementById('nova-senha').value;
+        const senhaAtual = document.getElementById('modal-senha-atual').value;
+        const novaSenha = document.getElementById('modal-nova-senha').value;
 
         try {
             const response = await fetchWithAuth('/api/usuarios/redefinir-senha-propria', {
@@ -198,8 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) throw new Error(data.message);
 
-            alterarSenhaForm.reset();
-            successMessageDiv.textContent = data.message + " Você será deslogado por segurança.";
+            formAlterarSenha.reset();
+            modalSuccessMessageDiv.textContent = data.message + " Você será deslogado por segurança.";
             
             setTimeout(() => { logout(); }, 3000);
 
@@ -208,10 +210,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- EVENT LISTENERS GERAIS ---
+    logoutBtn.addEventListener('click', logout);
+
+    // NOVO: Navegação para Histórico de Períodos
+    verHistoricoBtn.addEventListener('click', () => {
+        window.location.href = 'historico-periodos.html';
+    });
+
+    filtroPeriodoContainer.addEventListener('click', (event) => {
+        if (event.target.tagName === 'BUTTON') {
+            document.querySelectorAll('.btn-periodo').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            periodoAtual = event.target.dataset.periodo;
+            carregarDadosPerfil();
+        }
+    });
+
+    // Fecha modais ao clicar fora
+    modalFecharPeriodo.addEventListener('click', (event) => {
+        if (event.target === modalFecharPeriodo) {
+            modalFecharPeriodo.style.display = 'none';
+            formFecharPeriodo.reset();
+        }
+    });
+    
+    modalAlterarSenha.addEventListener('click', (event) => {
+        if (event.target === modalAlterarSenha) {
+            modalAlterarSenha.style.display = 'none';
+            formAlterarSenha.reset();
+        }
+    });
+
+
     // --- INICIALIZAÇÃO ---
     function inicializar() {
         nomeVendedorHeader.textContent = 'Meu Perfil';
-        // Garante que o botão "Período Atual" esteja ativo por padrão
         document.querySelector('[data-periodo="periodo_atual"]').classList.add('active'); 
         carregarDadosPerfil();
     }
