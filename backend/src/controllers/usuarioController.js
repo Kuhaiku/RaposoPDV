@@ -176,6 +176,11 @@ exports.redefinirSenhaPropria = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao alterar sua senha.' });
     }
 };
+
+/**
+ * Busca os dados e métricas para o perfil do vendedor logado.
+ * (ATUALIZADO com cálculo de comissão e nome de usuário correto)
+ */
 exports.obterDadosPerfil = async (req, res) => {
     const usuario_id = req.usuarioId;
     const { periodo = 'mes' } = req.query; // 'hoje', 'semana', 'mes'
@@ -192,7 +197,7 @@ exports.obterDadosPerfil = async (req, res) => {
     try {
         const connection = await pool.getConnection();
 
-        // Query principal para métricas
+        // 1. Query principal para métricas de vendas
         const queryMetricas = `
             SELECT
                 IFNULL(SUM(v.valor_total), 0) AS totalFaturado,
@@ -204,7 +209,10 @@ exports.obterDadosPerfil = async (req, res) => {
         `;
         const [metricasResult] = await connection.query(queryMetricas, [usuario_id]);
 
-        // Query para top 5 produtos
+        // 2. Query para obter o nome do vendedor (para correção do acento no frontend)
+        const [usuarioRow] = await connection.query('SELECT nome FROM usuarios WHERE id = ?', [usuario_id]);
+
+        // 3. Query para top 5 produtos
         const queryTopProdutos = `
             SELECT p.nome, SUM(vi.quantidade) as totalVendido
             FROM venda_itens AS vi
@@ -217,7 +225,7 @@ exports.obterDadosPerfil = async (req, res) => {
         `;
         const [topProdutos] = await connection.query(queryTopProdutos, [usuario_id]);
 
-        // Query para últimas 5 vendas
+        // 4. Query para últimas 5 vendas
         const queryUltimasVendas = `
             SELECT v.data_venda, c.nome AS cliente_nome, v.valor_total
             FROM vendas AS v
@@ -228,7 +236,7 @@ exports.obterDadosPerfil = async (req, res) => {
         `;
         const [ultimasVendas] = await connection.query(queryUltimasVendas, [usuario_id]);
 
-        // Query para gráfico de desempenho diário (sempre do mês atual)
+        // 5. Query para gráfico de desempenho diário (sempre do mês atual)
         const queryGrafico = `
             SELECT 
                 DAY(data_venda) AS dia, 
@@ -243,13 +251,23 @@ exports.obterDadosPerfil = async (req, res) => {
         connection.release();
 
         const metricas = metricasResult[0];
-        const ticketMedio = metricas.numeroVendas > 0 ? metricas.totalFaturado / metricas.numeroVendas : 0;
+        const totalFaturado = parseFloat(metricas.totalFaturado);
+        const numeroVendas = metricas.numeroVendas;
+        const itensVendidos = parseInt(metricas.itensVendidos, 10);
+        
+        // CÁLCULO: Ticket Médio
+        const ticketMedio = numeroVendas > 0 ? totalFaturado / numeroVendas : 0;
+        
+        // NOVO CÁLCULO: Comissão de 35% do Total Faturado
+        const comissaoVendedor = totalFaturado * 0.35;
 
         res.status(200).json({
-            totalFaturado: metricas.totalFaturado,
-            numeroVendas: metricas.numeroVendas,
+            nomeVendedor: usuarioRow.length > 0 ? usuarioRow[0].nome : 'Vendedor',
+            totalFaturado: totalFaturado,
+            numeroVendas: numeroVendas,
             ticketMedio: ticketMedio,
-            itensVendidos: parseInt(metricas.itensVendidos, 10),
+            itensVendidos: itensVendidos,
+            comissaoVendedor: comissaoVendedor,
             topProdutos,
             ultimasVendas,
             graficoData
