@@ -179,7 +179,7 @@ exports.redefinirSenhaPropria = async (req, res) => {
 
 /**
  * Busca os dados e métricas para o perfil do vendedor logado.
- * (ATUALIZADO com cálculo de comissão e nome de usuário correto)
+ * (CORRIGIDO: Cálculo de comissão com tratamento de dados e nome de usuário)
  */
 exports.obterDadosPerfil = async (req, res) => {
     const usuario_id = req.usuarioId;
@@ -250,15 +250,20 @@ exports.obterDadosPerfil = async (req, res) => {
 
         connection.release();
 
-        const metricas = metricasResult[0];
-        const totalFaturado = parseFloat(metricas.totalFaturado);
-        const numeroVendas = metricas.numeroVendas;
-        const itensVendidos = parseInt(metricas.itensVendidos, 10);
+        const metricasData = metricasResult[0]; // Pode ser undefined se não houver vendas no período
         
-        // CÁLCULO: Ticket Médio
+        // CORREÇÃO: Extração segura e parse do Faturamento, garantindo que seja um número (0 se vazio)
+        const rawTotalFaturado = metricasData ? metricasData.totalFaturado : 0;
+        const totalFaturado = parseFloat(rawTotalFaturado) || 0; 
+        
+        // Extração segura de outras métricas
+        const numeroVendas = metricasData ? metricasData.numeroVendas : 0;
+        const itensVendidos = metricasData ? parseInt(metricasData.itensVendidos, 10) : 0;
+        
+        // CÁLCULO: Ticket Médio (agora seguro)
         const ticketMedio = numeroVendas > 0 ? totalFaturado / numeroVendas : 0;
         
-        // NOVO CÁLCULO: Comissão de 35% do Total Faturado
+        // NOVO CÁLCULO: Comissão de 35% do Total Faturado (agora seguro)
         const comissaoVendedor = totalFaturado * 0.35;
 
         res.status(200).json({
