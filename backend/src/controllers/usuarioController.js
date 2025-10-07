@@ -2,6 +2,14 @@ const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+// FUNÇÃO UTILITÁRIA: Converte o objeto Date do JavaScript para o formato MySQL DATETIME 'YYYY-MM-DD HH:MM:SS'
+function toSqlDatetime(date) {
+    if (!date) return null;
+    // O objeto Date retornado pelo mysql2 já pode ser um objeto Date JS.
+    // Garante a formatação correta do ISO (UTC) e substitui o 'T' para o formato SQL.
+    return new Date(date).toISOString().slice(0, 19).replace('T', ' ');
+}
+
 /**
  * Registra um novo funcionário (usuário) para uma empresa.
  * Esta é uma rota protegida, acessível apenas por uma empresa autenticada.
@@ -192,7 +200,9 @@ exports.obterDadosPerfil = async (req, res) => {
         const [usuarioRow] = await pool.query('SELECT nome, senha_hash, data_inicio_periodo_atual FROM usuarios WHERE id = ?', [usuario_id]);
         const { nome: nomeVendedor, data_inicio_periodo_atual, senha_hash } = usuarioRow[0];
 
-        startQuery = `v.data_venda >= '${data_inicio_periodo_atual}'`; // Filtro padrão: Desde o início do período atual
+        // CORREÇÃO CRÍTICA AQUI: Formata a data para o SQL antes de usar na string da query
+        const dataSql = toSqlDatetime(data_inicio_periodo_atual);
+        startQuery = `v.data_venda >= '${dataSql}'`;
 
         if (periodo === 'hoje') {
             dateFilter = 'AND DATE(v.data_venda) = CURDATE()';
@@ -260,20 +270,12 @@ exports.obterDadosPerfil = async (req, res) => {
 
         connection.release();
 
-        const metricasData = metricasResult[0]; // Pode ser undefined se não houver vendas no período
-        
-        // CORREÇÃO: Extração segura e parse do Faturamento, garantindo que seja um número (0 se vazio)
+        const metricasData = metricasResult[0];
         const rawTotalFaturado = metricasData ? metricasData.totalFaturado : 0;
-        const totalFaturado = parseFloat(rawTotalFaturado) || 0; 
-        
-        // Extração segura de outras métricas
+        const totalFaturado = parseFloat(rawTotalFaturado) || 0;
         const numeroVendas = metricasData ? metricasData.numeroVendas : 0;
         const itensVendidos = metricasData ? parseInt(metricasData.itensVendidos, 10) : 0;
-        
-        // CÁLCULO: Ticket Médio (agora seguro)
         const ticketMedio = numeroVendas > 0 ? totalFaturado / numeroVendas : 0;
-        
-        // NOVO CÁLCULO: Comissão de 35% do Total Faturado (agora seguro)
         const comissaoVendedor = totalFaturado * 0.35;
 
         res.status(200).json({
@@ -286,7 +288,7 @@ exports.obterDadosPerfil = async (req, res) => {
             topProdutos,
             ultimasVendas,
             graficoData,
-            dataInicioPeriodo: data_inicio_periodo_atual // Retorna a data para o frontend
+            dataInicioPeriodo: data_inicio_periodo_atual // Retorna a data como Date object
         });
 
     } catch (error) {
@@ -327,8 +329,8 @@ exports.fecharPeriodo = async (req, res) => {
             return res.status(401).json({ message: 'Senha incorreta. Fechamento de período cancelado.' });
         }
 
-        const data_inicio = usuario.data_inicio_periodo_atual;
-        const data_fim = new Date().toISOString().slice(0, 19).replace('T', ' '); // NOW()
+        const data_inicio = toSqlDatetime(usuario.data_inicio_periodo_atual); // CORREÇÃO AQUI
+        const data_fim = toSqlDatetime(new Date()); // CORREÇÃO AQUI
 
         // 2. Calcular as métricas do período atual
         const queryMetricas = `
@@ -340,6 +342,7 @@ exports.fecharPeriodo = async (req, res) => {
             LEFT JOIN venda_itens AS vi ON v.id = vi.venda_id
             WHERE v.usuario_id = ? AND v.data_venda >= ? AND v.data_venda <= NOW();
         `;
+        // Usamos placeholder (?) para data_inicio e data_fim para segurança e para evitar a formatação manual na string
         const [metricasResult] = await connection.query(queryMetricas, [usuario_id, data_inicio]);
         
         const { totalFaturado, numeroVendas, itensVendidos } = metricasResult[0];
@@ -348,7 +351,7 @@ exports.fecharPeriodo = async (req, res) => {
         const ticketMedio = numeroVendas > 0 ? faturamento / numeroVendas : 0;
 
         // 3. Salvar o período fechado na nova tabela (periodos_fechados)
-        const [resultPeriodo] = await connection.query(
+        await connection.query(
             'INSERT INTO periodos_fechados (empresa_id, usuario_id, data_inicio, data_fim, total_faturado, numero_vendas, ticket_medio, itens_vendidos, comissao_vendedor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [empresa_id, usuario_id, data_inicio, data_fim, faturamento, numeroVendas, ticketMedio, itensVendidos, comissao]
         );
@@ -360,7 +363,7 @@ exports.fecharPeriodo = async (req, res) => {
         );
 
         await connection.commit();
-        res.status(200).json({ message: 'Período de vendas encerrado com sucesso!', novoPeriodoId: resultPeriodo.insertId });
+        res.status(200).json({ message: 'Período de vendas encerrado com sucesso!' });
     } catch (error) {
         if (connection) await connection.rollback();
         console.error(error);
