@@ -15,6 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnOrdenacao = document.getElementById('btn-ordenacao');
     const textoOrdenacao = document.getElementById('texto-ordenacao');
 
+    // NOVOS ELEMENTOS PARA AÇÕES EM MASSA
+    const selecionarTodosCheck = document.getElementById('selecionar-todos');
+    const inativarMassaBtn = document.getElementById('inativar-massa-btn');
+    const excluirMassaBtn = document.getElementById('excluir-massa-btn');
+
     const estadosOrdenacao = [
         { id: 'nome-asc', texto: 'Ordem Alfabética', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41zm255-105L177 64c-9.4-9.4-24.6-9.4-33.9 0L24 183c-15.1 15.1-4.4 41 17 41h238c21.4 0 32.1 25.9 17-41z"/></svg>` },
         { id: 'preco-desc', texto: 'Maior Preço', icone: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41z"/></svg>` },
@@ -30,6 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
         textoOrdenacao.textContent = estado.texto;
         btnOrdenacao.title = `Ordenar por: ${estado.texto}`;
     }
+    
+    // NOVO: Função para obter os IDs dos produtos selecionados
+    function obterIdsSelecionados() {
+        const checkboxes = produtosTableBody.querySelectorAll('input[type="checkbox"]:checked');
+        return Array.from(checkboxes).map(cb => parseInt(cb.closest('tr').dataset.produtoId));
+    }
 
     async function carregarProdutos() {
         try {
@@ -44,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tr = document.createElement('tr');
                 tr.dataset.produtoId = produto.id;
                 tr.innerHTML = `
-                    <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
+                    <td><input type="checkbox" class="produto-checkbox" data-id="${produto.id}"></td> <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
                     <td>${produto.codigo || 'N/A'}</td>
                     <td>${produto.nome}</td>
                     <td>R$ ${parseFloat(produto.preco).toFixed(2)}</td>
@@ -137,6 +148,66 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(error.message);
         }
     });
+
+    // EVENTOS PARA AÇÕES EM MASSA
+    selecionarTodosCheck.addEventListener('change', (event) => {
+        document.querySelectorAll('.produto-checkbox').forEach(cb => {
+            cb.checked = event.target.checked;
+        });
+    });
+
+    inativarMassaBtn.addEventListener('click', async () => {
+        const ids = obterIdsSelecionados();
+        if (ids.length === 0) {
+            alert('Selecione pelo menos um produto para inativar.');
+            return;
+        }
+        if (!confirm(`Tem certeza que deseja inativar ${ids.length} produto(s)? Eles serão removidos da lista de produtos ativos.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetchWithAuth('/api/produtos/inativar-em-massa', {
+                method: 'PUT',
+                body: JSON.stringify({ ids })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            
+            alert(data.message);
+            carregarProdutos();
+            selecionarTodosCheck.checked = false;
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    excluirMassaBtn.addEventListener('click', async () => {
+        const ids = obterIdsSelecionados();
+        if (ids.length === 0) {
+            alert('Selecione pelo menos um produto para excluir.');
+            return;
+        }
+        if (!confirm(`ATENÇÃO! Você está prestes a EXCLUIR PERMANENTEMENTE ${ids.length} produto(s). Essa ação é irreversível e só é possível para produtos SEM vendas associadas.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetchWithAuth('/api/produtos/excluir-em-massa', {
+                method: 'POST',
+                body: JSON.stringify({ ids })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            
+            alert(data.message);
+            carregarProdutos();
+            selecionarTodosCheck.checked = false;
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+    // FIM DOS EVENTOS PARA AÇÕES EM MASSA
 
     produtosTableBody.addEventListener('click', async (event) => {
         const target = event.target;

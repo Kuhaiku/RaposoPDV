@@ -234,6 +234,74 @@ exports.reativar = async (req, res) => {
     }
 };
 
+// NOVO: Inativar múltiplos produtos
+exports.inativarEmMassa = async (req, res) => {
+    const empresa_id = req.empresaId;
+    const { ids } = req.body; // Array de IDs de produtos
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: 'Nenhum ID de produto fornecido.' });
+    }
+
+    try {
+        const placeholders = ids.map(() => '?').join(',');
+        const query = `UPDATE produtos SET ativo = 0 WHERE id IN (${placeholders}) AND empresa_id = ?`;
+        
+        // Inclui a empresa_id no final do array de parâmetros
+        const [result] = await pool.query(query, [...ids, empresa_id]); 
+
+        res.status(200).json({ 
+            message: `${result.affectedRows} produto(s) inativado(s) com sucesso.`, 
+            inativados: result.affectedRows 
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao inativar produtos em massa.' });
+    }
+};
+
+// NOVO: Excluir (deletar permanentemente) múltiplos produtos
+exports.excluirEmMassa = async (req, res) => {
+    const empresa_id = req.empresaId;
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: 'Nenhum ID de produto fornecido.' });
+    }
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Verificar se algum produto está associado a venda
+        const [vendaItens] = await connection.query(`SELECT produto_id FROM venda_itens WHERE produto_id IN (?) LIMIT 1`, [ids]);
+        if (vendaItens.length > 0) {
+            await connection.rollback();
+            return res.status(400).json({ message: 'Não é possível excluir produto(s) associado(s) a vendas existentes. Considere inativar.' });
+        }
+        
+        // 2. Deletar as entradas de foto na tabela produto_fotos
+        const placeholders = ids.map(() => '?').join(',');
+        await connection.query(`DELETE FROM produto_fotos WHERE produto_id IN (${placeholders})`, ids);
+
+        // 3. Deletar os produtos
+        const [result] = await connection.query(`DELETE FROM produtos WHERE id IN (${placeholders}) AND empresa_id = ?`, [...ids, empresa_id]);
+        
+        await connection.commit();
+        res.status(200).json({ 
+            message: `${result.affectedRows} produto(s) excluído(s) permanentemente.`, 
+            excluidos: result.affectedRows 
+        });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error(error);
+        res.status(500).json({ message: error.message || 'Erro ao excluir produtos em massa.' });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
 // Importar produtos via CSV
 exports.importarCSV = async (req, res) => {
     const empresa_id = req.empresaId;

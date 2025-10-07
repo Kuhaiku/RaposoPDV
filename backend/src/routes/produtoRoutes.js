@@ -15,4 +15,8 @@ router.put("/:id", uploadImages, produtoController.atualizar);
 router.put("/:id/reativar", produtoController.reativar);
 router.delete("/:id", produtoController.excluir);
 
+// NOVAS ROTAS EM MASSA
+router.put("/inativar-em-massa", produtoController.inativarEmMassa);
+router.post("/excluir-em-massa", produtoController.excluirEmMassa); // Usando POST para receber body com array de IDs
+
 module.exports = router;

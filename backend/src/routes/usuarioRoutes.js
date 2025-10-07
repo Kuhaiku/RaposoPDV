@@ -11,6 +11,9 @@ router.post('/login', usuarioController.login);
 // NOVA ROTA - Busca os dados e métricas para o perfil do vendedor logado
 router.get('/meu-perfil', authMiddleware, usuarioController.obterDadosPerfil);
 router.put('/redefinir-senha-propria', authMiddleware, usuarioController.redefinirSenhaPropria);
+// NOVAS ROTAS DE PERÍODO
+router.post('/fechar-periodo', authMiddleware, usuarioController.fecharPeriodo);
+router.get('/historico-periodos', authMiddleware, usuarioController.listarHistoricoPeriodos);
 
 // --- ROTAS PROTEGIDAS POR LOGIN DE EMPRESA ---
 router.post('/registrar', authEmpresaMiddleware, usuarioController.registrar);

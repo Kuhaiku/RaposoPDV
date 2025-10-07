@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico de Períodos</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/clientes.css">
+    <link rel="stylesheet" href="css/perfil-vendedor.css"> </head>
+<body>
+    <div class="painel-container">
+        <aside class="sidebar">
+            <div class="sidebar-header"> <h2>Raposo - PDV</h2> </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="painel.html">Dashboard</a></li>
+                    <li><a href="nova-venda.html">Nova Venda</a></li>
+                    <li><a href="historico.html">Histórico</a></li>
+                    <li><a href="clientes.html">Clientes</a></li>
+                    <li><a href="produtos.html">Produtos</a></li>
+                    <li><a href="caixa.html">Caixa</a></li>
+                    <li class="active"><a href="perfil-vendedor.html">Perfil Vendedor</a></li>
+                    <li><a href="historico-periodos.html">Histórico de Períodos</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer"> <button id="logout-btn" class="btn-logout">Sair</button> </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="main-header"> <h1>Histórico de Períodos de Vendas</h1> </header>
+
+            <section class="card">
+                <h2>Períodos Fechados por Você</h2>
+                <div class="table-container">
+                    <table class="tabela-simples">
+                        <thead>
+                            <tr>
+                                <th>Início do Período</th>
+                                <th>Encerramento</th>
+                                <th>Faturado</th>
+                                <th>Vendas</th>
+                                <th>Comissão (35%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="periodos-table-body">
+                            <tr><td colspan="5">Carregando histórico...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/historico-periodos.js"></script>
+</body>
+</html>

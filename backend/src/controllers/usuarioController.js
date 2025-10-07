@@ -19,9 +19,10 @@ exports.registrar = async (req, res) => {
         // Criptografa a senha do funcionário antes de salvar
         const senhaHash = await bcrypt.hash(senha, 10);
 
-        // Insere o novo funcionário, associando-o à empresa correta
+        // Insere o novo funcionário, associando-o à empresa correta.
+        // NOVO: Define a data de início do período atual como a data de registro
         const [result] = await pool.query(
-            'INSERT INTO usuarios (empresa_id, nome, email, senha_hash) VALUES (?, ?, ?, ?)',
+            'INSERT INTO usuarios (empresa_id, nome, email, senha_hash, data_inicio_periodo_atual) VALUES (?, ?, ?, ?, NOW())',
             [empresa_id, nome, email, senhaHash]
         );
 
@@ -179,22 +180,34 @@ exports.redefinirSenhaPropria = async (req, res) => {
 
 /**
  * Busca os dados e métricas para o perfil do vendedor logado.
- * (CORRIGIDO: Cálculo de comissão com tratamento de dados e nome de usuário)
  */
 exports.obterDadosPerfil = async (req, res) => {
     const usuario_id = req.usuarioId;
-    const { periodo = 'mes' } = req.query; // 'hoje', 'semana', 'mes'
+    const { periodo = 'periodo_atual' } = req.query; // 'hoje', 'semana', 'mes', 'periodo_atual' (novo padrão)
 
     let dateFilter = '';
-    if (periodo === 'hoje') {
-        dateFilter = 'AND DATE(v.data_venda) = CURDATE()';
-    } else if (periodo === 'semana') {
-        dateFilter = 'AND YEARWEEK(v.data_venda, 1) = YEARWEEK(CURDATE(), 1)';
-    } else { // Padrão é 'mes'
-        dateFilter = 'AND MONTH(v.data_venda) = MONTH(CURDATE()) AND YEAR(v.data_venda) = YEAR(CURDATE())';
-    }
+    let startQuery = '';
 
     try {
+        const [usuarioRow] = await pool.query('SELECT nome, senha_hash, data_inicio_periodo_atual FROM usuarios WHERE id = ?', [usuario_id]);
+        const { nome: nomeVendedor, data_inicio_periodo_atual, senha_hash } = usuarioRow[0];
+
+        startQuery = `v.data_venda >= '${data_inicio_periodo_atual}'`; // Filtro padrão: Desde o início do período atual
+
+        if (periodo === 'hoje') {
+            dateFilter = 'AND DATE(v.data_venda) = CURDATE()';
+            startQuery = '1=1'; // Ignora a data_inicio_periodo_atual para o filtro 'hoje'
+        } else if (periodo === 'semana') {
+            dateFilter = 'AND YEARWEEK(v.data_venda, 1) = YEARWEEK(CURDATE(), 1)';
+            startQuery = '1=1';
+        } else if (periodo === 'mes') { // Mantém a lógica original para o filtro 'mes'
+            dateFilter = 'AND MONTH(v.data_venda) = MONTH(CURDATE()) AND YEAR(v.data_venda) = YEAR(CURDATE())';
+            startQuery = '1=1';
+        } else { // 'periodo_atual' ou qualquer outro valor usa a nova coluna
+            dateFilter = `AND ${startQuery}`;
+            startQuery = '1=1'; // Desativa o filtro extra na query
+        }
+
         const connection = await pool.getConnection();
 
         // 1. Query principal para métricas de vendas
@@ -209,9 +222,6 @@ exports.obterDadosPerfil = async (req, res) => {
         `;
         const [metricasResult] = await connection.query(queryMetricas, [usuario_id]);
 
-        // 2. Query para obter o nome do vendedor (para correção do acento no frontend)
-        const [usuarioRow] = await connection.query('SELECT nome FROM usuarios WHERE id = ?', [usuario_id]);
-
         // 3. Query para top 5 produtos
         const queryTopProdutos = `
             SELECT p.nome, SUM(vi.quantidade) as totalVendido
@@ -225,7 +235,7 @@ exports.obterDadosPerfil = async (req, res) => {
         `;
         const [topProdutos] = await connection.query(queryTopProdutos, [usuario_id]);
 
-        // 4. Query para últimas 5 vendas
+        // 4. Query para últimas 5 vendas (Sempre as últimas, independente do filtro de período)
         const queryUltimasVendas = `
             SELECT v.data_venda, c.nome AS cliente_nome, v.valor_total
             FROM vendas AS v
@@ -267,7 +277,7 @@ exports.obterDadosPerfil = async (req, res) => {
         const comissaoVendedor = totalFaturado * 0.35;
 
         res.status(200).json({
-            nomeVendedor: usuarioRow.length > 0 ? usuarioRow[0].nome : 'Vendedor',
+            nomeVendedor,
             totalFaturado: totalFaturado,
             numeroVendas: numeroVendas,
             ticketMedio: ticketMedio,
@@ -275,11 +285,105 @@ exports.obterDadosPerfil = async (req, res) => {
             comissaoVendedor: comissaoVendedor,
             topProdutos,
             ultimasVendas,
-            graficoData
+            graficoData,
+            dataInicioPeriodo: data_inicio_periodo_atual // Retorna a data para o frontend
         });
 
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor ao buscar dados do perfil.' });
+    }
+};
+
+/**
+ * NOVA FUNÇÃO: Fecha o período de vendas atual do vendedor logado.
+ */
+exports.fecharPeriodo = async (req, res) => {
+    const usuario_id = req.usuarioId;
+    const empresa_id = req.empresaId;
+    const { senha } = req.body;
+
+    if (!senha) {
+        return res.status(400).json({ message: 'A senha é obrigatória para confirmar o fechamento.' });
+    }
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Autenticar a senha do usuário
+        const [authRows] = await connection.query('SELECT senha_hash, data_inicio_periodo_atual FROM usuarios WHERE id = ?', [usuario_id]);
+        const usuario = authRows[0];
+
+        if (!usuario) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
+        
+        const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
+        if (!senhaValida) {
+            await connection.rollback();
+            return res.status(401).json({ message: 'Senha incorreta. Fechamento de período cancelado.' });
+        }
+
+        const data_inicio = usuario.data_inicio_periodo_atual;
+        const data_fim = new Date().toISOString().slice(0, 19).replace('T', ' '); // NOW()
+
+        // 2. Calcular as métricas do período atual
+        const queryMetricas = `
+            SELECT
+                IFNULL(SUM(v.valor_total), 0) AS totalFaturado,
+                COUNT(v.id) AS numeroVendas,
+                IFNULL(SUM(vi.quantidade), 0) AS itensVendidos
+            FROM vendas AS v
+            LEFT JOIN venda_itens AS vi ON v.id = vi.venda_id
+            WHERE v.usuario_id = ? AND v.data_venda >= ? AND v.data_venda <= NOW();
+        `;
+        const [metricasResult] = await connection.query(queryMetricas, [usuario_id, data_inicio]);
+        
+        const { totalFaturado, numeroVendas, itensVendidos } = metricasResult[0];
+        const faturamento = parseFloat(totalFaturado) || 0;
+        const comissao = faturamento * 0.35;
+        const ticketMedio = numeroVendas > 0 ? faturamento / numeroVendas : 0;
+
+        // 3. Salvar o período fechado na nova tabela (periodos_fechados)
+        const [resultPeriodo] = await connection.query(
+            'INSERT INTO periodos_fechados (empresa_id, usuario_id, data_inicio, data_fim, total_faturado, numero_vendas, ticket_medio, itens_vendidos, comissao_vendedor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [empresa_id, usuario_id, data_inicio, data_fim, faturamento, numeroVendas, ticketMedio, itensVendidos, comissao]
+        );
+
+        // 4. Atualizar o `data_inicio_periodo_atual` do usuário
+        await connection.query(
+            'UPDATE usuarios SET data_inicio_periodo_atual = NOW() WHERE id = ?',
+            [usuario_id]
+        );
+
+        await connection.commit();
+        res.status(200).json({ message: 'Período de vendas encerrado com sucesso!', novoPeriodoId: resultPeriodo.insertId });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error(error);
+        res.status(500).json({ message: error.message || 'Erro no servidor ao fechar o período.' });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+/**
+ * NOVA FUNÇÃO: Lista o histórico de períodos fechados para o vendedor.
+ */
+exports.listarHistoricoPeriodos = async (req, res) => {
+    const usuario_id = req.usuarioId;
+    try {
+        // Assume que a tabela periodos_fechados existe
+        const [periodos] = await pool.query(
+            'SELECT id, data_inicio, data_fim, total_faturado, numero_vendas, comissao_vendedor FROM periodos_fechados WHERE usuario_id = ? ORDER BY data_fim DESC',
+            [usuario_id]
+        );
+        res.status(200).json(periodos);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao buscar histórico de períodos.' });
     }
 };

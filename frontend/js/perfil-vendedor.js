@@ -5,13 +5,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     const nomeVendedorHeader = document.getElementById('nome-vendedor-header');
     const filtroPeriodoContainer = document.querySelector('.filtro-periodo');
+    const periodoAtualInfo = document.getElementById('periodo-atual-info'); // NOVO
+    const fecharPeriodoBtn = document.getElementById('fechar-periodo-btn'); // NOVO
+    const modalFecharPeriodo = document.getElementById('modal-fechar-periodo'); // NOVO
+    const formFecharPeriodo = document.getElementById('form-fechar-periodo'); // NOVO
+    const cancelarFechamentoBtn = document.getElementById('cancelar-fechamento-btn'); // NOVO
     
     // Cards de métricas
     const totalFaturadoEl = document.getElementById('total-faturado');
     const numeroVendasEl = document.getElementById('numero-vendas');
     const ticketMedioEl = document.getElementById('ticket-medio');
     const itensVendidosEl = document.getElementById('itens-vendidos');
-    const comissaoVendedorEl = document.getElementById('comissao-vendedor'); // NOVO ELEMENTO
+    const comissaoVendedorEl = document.getElementById('comissao-vendedor');
 
     // Listas e Gráfico
     const topProdutosLista = document.getElementById('top-produtos-lista');
@@ -24,9 +29,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const successMessageDiv = document.getElementById('success-message');
 
     // --- ESTADO ---
-    let periodoAtual = 'mes';
+    let periodoAtual = 'periodo_atual'; // NOVO PADRÃO
 
     // --- FUNÇÕES DE RENDERIZAÇÃO ---
+    function formatarData(dataISO) {
+        if (!dataISO) return 'N/A';
+        return new Date(dataISO).toLocaleDateString('pt-BR');
+    }
+
     function formatarMoeda(valor) {
         // Garante a formatação correta, inclusive para 'R$ 0,00'
         return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -37,11 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
         numeroVendasEl.textContent = dados.numeroVendas;
         ticketMedioEl.textContent = formatarMoeda(dados.ticketMedio);
         itensVendidosEl.textContent = dados.itensVendidos;
-        comissaoVendedorEl.textContent = formatarMoeda(dados.comissaoVendedor); // NOVO CAMPO
+        comissaoVendedorEl.textContent = formatarMoeda(dados.comissaoVendedor);
+        
+        // NOVO: Exibe a data de início do período atual
+        periodoAtualInfo.textContent = `Período: Desde ${formatarData(dados.dataInicioPeriodo)}`;
     }
 
     function preencherTopProdutos(produtos) {
-// ... código inalterado
         topProdutosLista.innerHTML = '';
         if (produtos.length === 0) {
             topProdutosLista.innerHTML = '<li>Nenhuma venda no período.</li>';
@@ -55,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function preencherUltimasVendas(vendas) {
-// ... código inalterado
         ultimasVendasBody.innerHTML = '';
         if (vendas.length === 0) {
             ultimasVendasBody.innerHTML = '<tr><td colspan="3">Nenhuma venda registrada.</td></tr>';
@@ -70,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderizarGrafico(graficoData) {
-// ... código inalterado
         if (graficoVendas) {
             graficoVendas.destroy();
         }
@@ -103,11 +113,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES DE DADOS ---
     async function carregarDadosPerfil() {
         try {
-            const response = await fetchWithAuth(`/api/usuarios/meu-perfil?periodo=${periodoAtual}`);
+            // Se o período for "periodo_atual", não envia o parâmetro para o backend usar o valor padrão/coluna
+            const queryParam = periodoAtual !== 'periodo_atual' ? `?periodo=${periodoAtual}` : '';
+            
+            const response = await fetchWithAuth(`/api/usuarios/meu-perfil${queryParam}`);
             if (!response.ok) throw new Error('Erro ao buscar dados do perfil.');
             const dados = await response.json();
 
-            // CORREÇÃO E ATUALIZAÇÃO DO NOME DO VENDEDOR
             if(dados.nomeVendedor) {
                 nomeVendedorHeader.textContent = `Bem-vindo(a), ${dados.nomeVendedor}!`;
             }
@@ -123,11 +135,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- EVENT LISTENERS (código inalterado) ---
+    // --- LÓGICA DO FECHAMENTO DE PERÍODO ---
+    fecharPeriodoBtn.addEventListener('click', () => {
+        modalFecharPeriodo.style.display = 'flex';
+        document.getElementById('senha-fechamento').value = '';
+    });
+
+    cancelarFechamentoBtn.addEventListener('click', () => {
+        modalFecharPeriodo.style.display = 'none';
+        formFecharPeriodo.reset();
+    });
+
+    formFecharPeriodo.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const senha = document.getElementById('senha-fechamento').value;
+
+        try {
+            const response = await fetchWithAuth('/api/usuarios/fechar-periodo', {
+                method: 'POST',
+                body: JSON.stringify({ senha })
+            });
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.message);
+
+            alert(data.message);
+            modalFecharPeriodo.style.display = 'none';
+            // Força o recarregamento dos dados para o novo período
+            carregarDadosPerfil(); 
+
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+
+    // --- EVENT LISTENERS GERAIS ---
     logoutBtn.addEventListener('click', logout);
 
     filtroPeriodoContainer.addEventListener('click', (event) => {
-// ... código inalterado
         if (event.target.tagName === 'BUTTON') {
             document.querySelectorAll('.btn-periodo').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
@@ -137,7 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     alterarSenhaForm.addEventListener('submit', async (event) => {
-// ... código inalterado
         event.preventDefault();
         successMessageDiv.textContent = '';
         
@@ -165,8 +210,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INICIALIZAÇÃO ---
     function inicializar() {
-        // Remove a busca de nome do token, que não funciona com acentos. O nome virá do backend.
         nomeVendedorHeader.textContent = 'Meu Perfil';
+        // Garante que o botão "Período Atual" esteja ativo por padrão
+        document.querySelector('[data-periodo="periodo_atual"]').classList.add('active'); 
         carregarDadosPerfil();
     }
 

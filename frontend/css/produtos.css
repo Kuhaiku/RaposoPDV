@@ -101,3 +101,8 @@ textarea {
     font-weight: bold;
     color: var(--primary-color);
 }
+/* Estilo para o checkbox de seleção */
+.table-container th:first-child, .table-container td:first-child {
+    width: 40px;
+    text-align: center;
+}
