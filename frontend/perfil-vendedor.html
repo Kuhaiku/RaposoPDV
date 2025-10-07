@@ -21,7 +21,7 @@
                     <li><a href="clientes.html">Clientes</a></li>
                     <li><a href="produtos.html">Produtos</a></li>
                     <li><a href="caixa.html">Caixa</a></li>
-                    <li><a href="perfil-vendedor.html">Perfil Vendedor</a></li>
+                    <li class="active"><a href="perfil-vendedor.html">Perfil Vendedor</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer"> <button id="logout-btn" class="btn-logout">Sair</button> </div>
@@ -30,7 +30,7 @@
         <main class="main-content">
             <header class="main-header header-com-acoes">
                 <div>
-                    <h1 id="nome-vendedor-header">Carregando...</h1>
+                    <h1 id="nome-vendedor-header">Carregando...</h1> 
                     <p>Veja seu desempenho de vendas abaixo.</p>
                 </div>
                 <div class="filtro-periodo">
@@ -40,7 +40,7 @@
                 </div>
             </header>
             
-            <section class="metricas-vendedor">
+            <section class="metricas-vendedor" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
                 <div class="card">
                     <h3>Total Faturado</h3>
                     <p id="total-faturado">R$ 0,00</p>
@@ -56,6 +56,9 @@
                 <div class="card">
                     <h3>Itens Vendidos</h3>
                     <p id="itens-vendidos">0</p>
+                </div>
+                <div class="card" style="background-color: #e8f5e9;"> <h3>Sua Comissão (35%)</h3>
+                    <p id="comissao-vendedor" style="color: var(--success-color);">R$ 0,00</p>
                 </div>
             </section>
 
