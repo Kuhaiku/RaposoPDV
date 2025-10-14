@@ -69,7 +69,7 @@
                         <div class="gerenciador-fotos">
                             <div id="add-previews" class="previews-container"></div>
                             <label for="imagem" class="btn-add-foto" title="Adicionar fotos">+</label>
-                            <input type="file" id="imagem" accept="image/*" multiple style="display: none;">
+                            <input type="file" id="imagem" name="imagens" accept="image/*" multiple style="display: none;">
                         </div>
                     </div>
                     <div class="input-group full-width">
@@ -112,12 +112,17 @@
                      <button id="excluir-massa-btn" class="btn btn-secondary" style="background-color: var(--error-color); width: auto;">Excluir Permanentemente Selecionados</button>
                 </div>
             </section>
-              <section class="card">
+              
+            <section class="card">
                 <h2>Importar Produtos em Lote (CSV)</h2>
-                <div class="form-grid" style="grid-template-columns: 1fr auto auto; align-items: flex-end;">
+                <div class="form-grid" style="grid-template-columns: 1fr auto auto; align-items: flex-end; gap: 15px;">
                     <div class="input-group">
-                        <label for="csv-file">Selecione o arquivo CSV</label>
-                        <input type="file" id="csv-file" accept=".csv" />
+                        <label for="csv-file">Arquivo CSV</label>
+                        <div class="custom-file-input">
+                            <label for="csv-file" class="btn btn-file-upload">Escolher arquivo</label>
+                            <span id="csv-file-name">Nenhum arquivo selecionado</span>
+                            <input type="file" id="csv-file" accept=".csv" style="display: none;">
+                        </div>
                     </div>
                     <button id="import-csv-btn" class="btn">Importar</button>
                     <button id="download-csv-template-btn" class="btn btn-secondary">Baixar Modelo</button>
@@ -156,25 +161,10 @@
                     <div class="gerenciador-fotos">
                         <div id="edit-previews" class="previews-container"></div>
                         <label for="edit-imagem" class="btn-add-foto" title="Adicionar novas fotos">+</label>
-                        <input type="file" id="edit-imagem" accept="image/*" multiple style="display: none;">
+                        <input type="file" id="edit-imagem" name="imagens" accept="image/*" multiple style="display: none;">
                     </div>
                 </div>
                 <div class="input-group full-width">
                     <label for="edit-descricao">Descrição</label>
                     <textarea id="edit-descricao" rows="3"></textarea>
                 </div>
-                <div class="form-actions full-width">
-                    <button type="button" id="cancel-edit-btn" class="btn btn-secondary">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="btn">Salvar Alterações</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script src="js/auth.js"></script>
-    <script src="js/produtos.js"></script>
-</body>
-
-</html>
