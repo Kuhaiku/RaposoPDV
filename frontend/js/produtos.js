@@ -228,8 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (target.classList.contains('btn-edit')) {
             try {
-                // *** CORREÇÃO AQUI ***
-                editForm.reset(); // Limpa o formulário antes de preencher com novos dados
+                editForm.reset(); 
 
                 const response = await fetchWithAuth(`/api/produtos/${produtoId}`);
                 if (!response.ok) throw new Error('Erro ao buscar dados do produto.');
@@ -279,8 +278,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     downloadCsvTemplateBtn.addEventListener('click', () => {
-        const csvContent = "nome,codigo,preco,estoque,categoria,descricao,foto_url,foto_public_id\n" +
-             "Exemplo Produto,EX001,99.99,10,Exemplo Categoria,Descrição de exemplo.,http://example.com/foto.jpg,exemplo_public_id\n";
+        // *** CORREÇÃO AQUI *** - Ordem das colunas e do exemplo alterada
+        const csvContent = "nome,codigo,preco,estoque,descricao,categoria,foto_url,foto_public_id\n" +
+             "Exemplo Produto,EX001,99.99,10,Descrição de exemplo.,Exemplo Categoria,http://example.com/foto.jpg,exemplo_public_id\n";
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
@@ -294,8 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     cancelEditBtn.addEventListener('click', () => {
-        // *** CORREÇÃO AQUI ***
-        editForm.reset(); // Limpa o formulário ao cancelar
+        editForm.reset();
         editModal.style.display = 'none';
     });
     
