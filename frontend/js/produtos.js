@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnOrdenacao = document.getElementById('btn-ordenacao');
     const textoOrdenacao = document.getElementById('texto-ordenacao');
 
-    // NOVOS ELEMENTOS PARA AÇÕES EM MASSA
+    // ELEMENTOS PARA AÇÕES EM MASSA
     const selecionarTodosCheck = document.getElementById('selecionar-todos');
     const inativarMassaBtn = document.getElementById('inativar-massa-btn');
     const excluirMassaBtn = document.getElementById('excluir-massa-btn');
@@ -36,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnOrdenacao.title = `Ordenar por: ${estado.texto}`;
     }
     
-    // NOVO: Função para obter os IDs dos produtos selecionados
     function obterIdsSelecionados() {
         const checkboxes = produtosTableBody.querySelectorAll('input[type="checkbox"]:checked');
         return Array.from(checkboxes).map(cb => parseInt(cb.closest('tr').dataset.produtoId));
@@ -55,7 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tr = document.createElement('tr');
                 tr.dataset.produtoId = produto.id;
                 tr.innerHTML = `
-                    <td><input type="checkbox" class="produto-checkbox" data-id="${produto.id}"></td> <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
+                    <td><input type="checkbox" class="produto-checkbox" data-id="${produto.id}"></td>
+                    <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
                     <td>${produto.codigo || 'N/A'}</td>
                     <td>${produto.nome}</td>
                     <td>R$ ${parseFloat(produto.preco).toFixed(2)}</td>
@@ -149,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // EVENTOS PARA AÇÕES EM MASSA
     selecionarTodosCheck.addEventListener('change', (event) => {
         document.querySelectorAll('.produto-checkbox').forEach(cb => {
             cb.checked = event.target.checked;
@@ -207,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(error.message);
         }
     });
-    // FIM DOS EVENTOS PARA AÇÕES EM MASSA
 
     produtosTableBody.addEventListener('click', async (event) => {
         const target = event.target;
@@ -230,6 +228,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (target.classList.contains('btn-edit')) {
             try {
+                // *** CORREÇÃO AQUI ***
+                editForm.reset(); // Limpa o formulário antes de preencher com novos dados
+
                 const response = await fetchWithAuth(`/api/produtos/${produtoId}`);
                 if (!response.ok) throw new Error('Erro ao buscar dados do produto.');
 
@@ -292,7 +293,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(link);
     });
 
-    cancelEditBtn.addEventListener('click', () => { editModal.style.display = 'none'; });
+    cancelEditBtn.addEventListener('click', () => {
+        // *** CORREÇÃO AQUI ***
+        editForm.reset(); // Limpa o formulário ao cancelar
+        editModal.style.display = 'none';
+    });
+    
     logoutBtn.addEventListener('click', logout);
 
     atualizarBotaoOrdenacao();
