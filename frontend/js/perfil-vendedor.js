@@ -9,17 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Elementos de Ações
     const fecharPeriodoBtn = document.getElementById('fechar-periodo-btn'); 
-    const verHistoricoBtn = document.getElementById('ver-historico-btn'); // NOVO BOTÃO DE NAVEGAÇÃO
-    const abrirModalSenhaBtn = document.getElementById('abrir-modal-senha-btn'); // NOVO BOTÃO ABRE MODAL
+    const verHistoricoBtn = document.getElementById('ver-historico-btn');
+    const abrirModalSenhaBtn = document.getElementById('abrir-modal-senha-btn');
 
     // Modais de Ações
     const modalFecharPeriodo = document.getElementById('modal-fechar-periodo');
     const formFecharPeriodo = document.getElementById('form-fechar-periodo');
     const cancelarFechamentoBtn = document.getElementById('cancelar-fechamento-btn');
     
-    const modalAlterarSenha = document.getElementById('modal-alterar-senha'); // NOVO MODAL
-    const formAlterarSenha = document.getElementById('form-alterar-senha'); // NOVO FORM
-    const cancelarAlterarSenhaBtn = document.getElementById('cancelar-alterar-senha-btn'); // NOVO CANCELAR
+    const modalAlterarSenha = document.getElementById('modal-alterar-senha');
+    const formAlterarSenha = document.getElementById('form-alterar-senha');
+    const cancelarAlterarSenhaBtn = document.getElementById('cancelar-alterar-senha-btn');
     const modalSuccessMessageDiv = document.getElementById('modal-success-message');
 
     // Cards de métricas
@@ -213,7 +213,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- EVENT LISTENERS GERAIS ---
     logoutBtn.addEventListener('click', logout);
 
-    // NOVO: Navegação para Histórico de Períodos
     verHistoricoBtn.addEventListener('click', () => {
         window.location.href = 'historico-periodos.html';
     });
@@ -241,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
             formAlterarSenha.reset();
         }
     });
-
 
     // --- INICIALIZAÇÃO ---
     function inicializar() {
