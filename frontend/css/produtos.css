@@ -32,7 +32,7 @@ textarea {
     resize: vertical;
 }
 
-/* ===== NOVOS ESTILOS PARA O BOTÃO DE ORDENAÇÃO ===== */
+/* ===== ESTILOS PARA O BOTÃO DE ORDENAÇÃO ===== */
 .ordenacao-container {
     display: flex;
     align-items: center;
@@ -72,7 +72,7 @@ textarea {
     text-align: center;
 }
 
-/* ===== NOVOS ESTILOS PARA O GERENCIADOR DE FOTOS ===== */
+/* ===== ESTILOS PARA O GERENCIADOR DE FOTOS ===== */
 .gerenciador-fotos {
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -121,7 +121,7 @@ textarea {
 }
 
 .btn-add-foto {
-    display: flex;
+    display: inline-flex;
     justify-content: center;
     align-items: center;
     width: 100px;
@@ -140,6 +140,40 @@ textarea {
     border-color: var(--secondary-color);
 }
 
-.previews-container + .btn-add-foto {
+.previews-container:not(:empty) + .btn-add-foto {
     margin-top: 0;
+}
+
+/* ===== ESTILOS PARA INPUT DE ARQUIVO CSV CUSTOMIZADO ===== */
+.custom-file-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.btn-file-upload {
+    padding: 10px 15px;
+    background-color: #f8f9fa;
+    color: var(--primary-color);
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+    text-align: center;
+    width: auto; /* Sobrescreve a largura padrão de .btn */
+    flex-shrink: 0;
+}
+
+.btn-file-upload:hover {
+    background-color: #e9ecef;
+}
+
+#csv-file-name {
+    color: #555;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
