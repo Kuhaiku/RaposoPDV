@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadCsvTemplateBtn = document.getElementById('download-csv-template-btn');
     const btnOrdenacao = document.getElementById('btn-ordenacao');
     const textoOrdenacao = document.getElementById('texto-ordenacao');
-    
+
     // CAMPOS DOS GERENCIADORES DE FOTOS
     const addFileInput = document.getElementById('imagem');
     const addPreviewsContainer = document.getElementById('add-previews');
@@ -72,6 +72,75 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    function atualizarBotaoOrdenacao() {
+        const estado = estadosOrdenacao[indiceOrdenacaoAtual];
+        btnOrdenacao.innerHTML = estado.icone;
+        textoOrdenacao.textContent = estado.texto;
+        btnOrdenacao.title = `Ordenar por: ${estado.texto}`;
+    }
+    
+    function obterIdsSelecionados() {
+        const checkboxes = produtosTableBody.querySelectorAll('input[type="checkbox"]:checked');
+        return Array.from(checkboxes).map(cb => parseInt(cb.closest('tr').dataset.produtoId));
+    }
+
+    async function carregarProdutos() {
+        try {
+            const ordenacaoAtualId = estadosOrdenacao[indiceOrdenacaoAtual].id;
+            const response = await fetchWithAuth(`/api/produtos?sortBy=${ordenacaoAtualId}`);
+            if (!response.ok) throw new Error('Erro ao buscar produtos.');
+
+            const produtos = await response.json();
+            produtosTableBody.innerHTML = '';
+
+            produtos.forEach(produto => {
+                const tr = document.createElement('tr');
+                tr.dataset.produtoId = produto.id;
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="produto-checkbox" data-id="${produto.id}"></td>
+                    <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
+                    <td>${produto.codigo || 'N/A'}</td>
+                    <td>${produto.nome}</td>
+                    <td>R$ ${parseFloat(produto.preco).toFixed(2)}</td>
+                    <td>${produto.estoque}</td>
+                    <td>
+                        <button class="btn-action btn-edit">Editar</button>
+                        <button class="btn-action btn-delete">Inativar</button>
+                    </td>
+                `;
+                produtosTableBody.appendChild(tr);
+            });
+        } catch (error) {
+            console.error(error.message);
+            alert('Não foi possível carregar a lista de produtos.');
+        }
+    }
+
+    btnOrdenacao.addEventListener('click', () => {
+        indiceOrdenacaoAtual = (indiceOrdenacaoAtual + 1) % estadosOrdenacao.length;
+        atualizarBotaoOrdenacao();
+        carregarProdutos();
+    });
+
+    async function configurarLinkCatalogo() {
+        try {
+            const response = await fetchWithAuth('/api/empresas/meus-dados');
+            if (!response.ok) {
+                verCatalogoBtn.style.display = 'none';
+                return;
+            }
+            const data = await response.json();
+            if (data.slug) {
+                verCatalogoBtn.href = `catalogo.html?empresa=${data.slug}`;
+            } else {
+                verCatalogoBtn.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Erro ao buscar slug da empresa:', error);
+            verCatalogoBtn.style.display = 'none';
+        }
+    }
+
     addProdutoForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const formData = new FormData(addProdutoForm);
@@ -103,9 +172,8 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('descricao', document.getElementById('edit-descricao').value);
         formData.append('fotosParaRemover', JSON.stringify(fotosParaRemover));
 
-        // *** CORREÇÃO AQUI ***
         for (const file of editFileInput.files) {
-            formData.append('imagens', file); // Garante que o nome do campo é 'imagens'
+            formData.append('imagens', file);
         }
 
         try {
@@ -177,58 +245,106 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // O restante do código, como carregarProdutos, ordenação, etc., permanece igual...
-    // Vou colar o resto aqui para garantir que o arquivo fique completo.
-
-    function atualizarBotaoOrdenacao() { /* ...código sem alteração... */ }
-    function obterIdsSelecionados() { /* ...código sem alteração... */ }
-    async function carregarProdutos() {
-        try {
-            const ordenacaoAtualId = estadosOrdenacao[indiceOrdenacaoAtual].id;
-            const response = await fetchWithAuth(`/api/produtos?sortBy=${ordenacaoAtualId}`);
-            if (!response.ok) throw new Error('Erro ao buscar produtos.');
-
-            const produtos = await response.json();
-            produtosTableBody.innerHTML = '';
-
-            produtos.forEach(produto => {
-                const tr = document.createElement('tr');
-                tr.dataset.produtoId = produto.id;
-                tr.innerHTML = `
-                    <td><input type="checkbox" class="produto-checkbox" data-id="${produto.id}"></td>
-                    <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
-                    <td>${produto.codigo || 'N/A'}</td>
-                    <td>${produto.nome}</td>
-                    <td>R$ ${parseFloat(produto.preco).toFixed(2)}</td>
-                    <td>${produto.estoque}</td>
-                    <td>
-                        <button class="btn-action btn-edit">Editar</button>
-                        <button class="btn-action btn-delete">Inativar</button>
-                    </td>
-                `;
-                produtosTableBody.appendChild(tr);
-            });
-        } catch (error) {
-            console.error(error.message);
-            alert('Não foi possível carregar a lista de produtos.');
-        }
-    }
-    btnOrdenacao.addEventListener('click', () => {
-        indiceOrdenacaoAtual = (indiceOrdenacaoAtual + 1) % estadosOrdenacao.length;
-        atualizarBotaoOrdenacao();
-        carregarProdutos();
+    selecionarTodosCheck.addEventListener('change', (event) => {
+        document.querySelectorAll('.produto-checkbox').forEach(cb => {
+            cb.checked = event.target.checked;
+        });
     });
-    async function configurarLinkCatalogo() { /* ...código sem alteração... */ }
-    selecionarTodosCheck.addEventListener('change', (event) => { /* ...código sem alteração... */ });
-    inativarMassaBtn.addEventListener('click', async () => { /* ...código sem alteração... */ });
-    excluirMassaBtn.addEventListener('click', async () => { /* ...código sem alteração... */ });
-    importCsvBtn.addEventListener('click', async () => { /* ...código sem alteração... */ });
-    downloadCsvTemplateBtn.addEventListener('click', () => { /* ...código sem alteração... */ });
+
+    inativarMassaBtn.addEventListener('click', async () => {
+        const ids = obterIdsSelecionados();
+        if (ids.length === 0) {
+            alert('Selecione pelo menos um produto para inativar.');
+            return;
+        }
+        if (!confirm(`Tem certeza que deseja inativar ${ids.length} produto(s)? Eles serão removidos da lista de produtos ativos.`)) {
+            return;
+        }
+        try {
+            const response = await fetchWithAuth('/api/produtos/inativar-em-massa', {
+                method: 'PUT',
+                body: JSON.stringify({ ids })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            alert(data.message);
+            carregarProdutos();
+            selecionarTodosCheck.checked = false;
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    excluirMassaBtn.addEventListener('click', async () => {
+        const ids = obterIdsSelecionados();
+        if (ids.length === 0) {
+            alert('Selecione pelo menos um produto para excluir.');
+            return;
+        }
+        if (!confirm(`ATENÇÃO! Você está prestes a EXCLUIR PERMANENTEMENTE ${ids.length} produto(s). Essa ação é irreversível e só é possível para produtos SEM vendas associadas.`)) {
+            return;
+        }
+        try {
+            const response = await fetchWithAuth('/api/produtos/excluir-em-massa', {
+                method: 'POST',
+                body: JSON.stringify({ ids })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            alert(data.message);
+            carregarProdutos();
+            selecionarTodosCheck.checked = false;
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    importCsvBtn.addEventListener('click', async () => {
+        const file = csvFileInput.files[0];
+        if (!file) {
+            alert('Por favor, selecione um arquivo CSV.');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('csvfile', file);
+        try {
+            const response = await fetchWithAuth('/api/produtos/importar-csv', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            alert(data.message);
+            csvFileInput.value = '';
+            csvFileNameSpan.textContent = 'Nenhum arquivo selecionado';
+            csvFileNameSpan.style.fontStyle = 'italic';
+            carregarProdutos();
+        } catch (error) {
+            alert(`Erro ao importar: ${error.message}`);
+        }
+    });
+
+    downloadCsvTemplateBtn.addEventListener('click', () => {
+        const csvContent = "nome,codigo,preco,estoque,descricao,categoria,foto_url,foto_public_id\n" +
+             "Exemplo Produto,EX001,99.99,10,Descrição de exemplo.,Exemplo Categoria,http://example.com/foto.jpg,exemplo_public_id\n";
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "modelo_produtos.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
     cancelEditBtn.addEventListener('click', () => {
         editForm.reset();
         editModal.style.display = 'none';
     });
+    
     logoutBtn.addEventListener('click', logout);
+
     atualizarBotaoOrdenacao();
     carregarProdutos();
     configurarLinkCatalogo();
