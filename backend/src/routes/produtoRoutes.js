@@ -8,15 +8,17 @@ router.use(authMiddleware);
 
 router.get("/", produtoController.listarTodos);
 router.post("/", uploadImages, produtoController.criar);
+
+// Rotas específicas devem vir antes das rotas com parâmetros
 router.post("/importar-csv", uploadCsv, produtoController.importarCSV);
 router.get("/inativos", produtoController.listarInativos);
+router.put("/inativar-em-massa", produtoController.inativarEmMassa);
+router.post("/excluir-em-massa", produtoController.excluirEmMassa); 
+
+// Rotas com parâmetros (mais genéricas) vêm depois
 router.get("/:id", produtoController.obterPorId);
 router.put("/:id", uploadImages, produtoController.atualizar);
 router.put("/:id/reativar", produtoController.reativar);
 router.delete("/:id", produtoController.excluir);
-
-// NOVAS ROTAS EM MASSA
-router.put("/inativar-em-massa", produtoController.inativarEmMassa);
-router.post("/excluir-em-massa", produtoController.excluirEmMassa); // Usando POST para receber body com array de IDs
 
 module.exports = router;
