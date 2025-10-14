@@ -103,11 +103,13 @@ exports.obterPorId = async (req, res) => {
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Produto não encontrado.' });
         }
-        const [fotosRows] = await pool.query('SELECT url FROM produto_fotos WHERE produto_id = ?', [id]);
         
-        let fotos = fotosRows.map(f => f.url);
+        // CORREÇÃO: Busca mais detalhes das fotos
+        const [fotosRows] = await pool.query('SELECT id, url, public_id FROM produto_fotos WHERE produto_id = ?', [id]);
+        
+        let fotos = fotosRows;
         if (fotos.length === 0 && rows[0].foto_url) {
-            fotos.push(rows[0].foto_url);
+            fotos.push({ id: null, url: rows[0].foto_url, public_id: rows[0].foto_public_id });
         }
 
         const produto = { ...rows[0], fotos: fotos };
@@ -121,7 +123,7 @@ exports.obterPorId = async (req, res) => {
 exports.atualizar = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
-    const { nome, descricao, preco, estoque, categoria, codigo } = req.body;
+    const { nome, descricao, preco, estoque, categoria, codigo, fotosParaRemover } = req.body;
     const codigoFinal = codigo || '0';
     const files = req.files || [];
     let connection;
@@ -130,21 +132,20 @@ exports.atualizar = async (req, res) => {
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        const [produtoAtualResult] = await connection.query('SELECT public_id FROM produto_fotos WHERE produto_id = ?', [id]);
+        // 1. Lógica para REMOVER fotos existentes
+        if (fotosParaRemover) {
+            const fotosARemoverArray = JSON.parse(fotosParaRemover);
+            if (Array.isArray(fotosARemoverArray) && fotosARemoverArray.length > 0) {
+                // Deleta do Cloudinary
+                await cloudinary.api.delete_resources(fotosARemoverArray.map(f => f.public_id));
+                // Deleta do banco de dados
+                const idsParaDeletar = fotosARemoverArray.map(f => f.id);
+                await connection.query('DELETE FROM produto_fotos WHERE id IN (?) AND produto_id = ?', [idsParaDeletar, id]);
+            }
+        }
 
+        // 2. Lógica para ADICIONAR novas fotos
         if (files.length > 0) {
-            if (produtoAtualResult.length > 0) {
-                const publicIds = produtoAtualResult.map(f => f.public_id);
-                await cloudinary.api.delete_resources(publicIds);
-                await connection.query('DELETE FROM produto_fotos WHERE produto_id = ?', [id]);
-            }
-            
-            const [oldPhotoResult] = await connection.query('SELECT foto_public_id FROM produtos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
-            if (oldPhotoResult.length > 0 && oldPhotoResult[0].foto_public_id) {
-                await cloudinary.uploader.destroy(oldPhotoResult[0].foto_public_id);
-                await connection.query('UPDATE produtos SET foto_url = NULL, foto_public_id = NULL WHERE id = ?', [id]);
-            }
-
             const [empresaRows] = await connection.query('SELECT slug FROM empresas WHERE id = ?', [empresa_id]);
             if (empresaRows.length === 0 || !empresaRows[0].slug) {
                 throw new Error('Diretório da empresa não encontrado.');
@@ -153,25 +154,19 @@ exports.atualizar = async (req, res) => {
 
             const uploadPromises = files.map(file => {
                 return new Promise((resolve, reject) => {
-                    const uploadStream = cloudinary.uploader.upload_stream(
-                        { folder: folderPath },
-                        (error, result) => {
-                            if (error) reject(error);
-                            else resolve(result);
-                        }
-                    );
+                    const uploadStream = cloudinary.uploader.upload_stream({ folder: folderPath }, (error, result) => {
+                        if (error) reject(error); else resolve(result);
+                    });
                     uploadStream.end(file.buffer);
                 });
             });
 
             const results = await Promise.all(uploadPromises);
             const fotosParaSalvar = results.map(result => [id, result.secure_url, result.public_id]);
-            await connection.query(
-                'INSERT INTO produto_fotos (produto_id, url, public_id) VALUES ?',
-                [fotosParaSalvar]
-            );
+            await connection.query('INSERT INTO produto_fotos (produto_id, url, public_id) VALUES ?', [fotosParaSalvar]);
         }
 
+        // 3. Atualiza os outros dados do produto
         await connection.query(
             'UPDATE produtos SET nome = ?, descricao = ?, preco = ?, estoque = ?, categoria = ?, codigo = ? WHERE id = ? AND empresa_id = ?',
             [nome, descricao, preco, estoque, categoria, codigoFinal, id, empresa_id]
@@ -187,8 +182,7 @@ exports.atualizar = async (req, res) => {
         if (connection) connection.release();
     }
 };
-
-// Inativar um produto
+// ... (o restante do arquivo continua o mesmo)
 exports.excluir = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -204,7 +198,6 @@ exports.excluir = async (req, res) => {
     }
 };
 
-// Listar todos os produtos INATIVOS da empresa logada
 exports.listarInativos = async (req, res) => {
     const empresa_id = req.empresaId;
     try {
@@ -222,7 +215,6 @@ exports.listarInativos = async (req, res) => {
     }
 };
 
-// Reativar um produto
 exports.reativar = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -238,7 +230,6 @@ exports.reativar = async (req, res) => {
     }
 };
 
-// Inativar múltiplos produtos
 exports.inativarEmMassa = async (req, res) => {
     const empresa_id = req.empresaId;
     const { ids } = req.body; 
@@ -263,7 +254,6 @@ exports.inativarEmMassa = async (req, res) => {
     }
 };
 
-// Excluir (deletar permanentemente) múltiplos produtos
 exports.excluirEmMassa = async (req, res) => {
     const empresa_id = req.empresaId;
     const { ids } = req.body;
@@ -302,7 +292,6 @@ exports.excluirEmMassa = async (req, res) => {
     }
 };
 
-// Importar produtos via CSV
 exports.importarCSV = async (req, res) => {
     const empresa_id = req.empresaId;
 
@@ -316,7 +305,6 @@ exports.importarCSV = async (req, res) => {
 
     stream
         .pipe(csv({
-            // *** CORREÇÃO AQUI *** - Ordem das colunas ajustada para corresponder ao novo modelo
             headers: ['nome', 'codigo', 'preco', 'estoque', 'descricao', 'categoria', 'foto_url', 'foto_public_id'],
             skipLines: 1,
             mapHeaders: ({ header }) => header.trim()
