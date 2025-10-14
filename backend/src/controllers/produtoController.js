@@ -316,7 +316,8 @@ exports.importarCSV = async (req, res) => {
 
     stream
         .pipe(csv({
-            headers: ['nome', 'codigo', 'preco', 'estoque', 'categoria', 'descricao', 'foto_url', 'foto_public_id'],
+            // *** CORREÇÃO AQUI *** - Ordem das colunas ajustada para corresponder ao novo modelo
+            headers: ['nome', 'codigo', 'preco', 'estoque', 'descricao', 'categoria', 'foto_url', 'foto_public_id'],
             skipLines: 1,
             mapHeaders: ({ header }) => header.trim()
         }))
