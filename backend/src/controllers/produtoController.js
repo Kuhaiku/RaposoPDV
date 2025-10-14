@@ -82,7 +82,6 @@ exports.listarTodos = async (req, res) => {
     try {
         const [rows] = await pool.query(`
             SELECT p.id, p.nome, p.preco, p.estoque, p.codigo,
-                   -- Lógica de fallback: tenta a foto da nova tabela, se não houver, usa a da coluna antiga
                    COALESCE((SELECT url FROM produto_fotos WHERE produto_id = p.id ORDER BY id LIMIT 1), p.foto_url) AS foto_url
             FROM produtos p
             WHERE p.ativo = 1 AND p.empresa_id = ?
@@ -107,7 +106,6 @@ exports.obterPorId = async (req, res) => {
         const [fotosRows] = await pool.query('SELECT url FROM produto_fotos WHERE produto_id = ?', [id]);
         
         let fotos = fotosRows.map(f => f.url);
-        // Lógica de fallback: se não encontrar fotos na nova tabela, usa a foto da coluna antiga
         if (fotos.length === 0 && rows[0].foto_url) {
             fotos.push(rows[0].foto_url);
         }
@@ -141,7 +139,6 @@ exports.atualizar = async (req, res) => {
                 await connection.query('DELETE FROM produto_fotos WHERE produto_id = ?', [id]);
             }
             
-            // Lógica para deletar a foto antiga, se existir, e migrá-la
             const [oldPhotoResult] = await connection.query('SELECT foto_public_id FROM produtos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
             if (oldPhotoResult.length > 0 && oldPhotoResult[0].foto_public_id) {
                 await cloudinary.uploader.destroy(oldPhotoResult[0].foto_public_id);
@@ -211,9 +208,16 @@ exports.excluir = async (req, res) => {
 exports.listarInativos = async (req, res) => {
     const empresa_id = req.empresaId;
     try {
-        const [rows] = await pool.query('SELECT * FROM produtos WHERE ativo = 0 AND empresa_id = ? ORDER BY nome ASC', [empresa_id]);
+        const [rows] = await pool.query(`
+            SELECT p.id, p.nome, p.preco, p.estoque, p.codigo,
+                   COALESCE((SELECT url FROM produto_fotos WHERE produto_id = p.id ORDER BY id LIMIT 1), p.foto_url) AS foto_url
+            FROM produtos p
+            WHERE p.ativo = 0 AND p.empresa_id = ?
+            ORDER BY p.nome ASC
+        `, [empresa_id]);
         res.status(200).json(rows);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Erro ao listar produtos inativos.' });
     }
 };
@@ -234,10 +238,10 @@ exports.reativar = async (req, res) => {
     }
 };
 
-// NOVO: Inativar múltiplos produtos
+// Inativar múltiplos produtos
 exports.inativarEmMassa = async (req, res) => {
     const empresa_id = req.empresaId;
-    const { ids } = req.body; // Array de IDs de produtos
+    const { ids } = req.body; 
 
     if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ message: 'Nenhum ID de produto fornecido.' });
@@ -247,7 +251,6 @@ exports.inativarEmMassa = async (req, res) => {
         const placeholders = ids.map(() => '?').join(',');
         const query = `UPDATE produtos SET ativo = 0 WHERE id IN (${placeholders}) AND empresa_id = ?`;
         
-        // Inclui a empresa_id no final do array de parâmetros
         const [result] = await pool.query(query, [...ids, empresa_id]); 
 
         res.status(200).json({ 
@@ -260,7 +263,7 @@ exports.inativarEmMassa = async (req, res) => {
     }
 };
 
-// NOVO: Excluir (deletar permanentemente) múltiplos produtos
+// Excluir (deletar permanentemente) múltiplos produtos
 exports.excluirEmMassa = async (req, res) => {
     const empresa_id = req.empresaId;
     const { ids } = req.body;
@@ -274,18 +277,15 @@ exports.excluirEmMassa = async (req, res) => {
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        // 1. Verificar se algum produto está associado a venda
         const [vendaItens] = await connection.query(`SELECT produto_id FROM venda_itens WHERE produto_id IN (?) LIMIT 1`, [ids]);
         if (vendaItens.length > 0) {
             await connection.rollback();
             return res.status(400).json({ message: 'Não é possível excluir produto(s) associado(s) a vendas existentes. Considere inativar.' });
         }
         
-        // 2. Deletar as entradas de foto na tabela produto_fotos
         const placeholders = ids.map(() => '?').join(',');
         await connection.query(`DELETE FROM produto_fotos WHERE produto_id IN (${placeholders})`, ids);
 
-        // 3. Deletar os produtos
         const [result] = await connection.query(`DELETE FROM produtos WHERE id IN (${placeholders}) AND empresa_id = ?`, [...ids, empresa_id]);
         
         await connection.commit();
