@@ -64,9 +64,13 @@
                         <label for="categoria">Categoria</label>
                         <input type="text" id="categoria" />
                     </div>
-                    <div class="input-group">
-                        <label for="imagem">Foto(s) do Produto (opcional)</label>
-                        <input type="file" id="imagem" accept="image/*" multiple />
+                    <div class="input-group full-width">
+                        <label>Fotos do Produto</label>
+                        <div class="gerenciador-fotos">
+                            <div id="add-previews" class="previews-container"></div>
+                            <label for="imagem" class="btn-add-foto" title="Adicionar fotos">+</label>
+                            <input type="file" id="imagem" accept="image/*" multiple style="display: none;">
+                        </div>
                     </div>
                     <div class="input-group full-width">
                         <label for="descricao">Descrição</label>
@@ -147,9 +151,13 @@
                     <label for="edit-categoria">Categoria</label>
                     <input type="text" id="edit-categoria" />
                 </div>
-                <div class="input-group">
-                    <label for="edit-imagem">Nova(s) Foto(s) (opcional)</label>
-                    <input type="file" id="edit-imagem" accept="image/*" multiple />
+                <div class="input-group full-width">
+                    <label>Fotos do Produto</label>
+                    <div class="gerenciador-fotos">
+                        <div id="edit-previews" class="previews-container"></div>
+                        <label for="edit-imagem" class="btn-add-foto" title="Adicionar novas fotos">+</label>
+                        <input type="file" id="edit-imagem" accept="image/*" multiple style="display: none;">
+                    </div>
                 </div>
                 <div class="input-group full-width">
                     <label for="edit-descricao">Descrição</label>
