@@ -1,78 +1,121 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html class="light" lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Detalhes do Cliente</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="css/global.css">
-    <link rel="stylesheet" href="css/clientes.css">
-    <link rel="stylesheet" href="css/cliente-detalhes.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: { /* ... Cores do RaposoPDV ... */
+                        "primary": "#3498db",
+                        "secondary": "#2c3e50",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "text-light": "#333333",
+                        "text-dark": "#f6f7f8",
+                        "subtext-light": "#617589",
+                        "subtext-dark": "#a0aec0"
+                     },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                    borderRadius: { /* ... Bordas do RaposoPDV ... */
+                        "DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"
+                     },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+        body { min-height: 100vh; font-family: 'Inter', sans-serif; }
+         /* Esconde template de recibo */
+        #recibo-template { position: absolute; left: -9999px; top: auto; width: 400px; padding: 20px; background-color: white; font-family: 'Courier New', Courier, monospace; color: #000; font-size: 14px; }
+        /* Estilos do template de recibo (copiados do seu css antigo) */
+        .recibo-header { text-align: center; margin-bottom: 20px; } .recibo-header h2 { margin: 0; font-size: 1.2rem; } .recibo-header p { margin: 2px 0; } .recibo-info { margin-bottom: 20px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0; } .recibo-info p { margin: 5px 0; } .recibo-tabela { width: 100%; border-collapse: collapse; margin-bottom: 20px; } .recibo-tabela th, .recibo-tabela td { padding: 5px 0; text-align: left; } .recibo-tabela thead { border-bottom: 1px dashed #000; } .recibo-tabela th:nth-child(2), .recibo-tabela td:nth-child(2) { text-align: center; } .recibo-tabela th:nth-child(3), .recibo-tabela td:nth-child(3), .recibo-tabela th:nth-child(4), .recibo-tabela td:nth-child(4) { text-align: right; } .recibo-total { text-align: right; font-size: 1.2rem; font-weight: bold; border-top: 1px dashed #000; padding-top: 10px; } .recibo-footer { text-align: center; margin-top: 30px; }
+         /* Estilo para spinner */
+         .spinner { border: 2px solid rgba(0,0,0,0.1); border-radius: 50%; border-top: 2px solid currentColor; width: 1rem; height: 1rem; animation: spin 1s linear infinite; }
+         .spinner-small { width: 0.8rem; height: 0.8rem; border-width: 1.5px; }
+         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body>
-    <div class="painel-container">
-        <aside class="sidebar">
-            <div class="sidebar-header"> <h2>Raposo - PDV</h2> </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li><a href="painel.html">Dashboard</a></li>
-                    <li><a href="nova-venda.html">Nova Venda</a></li>
-                    <li><a href="vendas.html">Histórico</a></li>
-                    <li class="active"><a href="clientes.html">Clientes</a></li>
-                    <li><a href="produtos.html">Produtos</a></li>
-                    <li><a href="caixa.html">Caixa</a></li>
-                    <li><a href="perfil-vendedor.html">Perfil Vendedor</a></li>
-                </ul>
-            </nav>
-            <div class="sidebar-footer"> <button id="logout-btn" class="btn-logout">Sair</button> </div>
-        </aside>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
 
-        <main class="main-content">
-            <header class="main-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h1 id="nome-cliente-header">Carregando...</h1>
-                <a href="clientes.html" class="btn btn-secondary" style="width: auto; padding: 10px 20px;">Voltar para Lista</a>
-            </header>
+    <div class="sticky top-0 z-10 flex items-center bg-white dark:bg-background-dark p-4 pb-3 justify-between border-b border-gray-200 dark:border-gray-700">
+        <button onclick="window.location.href='clientes.html'" class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors" aria-label="Voltar para Clientes">
+             <span class="material-symbols-outlined text-text-light dark:text-text-dark text-2xl">arrow_back</span>
+         </button>
+        <div class="flex-1 text-center">
+            <h1 id="nome-cliente-header" class="text-text-light dark:text-text-dark text-lg font-bold leading-tight tracking-[-0.015em] truncate">Carregando...</h1>
+            <p class="text-subtext-light dark:text-subtext-dark text-xs">Histórico de Vendas</p>
+        </div>
+        <div class="w-10"></div> </div>
 
-            <section class="metricas-cliente">
-                <div class="card"><h3>Total Gasto</h3><p id="total-gasto">R$ 0,00</p></div>
-                <div class="card"><h3>Total de Compras</h3><p id="total-compras">0</p></div>
-            </section>
+    <section class="grid grid-cols-2 gap-4 p-4">
+        <div class="bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm border dark:border-zinc-700 text-center">
+            <h3 class="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Total Gasto</h3>
+            <p id="total-gasto" class="text-lg font-bold text-primary">R$ 0,00</p>
+        </div>
+        <div class="bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm border dark:border-zinc-700 text-center">
+            <h3 class="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Nº de Compras</h3>
+            <p id="total-compras" class="text-lg font-bold text-primary">0</p>
+        </div>
+    </section>
 
-            <div class="detalhes-layout">
-                <section class="card">
-                    <h2>Dados Cadastrais</h2>
-                    <div id="dados-cadastrais" class="dados-grid"></div>
-                </section>
-                <section class="card">
-                    <h2>Histórico de Compras</h2>
-                    <button id="gerar-relatorio-btn" class="btn" style="margin-bottom: 20px;">Gerar Relatório das Compras Selecionadas</button>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th style="width: 50px;"><input type="checkbox" id="selecionar-todas"></th>
-                                    <th>ID Venda</th>
-                                    <th>Data</th>
-                                    <th>Valor</th>
-                                </tr>
-                            </thead>
-                            <tbody id="historico-compras-body"></tbody>
-                        </table>
-                    </div>
-                </section>
+    <section class="px-4 pb-4">
+          <div class="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border dark:border-zinc-700 p-4">
+               <h2 class="text-base font-semibold text-secondary dark:text-white mb-3">Dados Cadastrais</h2>
+               <div id="dados-cadastrais" class="space-y-2 text-sm">
+                   <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Nome:</strong> <span class="text-text-light dark:text-zinc-200">Carregando...</span></p>
+                   <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Telefone:</strong> <span class="text-text-light dark:text-zinc-200">...</span></p>
+                   <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">CPF:</strong> <span class="text-text-light dark:text-zinc-200">...</span></p>
+                   <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Email:</strong> <span class="text-text-light dark:text-zinc-200">...</span></p>
+                   <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Endereço:</strong> <span class="text-text-light dark:text-zinc-200">...</span></p>
+               </div>
+               </div>
+     </section>
+
+
+    <div class="p-4 space-y-3">
+         <div class="flex justify-between items-center mb-2">
+             <h2 class="text-base font-semibold text-secondary dark:text-white">Compras Realizadas</h2>
+             <button id="gerar-relatorio-btn" class="hidden inline-flex items-center px-3 py-1 bg-primary/10 text-primary text-xs font-medium rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50">
+                  <span class="material-symbols-outlined mr-1 text-sm">download</span> Relatório
+             </button>
+         </div>
+
+         <div class="hidden items-center space-x-2 text-sm text-zinc-600 dark:text-zinc-400 mb-2" id="select-all-container">
+             <input type="checkbox" id="selecionar-todas" class="form-checkbox rounded text-primary focus:ring-primary/50 h-4 w-4 border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+             <label for="selecionar-todas">Selecionar todas as vendas</label>
+         </div>
+
+
+        <div id="historico-compras-list" class="space-y-3">
+             <div id="historico-placeholder" class="text-center py-6 text-zinc-500 dark:text-zinc-400">Carregando histórico...</div>
             </div>
-        </main>
     </div>
-    
-    <div id="recibo-template" class="recibo-container">
-        <div class="recibo-header"> <h2>Uze Moda Sustentável</h2> <p>Relatório de Compras</p> </div>
-        <div class="recibo-info"> <p><strong>Cliente:</strong> <span id="recibo-cliente-nome"></span></p> </div>
-        <div id="recibo-vendas-container"></div>
-        <div class="recibo-total"> <strong>TOTAL GERAL: <span id="recibo-total-geral"></span></strong> </div>
-        <div class="recibo-footer"> <p>Relatório gerado em: <span id="recibo-data-geracao"></span></p> </div>
-    </div>
+</div>
 
-    <script src="js/auth.js"></script>
-    <script src="js/cliente-detalhes.js"></script>
+<div id="recibo-template">
+    <div class="recibo-header"> <h2 id="recibo-empresa-nome-relatorio">Relatório</h2> <p>Relatório de Compras</p> </div>
+    <div class="recibo-info"> <p><strong>Cliente:</strong> <span id="recibo-cliente-nome"></span></p> </div>
+    <div id="recibo-vendas-container"></div>
+    <div class="recibo-total"> <strong>TOTAL GERAL: <span id="recibo-total-geral"></span></strong> </div>
+    <div class="recibo-footer"> <p>Relatório gerado em: <span id="recibo-data-geracao"></span></p> </div>
+</div>
+
+
+<script src="js/auth.js"></script>
+<script src="js/cliente-detalhes.js"></script>
+
 </body>
 </html>
