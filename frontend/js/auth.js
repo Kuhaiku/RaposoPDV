@@ -1,70 +1,43 @@
-const API_URL = '';
-
-function checkAuth() {
-    const token = localStorage.getItem('authToken');
-    if (!token && !window.location.pathname.endsWith('login.html')) {
-        window.location.href = 'login.html';
-    }
-}
-
-function logout() {
-    localStorage.removeItem('authToken');
-    window.location.href = 'login.html';
-}
-
+// Dentro de auth.js
 async function fetchWithAuth(endpoint, options = {}) {
     const token = localStorage.getItem('authToken');
+    // Começa com os headers passados nas opções, ou um objeto vazio
     const headers = { ...options.headers };
 
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // *** IMPORTANTE: NÃO definir Content-Type se for FormData ***
     if (!(options.body instanceof FormData)) {
-        headers['Content-Type'] = 'application/json';
+        // Define Content-Type apenas para outros tipos de body (ex: JSON)
+        // Se já não estiver definido nas opções
+        if (!headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
     }
+    // Se for FormData, o navegador cuidará do Content-Type (multipart/form-data; boundary=...)
 
-    const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
-    
-    if (response.status === 401) {
-        logout();
-        throw new Error('Sessão expirada. Faça login novamente.');
+    try {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            ...options, // Inclui method, body, etc.
+            headers: headers // Usa os headers montados
+        });
+
+        if (response.status === 401) {
+            logout(); // Assumindo que a função logout existe
+            throw new Error('Sessão expirada ou inválida. Faça login novamente.');
+        }
+
+        // Deixa a verificação de response.ok para a função que chamou o fetch
+        return response;
+
+    } catch (error) {
+         console.error(`Erro na requisição para ${endpoint}:`, error);
+         // Você pode querer relançar o erro ou retornar uma resposta padrão de erro
+         // Dependendo de como você quer tratar erros de rede/fetch
+         throw error; // Relança o erro para ser pego pelo catch no local da chamada
     }
-    
-    return response;
 }
 
-// --- LÓGICA DE RESPONSIVIDADE INTEGRADA ---
-
-(function() {
-    // Função que executa toda a lógica de responsividade
-    function setupResponsiveFeatures() {
-        // Se a tela for maior que 767px (desktop), não faz nada.
-        if (window.innerWidth > 767) {
-            return;
-        }
-
-        // 1. Injeta a tag <link> para o mobile.css no <head>
-        const mobileCssLink = document.createElement('link');
-        mobileCssLink.rel = 'stylesheet';
-        mobileCssLink.href = 'css/mobile.css';
-        document.head.appendChild(mobileCssLink);
-
-        // 2. Cria e injeta o botão do menu (apenas se houver uma sidebar na página)
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) {
-            const menuToggle = document.createElement('button');
-            menuToggle.innerHTML = '&#9776;'; // Ícone de hambúrguer
-            menuToggle.className = 'menu-toggle';
-            document.body.appendChild(menuToggle);
-
-            // 3. Adiciona a funcionalidade de clique ao botão
-            menuToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('active');
-            });
-        }
-    }
-
-    // Executa a função assim que o DOM estiver pronto
-    document.addEventListener('DOMContentLoaded', setupResponsiveFeatures);
-})();
+// O restante do auth.js continua igual...
