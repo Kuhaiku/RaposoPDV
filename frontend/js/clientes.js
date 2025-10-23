@@ -1,197 +1,204 @@
-checkAuth();
+// Garante que checkAuth e fetchWithAuth estão disponíveis (de auth.js)
+if (typeof checkAuth !== 'function' || typeof fetchWithAuth !== 'function') {
+    console.error("Funções 'checkAuth' ou 'fetchWithAuth' não encontradas. Verifique se auth.js foi carregado corretamente.");
+} else {
+    checkAuth(); // Verifica se o usuário está logado
+}
 
-// --- ELEMENTOS DO DOM ---
-const logoutBtn = document.getElementById('logout-btn');
-const clientesTableBody = document.getElementById('clientes-table-body');
-const addClienteForm = document.getElementById('add-cliente-form');
-const successMessageDiv = document.getElementById('success-message');
-const editModal = document.getElementById('edit-modal');
-const editForm = document.getElementById('edit-cliente-form');
-const cancelEditBtn = document.getElementById('cancel-edit-btn');
-// NOVO ELEMENTO: Campo de busca
-const buscaClienteInput = document.getElementById('busca-cliente');
+document.addEventListener('DOMContentLoaded', () => {
 
-// --- VARIÁVEL DE ESTADO ---
-// Guardará a lista completa de clientes para podermos filtrar sem ir ao banco toda hora
-let todosClientes = [];
+    // --- Seletores de Elementos DOM ---
+    const clientListContainer = document.getElementById('client-list-container');
+    const clientListPlaceholder = document.getElementById('client-list-placeholder');
+    const searchInput = document.getElementById('search-client-input');
+    const addClientButton = document.getElementById('add-client-button');
 
+    // --- Modal Adicionar Cliente ---
+    const addClientModal = document.getElementById('add-client-modal');
+    const addClientForm = document.getElementById('add-client-form');
+    const addClientMessage = document.getElementById('add-client-message');
+    const closeModalButtons = document.querySelectorAll('.close-modal-btn'); // Botões 'X' e 'Cancelar'
 
-// --- FUNÇÕES DE RENDERIZAÇÃO ---
+    // --- Estado ---
+    let todosClientes = [];
+    let termoBusca = '';
+    let clientesVisiveis = []; // Array para guardar os clientes atualmente exibidos
 
-// NOVA FUNÇÃO: Responsável apenas por desenhar a tabela na tela
-function renderizarClientes(listaDeClientes) {
-    clientesTableBody.innerHTML = ''; // Limpa a tabela antes de preencher
+    // --- Funções Auxiliares ---
+    const showModalMessage = (element, message, isError = false) => { /* ... (igual ao de produtos.js) ... */
+        if (!element) return;
+        element.textContent = message;
+        element.classList.remove('hidden', 'text-green-600', 'text-red-600');
+        element.classList.add(isError ? 'text-red-600' : 'text-green-600');
+     };
+    const clearModalMessage = (element) => { /* ... (igual ao de produtos.js) ... */
+        if (!element) return;
+        element.textContent = '';
+        element.classList.add('hidden');
+     };
+    const openModal = (modalElement) => {
+        if (modalElement) modalElement.classList.add('is-open');
+        document.body.style.overflow = 'hidden'; // Trava scroll do fundo
+    };
+    const closeModal = (modalElement) => {
+        if (modalElement) modalElement.classList.remove('is-open');
+        document.body.style.overflow = ''; // Libera scroll do fundo
+    };
 
-    if (listaDeClientes.length === 0) {
-        clientesTableBody.innerHTML = `<tr><td colspan="3">Nenhum cliente encontrado.</td></tr>`;
-        return;
-    }
+    // --- Funções Principais ---
 
-    listaDeClientes.forEach(cliente => {
-        const tr = document.createElement('tr');
-        tr.dataset.clienteId = cliente.id;
-        tr.innerHTML = `
-            <td><a href="cliente-detalhes.html?id=${cliente.id}" class="link-tabela">${cliente.nome}</a></td>
-            <td>${cliente.telefone || 'N/A'}</td>
-            <td>
-                <button class="btn-action btn-edit">Editar</button>
-                <button class="btn-action btn-delete">Excluir</button>
-            </td>
-        `;
-        clientesTableBody.appendChild(tr);
+    // Carrega TODOS os clientes da API
+    const carregarTodosClientes = async () => {
+        clientListPlaceholder.textContent = 'Carregando clientes...';
+        clientListPlaceholder.classList.remove('hidden');
+        clientListContainer.innerHTML = ''; // Limpa lista
+
+        try {
+            const response = await fetchWithAuth('/api/clientes'); // Endpoint para listar clientes
+            if (!response.ok) {
+                 const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido ao buscar clientes.' }));
+                 throw new Error(errorData.message || `Erro ${response.status}`);
+            }
+            todosClientes = await response.json();
+
+            // Ordena por nome
+            todosClientes.sort((a, b) => a.nome.localeCompare(b.nome));
+
+            renderizarClientes(); // Renderiza a lista inicial
+
+        } catch (error) {
+            console.error('Erro ao carregar clientes:', error);
+            clientListPlaceholder.textContent = `Erro ao carregar clientes: ${error.message}. Tente novamente.`;
+            clientListPlaceholder.classList.remove('hidden');
+            todosClientes = [];
+        }
+    };
+
+    // Renderiza a lista de clientes na tela com base na busca
+    const renderizarClientes = () => {
+        clientListContainer.innerHTML = ''; // Limpa a lista
+        clientListPlaceholder.classList.add('hidden'); // Esconde placeholder
+
+        clientesVisiveis = todosClientes.filter(cliente => {
+            const nomeMatch = cliente.nome.toLowerCase().includes(termoBusca);
+            // Poderia adicionar busca por telefone ou CPF aqui se quisesse
+            // const telefoneMatch = cliente.telefone && cliente.telefone.includes(termoBusca);
+            // return nomeMatch || telefoneMatch;
+            return nomeMatch;
+        });
+
+        if (clientesVisiveis.length === 0) {
+            clientListPlaceholder.textContent = `Nenhum cliente encontrado ${termoBusca ? 'para "' + termoBusca + '"' : ''}.`;
+            clientListPlaceholder.classList.remove('hidden');
+            return;
+        }
+
+        clientesVisiveis.forEach(cliente => {
+            const card = document.createElement('div');
+            card.className = 'bg-white dark:bg-zinc-900 rounded-lg shadow-sm overflow-hidden client-card';
+            card.dataset.clientId = cliente.id; // Adiciona ID para navegação
+
+            // Simplificado: Mostra apenas nome e telefone, link para detalhes
+            card.innerHTML = `
+                <a href="cliente-detalhes.html?id=${cliente.id}" class="block p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-base font-semibold text-text-light dark:text-text-dark truncate" title="${cliente.nome}">${cliente.nome}</h2>
+                             ${cliente.telefone ? `<p class="text-sm text-subtext-light dark:text-subtext-dark">Tel: ${cliente.telefone}</p>` : ''}
+                        </div>
+                        <span class="material-symbols-outlined text-primary">chevron_right</span>
+                    </div>
+                </a>
+                `;
+            clientListContainer.appendChild(card);
+        });
+    };
+
+    // --- Tratamento de Eventos ---
+
+    // Busca
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchInput.timer);
+        searchInput.timer = setTimeout(() => {
+            termoBusca = searchInput.value.toLowerCase();
+            renderizarClientes();
+        }, 300); // Debounce de 300ms
     });
-}
 
+    // Abrir Modal Adicionar Cliente
+    addClientButton.addEventListener('click', () => {
+        addClientForm.reset(); // Limpa o formulário
+        clearModalMessage(addClientMessage); // Limpa mensagens
+        openModal(addClientModal); // Abre o modal
+    });
 
-// --- FUNÇÕES DE DADOS (API) ---
-
-// Função ATUALIZADA para carregar os clientes
-async function carregarClientes() {
-    try {
-        const response = await fetchWithAuth('/api/clientes');
-        if (!response.ok) throw new Error('Erro ao buscar clientes.');
-        
-        // Guarda a lista completa na nossa variável de estado
-        todosClientes = await response.json();
-        
-        // Renderiza a lista completa na tela pela primeira vez
-        renderizarClientes(todosClientes);
-
-    } catch (error) {
-        console.error(error.message);
-        alert('Não foi possível carregar a lista de clientes.');
-    }
-}
-
-
-// --- LÓGICA E EVENT LISTENERS ---
-
-// A lógica de adicionar, editar e excluir continua a mesma...
-async function handleAddSubmit(event) {
-    // ... (código existente sem alterações) ...
-    event.preventDefault();
-    const novoCliente = {
-        nome: document.getElementById('nome').value,
-        telefone: document.getElementById('telefone').value,
-        cpf: document.getElementById('cpf').value,
-        email: document.getElementById('email').value,
-        cep: document.getElementById('cep').value,
-        logradouro: document.getElementById('logradouro').value,
-        numero: document.getElementById('numero').value,
-        bairro: document.getElementById('bairro').value,
-        cidade: document.getElementById('cidade').value,
-        estado: document.getElementById('estado').value,
-    };
-
-    try {
-        const response = await fetchWithAuth('/api/clientes', {
-            method: 'POST',
-            body: JSON.stringify(novoCliente)
+    // Fechar Modal (botões 'X' e 'Cancelar')
+    closeModalButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const modal = button.closest('.fixed.inset-0'); // Encontra o modal pai
+            if (modal) {
+                closeModal(modal);
+            }
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message);
+    });
 
-        // Ao adicionar um novo, recarregamos a lista inteira para ter os dados mais recentes
-        carregarClientes();
-        addClienteForm.reset();
-        successMessageDiv.textContent = 'Cliente salvo com sucesso!';
-        setTimeout(() => { successMessageDiv.textContent = ''; }, 3000);
-    } catch (error) {
-        alert(error.message);
-    }
-}
+     // Fechar Modal (clicando fora)
+     addClientModal.addEventListener('click', (event) => {
+         // Verifica se o clique foi diretamente no backdrop (fundo)
+         if (event.target === addClientModal) {
+             closeModal(addClientModal);
+         }
+     });
 
-async function handleEditSubmit(event) {
-    // ... (código existente sem alterações) ...
-    event.preventDefault();
-    const id = document.getElementById('edit-cliente-id').value;
-    const clienteAtualizado = {
-        nome: document.getElementById('edit-nome').value,
-        telefone: document.getElementById('edit-telefone').value,
-        cpf: document.getElementById('edit-cpf').value,
-        email: document.getElementById('edit-email').value,
-        cep: document.getElementById('edit-cep').value,
-        logradouro: document.getElementById('edit-logradouro').value,
-        numero: document.getElementById('edit-numero').value,
-        bairro: document.getElementById('edit-bairro').value,
-        cidade: document.getElementById('edit-cidade').value,
-        estado: document.getElementById('edit-estado').value,
-    };
 
-    try {
-        const response = await fetchWithAuth(`/api/clientes/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(clienteAtualizado)
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message);
-        
-        editModal.style.display = 'none'; // Fecha o modal
-        carregarClientes(); // Recarrega a lista
-    } catch (error) {
-        alert(error.message);
-    }
-}
+    // Submeter Formulário Adicionar Cliente
+    addClientForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        clearModalMessage(addClientMessage);
+        const submitButton = addClientForm.closest('.flex.flex-col').querySelector('button[type="submit"]'); // Busca botão Salvar
+        if (!submitButton) {
+             console.error("Botão 'Salvar Cliente' não encontrado no modal.");
+             return;
+        }
 
-async function handleTableClick(event) {
-    // ... (código existente sem alterações) ...
-    const target = event.target;
-    const tr = target.closest('tr');
-    if (!tr) return;
-    const clienteId = tr.dataset.clienteId;
-    if (target.classList.contains('btn-delete')) {
-        if (confirm('Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.')) {
-            try {
-                const response = await fetchWithAuth(`/api/clientes/${clienteId}`, { method: 'DELETE' });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.message);
-                carregarClientes();
-            } catch (error) {
-                alert(error.message);
+        submitButton.disabled = true;
+        submitButton.textContent = 'Salvando...';
+
+        const formData = new FormData(addClientForm);
+        const novoCliente = Object.fromEntries(formData.entries()); // Converte FormData para objeto
+
+        try {
+            const response = await fetchWithAuth('/api/clientes', {
+                method: 'POST',
+                body: JSON.stringify(novoCliente) // Envia como JSON
+                // Content-Type será application/json por padrão (ajustado em auth.js)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Erro ao salvar cliente.');
+
+            showModalMessage(addClientMessage, 'Cliente salvo com sucesso!');
+            await carregarTodosClientes(); // Recarrega a lista
+
+            setTimeout(() => {
+                closeModal(addClientModal); // Fecha o modal após sucesso
+            }, 1500); // Aguarda 1.5s
+
+        } catch (error) {
+            console.error("Erro ao adicionar cliente:", error);
+            showModalMessage(addClientMessage, `Erro: ${error.message}`, true);
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Salvar Cliente';
             }
         }
-    }
-    if (target.classList.contains('btn-edit')) {
-        try {
-            const response = await fetchWithAuth(`/api/clientes/${clienteId}`);
-            if (!response.ok) throw new Error('Erro ao buscar dados do cliente.');
-            const cliente = await response.json();
-            document.getElementById('edit-cliente-id').value = cliente.id;
-            document.getElementById('edit-nome').value = cliente.nome;
-            document.getElementById('edit-telefone').value = cliente.telefone;
-            document.getElementById('edit-cpf').value = cliente.cpf;
-            document.getElementById('edit-email').value = cliente.email;
-            document.getElementById('edit-cep').value = cliente.cep;
-            document.getElementById('edit-logradouro').value = cliente.logradouro;
-            document.getElementById('edit-numero').value = cliente.numero;
-            document.getElementById('edit-bairro').value = cliente.bairro;
-            document.getElementById('edit-cidade').value = cliente.cidade;
-            document.getElementById('edit-estado').value = cliente.estado;
-            editModal.style.display = 'flex';
-        } catch (error) {
-            alert(error.message);
-        }
-    }
-}
+    });
 
-// NOVO EVENT LISTENER para a busca
-buscaClienteInput.addEventListener('keyup', () => {
-    const termo = buscaClienteInput.value.toLowerCase();
-    
-    // Filtra a lista principal de clientes
-    const clientesFiltrados = todosClientes.filter(cliente => 
-        cliente.nome.toLowerCase().includes(termo)
-    );
+    // Navegação para detalhes do cliente (via delegação de eventos)
+    // A navegação agora é feita pelo link <a> dentro do card,
+    // então não precisamos mais de um listener JS para isso.
 
-    // Renderiza a tabela apenas com os clientes filtrados
-    renderizarClientes(clientesFiltrados);
-});
+    // --- Inicialização ---
+    carregarTodosClientes(); // Carrega os clientes ao iniciar
 
-
-// --- INICIALIZAÇÃO ---
-document.addEventListener('DOMContentLoaded', carregarClientes);
-addClienteForm.addEventListener('submit', handleAddSubmit);
-editForm.addEventListener('submit', handleEditSubmit);
-clientesTableBody.addEventListener('click', handleTableClick);
-cancelEditBtn.addEventListener('click', () => { editModal.style.display = 'none'; });
-logoutBtn.addEventListener('click', logout);
+}); // Fim do DOMContentLoaded
