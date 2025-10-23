@@ -4,126 +4,222 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nova Venda</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/global.css">
-    <link rel="stylesheet" href="css/clientes.css">
-    <link rel="stylesheet" href="css/nova-venda.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+     <link rel="stylesheet" href="css/nova-venda.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: "class", // ou 'media' se preferir baseado no sistema
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3498db", // Azul do seu tema original
+                        "secondary": "#2c3e50", // Azul escuro do seu tema original
+                        "background-light": "#f6f7f8", // Fundo claro similar
+                        "background-dark": "#101922", // Um fundo escuro genérico
+                        "error": "#e74c3c", // Vermelho erro
+                        "success": "#2ecc71" // Verde sucesso
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"] // Fonte Inter como principal
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem", // 8px
+                        "lg": "0.75rem", // 12px
+                        "xl": "1rem", // 16px
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle; /* Alinha melhor os ícones com o texto */
+        }
+        body { min-height: 100vh; font-family: 'Inter', sans-serif; }
+        .modal { display: none; }
+        .modal.is-open { display: flex; }
+        /* Adiciona um estilo para o botão de pagamento ativo */
+        .payment-button.active {
+            border-color: var(--primary-color);
+            --tw-ring-color: theme('colors.primary / 20%');
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+            color: var(--primary-color);
+        }
+        .payment-button.active .material-symbols-outlined { color: var(--primary-color); }
+        .payment-button.active span { color: var(--primary-color); }
+
+        /* Esconder o input radio original */
+        .payment-button input[type="radio"], .payment-button input[type="checkbox"] {
+            display: none;
+        }
+
+    </style>
 </head>
-<body>
-    <div class="painel-container">
-        <aside class="sidebar">
-            <div class="sidebar-header"> <h2>Raposo - PDV</h2> </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li><a href="painel.html">Dashboard</a></li>
-                    <li class="active"><a href="nova-venda.html">Nova Venda</a></li>
-                    <li><a href="historico.html">Histórico</a></li>
-                    <li><a href="clientes.html">Clientes</a></li>
-                    <li><a href="produtos.html">Produtos</a></li>
-                    <li><a href="caixa.html">Caixa</a></li>
-                    <li><a href="perfil-vendedor.html">Perfil Vendedor</a></li>
-                </ul>
-            </nav>
-            <div class="sidebar-footer"> <button id="logout-btn" class="btn-logout">Sair</button> </div>
-        </aside>
+<body class="bg-background-light dark:bg-background-dark font-display">
 
-        <main class="main-content">
-            <header class="main-header"> <h1>Registrar Nova Venda</h1> </header>
-            <div class="nova-venda-layout">
-                <div class="produtos-selecao">
-                    <div class="card">
-                        <h2>Selecionar Produtos</h2>
-                        <input type="text" id="busca-produto" class="input-busca" placeholder="Buscar por nome ou código...">
-                        <div id="lista-produtos" class="lista-produtos"></div>
-                    </div>
-                </div>
-                <div class="venda-resumo">
-                    <div class="card">
-                        <h2>Resumo da Venda</h2>
-                        <div class="input-group">
-                            <label for="select-cliente">Associar Cliente (Opcional)</label>
-                            <div class="cliente-selecao-container">
-                                <button id="btn-abrir-busca-cliente" class="btn-icone-busca">🔎</button>
-                                <select id="select-cliente">
-                                    </select>
-                                <button type="button" id="btn-novo-cliente" class="btn-novo-cliente">+</button>
-                            </div>
-                        </div>
-                        
-                        <hr class="divider">
-                        <div id="carrinho-itens" class="carrinho-itens">
-                            <p class="carrinho-vazio">Selecione produtos para adicioná-los à venda.</p>
-                        </div>
-                        <hr class="divider">
-                        
-                        <div class="secao-pagamento">
-                            <h3>Forma de Pagamento</h3>
-                            <div class="metodos-pagamento">
-                                <label><input type="checkbox" name="pagamento" value="Dinheiro"> Dinheiro</label>
-                                <label><input type="checkbox" name="pagamento" value="Pix"> Pix</label>
-                                <label><input type="checkbox" name="pagamento" value="Débito"> Débito</label>
-                                <label><input type="checkbox" name="pagamento" value="Crédito"> Crédito</label>
-                            </div>
-                            <div id="valores-parciais-container"></div>
-                        </div>
+<div class="relative flex min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+    <header class="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10 border-b dark:border-zinc-800">
+        <button onclick="history.back()" class="text-secondary dark:text-white flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+            <span class="material-symbols-outlined text-2xl">arrow_back</span>
+        </button>
+        <h1 class="text-secondary dark:text-white text-xl font-bold leading-tight tracking-tight flex-1 text-center">Nova Venda</h1>
+        <div class="size-10"></div> </header>
 
-                        <div class="total-venda">
-                            <strong>TOTAL:</strong>
-                            <strong id="venda-total">R$ 0,00</strong>
-                        </div>
-                        <div class="gerar-recibo-container">
-                            <input type="checkbox" id="gerar-recibo-check">
-                            <label for="gerar-recibo-check">Baixar comprovante da venda</label>
-                        </div>
-                        <button id="finalizar-venda-btn" class="btn">Finalizar Venda</button>
-                    </div>
-                </div>
+    <main class="flex-1 px-4 py-6">
+        <section>
+            <div class="flex justify-between items-center mb-3">
+                 <h2 class="text-secondary dark:text-white text-lg font-bold leading-tight tracking-tight">Cliente</h2>
+                 <button id="btn-novo-cliente" class="flex items-center gap-1 text-primary font-semibold text-sm">
+                     <span class="material-symbols-outlined text-base">person_add</span>
+                     <span>Novo Cliente</span>
+                 </button>
             </div>
-        </main>
-    </div>
-
-    <div id="modal-novo-cliente" class="modal-overlay" style="display: none;">
-        <div class="modal-content" style="max-width: 500px;">
-            <h2>Cadastro Rápido de Cliente</h2>
-            <form id="form-novo-cliente">
-                <div class="input-group"> <label for="modal-nome">Nome</label> <input type="text" id="modal-nome" required> </div>
-                <div class="input-group"> <label for="modal-telefone">Telefone</label> <input type="text" id="modal-telefone" required> </div>
-                <div class="input-group"> <label for="modal-cpf">CPF</label> <input type="text" id="modal-cpf" required> </div>
-                <div class="form-actions"> <button type="button" id="btn-cancelar-novo-cliente" class="btn btn-secondary">Cancelar</button> <button type="submit" class="btn">Salvar Cliente</button> </div>
-            </form>
-        </div>
-    </div>
-    
-    <div id="modal-busca-cliente" class="modal-overlay" style="display: none;">
-        <div class="modal-content" style="max-width: 500px;">
-            <h2>Buscar Cliente</h2>
-            <input type="text" id="input-filtro-cliente" class="input-busca" placeholder="Digite o nome para filtrar...">
-            <ul id="lista-clientes-modal" class="lista-modal-busca">
-                </ul>
-            <div class="form-actions">
-                <button type="button" id="btn-cancelar-busca-cliente" class="btn btn-secondary">Fechar</button>
+            <div class="relative">
+                 <label for="input-busca-cliente" class="sr-only">Buscar cliente</label>
+                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span class="material-symbols-outlined text-zinc-500 dark:text-zinc-400">search</span>
+                 </div>
+                 <input type="text" id="input-busca-cliente" class="form-input block w-full pl-10 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg text-secondary dark:text-white bg-white dark:bg-zinc-900 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Buscar cliente por nome..." />
+                 <div id="autocomplete-resultados" class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm hidden">
+                     </div>
+                 <input type="hidden" id="selected-cliente-id">
+                 <p id="cliente-selecionado-nome" class="mt-2 text-sm text-secondary dark:text-zinc-300">Cliente: <span class="font-medium">Não selecionado</span> <button id="remover-cliente-btn" class="text-red-500 ml-2 hidden">(Remover)</button></p>
             </div>
-        </div>
-    </div>
+        </section>
 
-    <div id="recibo-template" class="recibo-container">
-        <div class="recibo-header"></div>
-        <div class="recibo-info">
-            <p><strong>Venda:</strong> <span id="recibo-venda-id"></span></p>
-            <p><strong>Data:</strong> <span id="recibo-data"></span></p>
-            <p><strong>Cliente:</strong> <span id="recibo-cliente"></span></p>
-            <p><strong>Vendedor:</strong> <span id="recibo-vendedor"></span></p>
-        </div>
-        <table class="recibo-tabela">
-            <thead> <tr> <th>Item</th> <th>Qtd.</th> <th>Preço Unit.</th> <th>Subtotal</th> </tr> </thead>
-            <tbody id="recibo-itens"></tbody>
-        </table>
-        <div id="recibo-pagamentos"></div>
-        <div class="recibo-total"> <strong>TOTAL: <span id="recibo-total-valor"></span></strong> </div>
-        <div class="recibo-footer"> <p>Obrigado pela sua compra!</p> </div>
-    </div>
+        <div class="h-6"></div>
 
-    <script src="js/auth.js"></script>
-    <script src="js/nova-venda.js"></script>
+        <section>
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-secondary dark:text-white text-lg font-bold leading-tight tracking-tight">Produtos</h2>
+                <button id="btn-abrir-busca-produto" class="flex items-center gap-1 text-primary font-bold text-sm">
+                    <span class="material-symbols-outlined text-base">add_circle</span>
+                    <span>Adicionar</span>
+                </button>
+            </div>
+            <div id="carrinho-itens" class="space-y-3">
+                <p class="text-zinc-500 dark:text-zinc-400 text-center py-4 carrinho-vazio">Nenhum produto adicionado.</p>
+                </div>
+        </section>
+
+        <div class="h-6"></div>
+
+        <section>
+            <h2 class="text-secondary dark:text-white text-lg font-bold leading-tight tracking-tight mb-3">Método de Pagamento</h2>
+            <div id="metodos-pagamento-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <label class="payment-button flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white dark:bg-zinc-900 border-2 border-transparent hover:border-primary/50 transition-all cursor-pointer">
+                    <input type="checkbox" name="pagamento" value="Dinheiro">
+                    <span class="material-symbols-outlined text-2xl text-zinc-600 dark:text-zinc-300">payments</span>
+                    <span class="font-semibold text-sm text-secondary dark:text-zinc-100">Dinheiro</span>
+                </label>
+                <label class="payment-button flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white dark:bg-zinc-900 border-2 border-transparent hover:border-primary/50 transition-all cursor-pointer">
+                    <input type="checkbox" name="pagamento" value="Pix">
+                    <span class="material-symbols-outlined text-2xl text-zinc-600 dark:text-zinc-300">qr_code_2</span>
+                    <span class="font-semibold text-sm text-secondary dark:text-zinc-100">Pix</span>
+                </label>
+                 <label class="payment-button flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white dark:bg-zinc-900 border-2 border-transparent hover:border-primary/50 transition-all cursor-pointer">
+                    <input type="checkbox" name="pagamento" value="Débito">
+                    <span class="material-symbols-outlined text-2xl text-zinc-600 dark:text-zinc-300">credit_card</span>
+                    <span class="font-semibold text-sm text-secondary dark:text-zinc-100">Débito</span>
+                </label>
+                <label class="payment-button flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white dark:bg-zinc-900 border-2 border-transparent hover:border-primary/50 transition-all cursor-pointer">
+                    <input type="checkbox" name="pagamento" value="Crédito">
+                    <span class="material-symbols-outlined text-2xl text-zinc-600 dark:text-zinc-300">credit_card</span>
+                    <span class="font-semibold text-sm text-secondary dark:text-zinc-100">Crédito</span>
+                </label>
+                <label class="payment-button flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white dark:bg-zinc-900 border-2 border-transparent hover:border-primary/50 transition-all cursor-pointer">
+                    <input type="checkbox" name="pagamento" value="A Prazo">
+                    <span class="material-symbols-outlined text-2xl text-zinc-600 dark:text-zinc-300">event_repeat</span>
+                    <span class="font-semibold text-sm text-secondary dark:text-zinc-100">A Prazo</span>
+                </label>
+            </div>
+             <div id="valores-parciais-container" class="mt-4 space-y-3">
+                </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white dark:bg-zinc-900 p-4 sticky bottom-0 border-t border-zinc-200 dark:border-zinc-800 shadow-lg">
+        <div class="flex justify-between items-center mb-2">
+            <span class="text-zinc-500 dark:text-zinc-400 text-base">Subtotal</span>
+            <span id="subtotal-venda" class="text-secondary dark:text-white text-base font-semibold">R$ 0,00</span>
+        </div>
+        <div class="border-t border-zinc-200 dark:border-zinc-700 my-2"></div>
+        <div class="flex justify-between items-center mb-3">
+            <span class="text-secondary dark:text-white text-lg font-bold">Total</span>
+            <span id="venda-total" class="text-primary text-lg font-bold">R$ 0,00</span>
+        </div>
+        <button id="finalizar-venda-btn" class="w-full h-12 bg-primary text-white text-base font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            <span class="material-symbols-outlined">check_circle</span>
+            Finalizar Venda
+        </button>
+    </footer>
+</div>
+
+<div class="modal fixed inset-0 z-50 flex-col items-center justify-end bg-black/50" id="product-modal">
+    <div class="w-full max-w-lg bg-background-light dark:bg-background-dark rounded-t-2xl p-4 flex flex-col max-h-[90dvh]">
+        <header class="flex items-center justify-between pb-4 border-b dark:border-zinc-700">
+            <h2 class="text-secondary dark:text-white text-xl font-bold">Adicionar Produto</h2>
+            <button class="text-secondary dark:text-white" onclick="document.getElementById('product-modal').classList.remove('is-open')">
+                <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+        </header>
+        <div class="my-4">
+             <label for="input-busca-produto-modal" class="sr-only">Buscar produto</label>
+             <div class="relative">
+                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                     <span class="material-symbols-outlined text-zinc-500 dark:text-zinc-400">search</span>
+                 </div>
+                 <input type="text" id="input-busca-produto-modal" class="form-input block w-full pl-10 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg text-secondary dark:text-white bg-white dark:bg-zinc-900 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Buscar produto por nome ou código..." />
+             </div>
+        </div>
+        <div id="lista-produtos-modal" class="flex-1 overflow-y-auto space-y-3 pr-2">
+            </div>
+        <footer class="pt-4 border-t border-zinc-200 dark:border-zinc-800 mt-4">
+            <button class="w-full h-12 bg-primary text-white text-base font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors" onclick="document.getElementById('product-modal').classList.remove('is-open')">
+                Fechar
+            </button>
+        </footer>
+    </div>
+</div>
+
+<div id="modal-novo-cliente" class="modal fixed inset-0 z-50 items-center justify-center bg-black/50 p-4">
+    <div class="modal-content bg-background-light dark:bg-background-dark rounded-xl shadow-lg w-full max-w-md p-6">
+        <h2 class="text-xl font-bold text-secondary dark:text-white mb-4">Cadastro Rápido de Cliente</h2>
+        <form id="form-novo-cliente" class="space-y-4">
+            <div>
+                <label for="modal-nome" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nome Completo *</label>
+                <input type="text" id="modal-nome" class="form-input mt-1 block w-full border-zinc-300 dark:border-zinc-700 rounded-lg dark:bg-zinc-800 dark:text-white focus:ring-primary focus:border-primary" required>
+            </div>
+            <div>
+                <label for="modal-telefone" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Telefone *</label>
+                <input type="tel" id="modal-telefone" class="form-input mt-1 block w-full border-zinc-300 dark:border-zinc-700 rounded-lg dark:bg-zinc-800 dark:text-white focus:ring-primary focus:border-primary" required>
+            </div>
+            <div>
+                <label for="modal-cpf" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">CPF</label>
+                <input type="text" id="modal-cpf" class="form-input mt-1 block w-full border-zinc-300 dark:border-zinc-700 rounded-lg dark:bg-zinc-800 dark:text-white focus:ring-primary focus:border-primary">
+            </div>
+            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" id="btn-cancelar-novo-cliente" class="py-2 px-4 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm font-semibold text-secondary dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+                <button type="submit" class="py-2 px-4 bg-primary rounded-lg text-sm font-bold text-white hover:bg-primary/90 transition-colors">Salvar Cliente</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<script src="js/auth.js"></script>
+<script src="js/nova-venda.js"></script>
+
 </body>
 </html>
