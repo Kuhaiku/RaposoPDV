@@ -1,165 +1,159 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html class="light" lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clientes</title>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Lista de Clientes</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="css/global.css">
-    <link rel="stylesheet" href="css/clientes.css">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class", // Habilita dark mode via classe 'dark'
+            theme: {
+                extend: {
+                    colors: {
+                        // Usando cores do RaposoPDV
+                        "primary": "#3498db",
+                        "secondary": "#2c3e50",
+                        "background-light": "#f6f7f8", // Ajustado para f6f7f8
+                        "background-dark": "#101922", // Mantido
+                        "text-light": "#333333", // Ajustado para #333
+                        "text-dark": "#f6f7f8", // Ajustado para f6f7f8
+                        "subtext-light": "#617589",
+                        "subtext-dark": "#a0aec0",
+                        "danger": "#e74c3c", // Cor de erro/delete
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem", // 8px
+                        "lg": "0.75rem", // 12px
+                        "xl": "1rem", // 16px
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { min-height: 100vh; font-family: 'Inter', sans-serif; }
+        /* Estilos básicos para o modal de cadastro */
+        #add-client-modal { display: none; }
+        #add-client-modal.is-open { display: flex; }
+         /* Adiciona padding inferior para compensar o botão flutuante */
+        body { padding-bottom: 6rem; }
+    </style>
 </head>
-<body>
-    <div class="painel-container">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>Raposo - PDV</h2>
-            </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li><a href="painel.html">Dashboard</a></li>
-                    <li><a href="nova-venda.html">Nova Venda</a></li>
-                    <li><a href="historico.html">Histórico</a></li>
-                    <li class="active"><a href="clientes.html">Clientes</a></li>
-                    <li><a href="produtos.html">Produtos</a></li>
-                    <li><a href="caixa.html">Caixa</a></li>
-                    <li><a href="perfil-vendedor.html">Perfil Vendedor</a></li>
-                </ul>
-            </nav>
-            <div class="sidebar-footer">
-                <button id="logout-btn" class="btn-logout">Sair</button>
-            </div>
-        </aside>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
 
-        <main class="main-content">
-            <header class="main-header">
-                <h1>Gerenciar Clientes</h1>
-            </header>
-
-            <section class="card">
-                <h2>Adicionar Novo Cliente</h2>
-                <form id="add-cliente-form" class="form-grid">
-                    <div class="input-group">
-                        <label for="nome">Nome Completo</label>
-                        <input type="text" id="nome" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="telefone">Telefone</label>
-                        <input type="text" id="telefone" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="cpf">CPF</label>
-                        <input type="text" id="cpf" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="email">E-mail</label>
-                        <input type="email" id="email">
-                    </div>
-                    <div class="input-group">
-                        <label for="cep">CEP</label>
-                        <input type="text" id="cep">
-                    </div>
-                    <div class="input-group">
-                        <label for="logradouro">Logradouro (Rua, Av.)</label>
-                        <input type="text" id="logradouro">
-                    </div>
-                    <div class="input-group">
-                        <label for="numero">Número</label>
-                        <input type="text" id="numero">
-                    </div>
-                    <div class="input-group">
-                        <label for="bairro">Bairro</label>
-                        <input type="text" id="bairro">
-                    </div>
-                    <div class="input-group">
-                        <label for="cidade">Cidade</label>
-                        <input type="text" id="cidade">
-                    </div>
-                     <div class="input-group">
-                        <label for="estado">Estado (UF)</label>
-                        <input type="text" id="estado" maxlength="2">
-                    </div>
-                    <div class="form-actions">
-                         <div id="success-message" class="success-message"></div>
-                        <button type="submit" class="btn">Salvar Cliente</button>
-                    </div>
-                </form>
-            </section>
-
-            <section class="card">
-    <h2>Lista de Clientes</h2>
-    <input type="text" id="busca-cliente" class="input-busca" placeholder="Buscar cliente por nome...">
-
-    <div class="table-container">
-        <table>
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Telefone</th>
-                                <th style="width: 150px;">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="clientes-table-body">
-                            </tbody>
-                    </table>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <div id="edit-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <h2>Editar Cliente</h2>
-            <form id="edit-cliente-form" class="form-grid">
-                <input type="hidden" id="edit-cliente-id">
-                 <div class="input-group">
-                    <label for="edit-nome">Nome Completo</label>
-                    <input type="text" id="edit-nome" required>
-                </div>
-                <div class="input-group">
-                    <label for="edit-telefone">Telefone</label>
-                    <input type="text" id="edit-telefone" required>
-                </div>
-                <div class="input-group">
-                    <label for="edit-cpf">CPF</label>
-                    <input type="text" id="edit-cpf" required>
-                </div>
-                <div class="input-group">
-                    <label for="edit-email">E-mail</label>
-                    <input type="email" id="edit-email">
-                </div>
-                <div class="input-group">
-                    <label for="edit-cep">CEP</label>
-                    <input type="text" id="edit-cep">
-                </div>
-                <div class="input-group">
-                    <label for="edit-logradouro">Logradouro</label>
-                    <input type="text" id="edit-logradouro">
-                </div>
-                <div class="input-group">
-                    <label for="edit-numero">Número</label>
-                    <input type="text" id="edit-numero">
-                </div>
-                <div class="input-group">
-                    <label for="edit-bairro">Bairro</label>
-                    <input type="text" id="edit-bairro">
-                </div>
-                <div class="input-group">
-                    <label for="edit-cidade">Cidade</label>
-                    <input type="text" id="edit-cidade">
-                </div>
-                 <div class="input-group">
-                    <label for="edit-estado">Estado (UF)</label>
-                    <input type="text" id="edit-estado" maxlength="2">
-                </div>
-                <div class="form-actions">
-                    <button type="button" id="cancel-edit-btn" class="btn btn-secondary">Cancelar</button>
-                    <button type="submit" class="btn">Salvar Alterações</button>
-                </div>
-            </form>
+    <div class="sticky top-0 z-10 bg-white dark:bg-background-dark p-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between mb-3">
+             <button onclick="history.back()" class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+                 <span class="material-symbols-outlined text-text-light dark:text-text-dark text-2xl">arrow_back</span>
+             </button>
+            <h1 class="text-text-light dark:text-text-dark text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Clientes</h1>
+            <div class="w-10"></div> </div>
+        <div class="relative">
+             <label for="search-client-input" class="sr-only">Buscar Cliente</label>
+             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                 <span class="material-symbols-outlined text-gray-400">search</span>
+             </div>
+             <input type="search" id="search-client-input" placeholder="Buscar por nome..." class="form-input block w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm focus:ring-primary focus:border-primary"/>
         </div>
     </div>
 
+    <div id="client-list-container" class="flex-1 p-4 space-y-3">
+        <div id="client-list-placeholder" class="text-center py-10 text-gray-500">Carregando clientes...</div>
+    </div>
 
-    <script src="js/auth.js"></script>
-    <script src="js/clientes.js"></script>
+    <div class="fixed bottom-6 right-6 z-30">
+        <button id="add-client-button" class="flex items-center justify-center rounded-full bg-primary text-white shadow-lg h-14 w-14 hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" aria-label="Adicionar Novo Cliente">
+            <span class="material-symbols-outlined text-3xl">add</span>
+        </button>
+    </div>
+</div>
+
+<div id="add-client-modal" class="fixed inset-0 z-50 items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-zinc-900 rounded-xl shadow-lg w-full max-w-lg mx-auto max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between p-4 border-b dark:border-zinc-700 flex-shrink-0">
+            <h2 class="text-lg font-bold text-secondary dark:text-white">Cadastrar Novo Cliente</h2>
+            <button class="close-modal-btn flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors" aria-label="Fechar">
+                <span class="material-symbols-outlined text-xl">close</span>
+            </button>
+        </div>
+        <div class="overflow-y-auto p-4 flex-1">
+            <form id="add-client-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-nome">Nome Completo *</label>
+                    <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm" id="add-nome" name="nome" type="text" placeholder="Nome do cliente" required/>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-telefone">Telefone *</label>
+                    <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm" id="add-telefone" name="telefone" type="tel" placeholder="(00) 00000-0000" required/>
+                </div>
+                 <div>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-cpf">CPF</label>
+                    <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm" id="add-cpf" name="cpf" type="text" placeholder="000.000.000-00"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-email">E-mail</label>
+                    <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm" id="add-email" name="email" type="email" placeholder="cliente@email.com"/>
+                </div>
+                <div class="pt-2 border-t dark:border-zinc-700">
+                    <h3 class="text-sm font-semibold text-zinc-600 dark:text-zinc-400 mb-2">Endereço (Opcional)</h3>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="col-span-1">
+                             <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-cep">CEP</label>
+                             <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm text-xs p-2" id="add-cep" name="cep" type="text"/>
+                        </div>
+                        <div class="col-span-2">
+                             <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-logradouro">Logradouro</label>
+                             <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm text-xs p-2" id="add-logradouro" name="logradouro" type="text"/>
+                        </div>
+                    </div>
+                     <div class="grid grid-cols-3 gap-4 mt-3">
+                         <div class="col-span-1">
+                             <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-numero">Número</label>
+                             <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm text-xs p-2" id="add-numero" name="numero" type="text"/>
+                        </div>
+                        <div class="col-span-2">
+                             <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-bairro">Bairro</label>
+                             <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm text-xs p-2" id="add-bairro" name="bairro" type="text"/>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 mt-3">
+                        <div class="col-span-2">
+                             <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-cidade">Cidade</label>
+                             <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm text-xs p-2" id="add-cidade" name="cidade" type="text"/>
+                        </div>
+                        <div class="col-span-1">
+                             <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1" for="add-estado">UF</label>
+                             <input class="form-input block w-full rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white shadow-sm focus:border-primary focus:ring-primary sm:text-sm text-xs p-2" id="add-estado" name="estado" type="text" maxlength="2"/>
+                        </div>
+                    </div>
+                </div>
+                 <div id="add-client-message" class="text-sm font-medium hidden mt-4"></div>
+            </form>
+        </div>
+        <div class="flex justify-end gap-3 p-4 border-t dark:border-zinc-700 flex-shrink-0">
+            <button type="button" class="close-modal-btn py-2 px-4 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm font-semibold text-secondary dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+            <button form="add-client-form" type="submit" class="py-2 px-4 bg-primary rounded-lg text-sm font-bold text-white hover:bg-primary/90 transition-colors disabled:opacity-50">Salvar Cliente</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/clientes.js"></script>
+
 </body>
 </html>
