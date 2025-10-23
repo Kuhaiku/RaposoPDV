@@ -63,6 +63,20 @@
             display: none;
         }
 
+        /* Estilo para spinner (se precisar em algum botão) */
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 1rem; /* 16px */
+            height: 1rem; /* 16px */
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display">
@@ -84,16 +98,16 @@
                      <span>Novo Cliente</span>
                  </button>
             </div>
-            <div class="relative">
-                 <label for="input-busca-cliente" class="sr-only">Buscar cliente</label>
+            <div id="cliente-display-container" class="relative cursor-pointer">
+                 <label for="cliente-display-name" class="sr-only">Cliente selecionado</label>
                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span class="material-symbols-outlined text-zinc-500 dark:text-zinc-400">search</span>
+                      <span class="material-symbols-outlined text-zinc-500 dark:text-zinc-400">person</span>
                  </div>
-                 <input type="text" id="input-busca-cliente" class="form-input block w-full pl-10 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg text-secondary dark:text-white bg-white dark:bg-zinc-900 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Buscar cliente por nome..." />
-                 <div id="autocomplete-resultados" class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm hidden">
-                     </div>
+                 <input type="text" id="cliente-display-name" class="form-input block w-full pl-10 pr-10 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg text-secondary dark:text-white bg-white dark:bg-zinc-900 placeholder:text-zinc-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Selecionar cliente..." readonly />
+                 <button id="remover-cliente-btn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-red-500 hover:text-red-700 hidden">
+                      <span class="material-symbols-outlined text-xl">close</span>
+                 </button>
                  <input type="hidden" id="selected-cliente-id">
-                 <p id="cliente-selecionado-nome" class="mt-2 text-sm text-secondary dark:text-zinc-300">Cliente: <span class="font-medium">Não selecionado</span> <button id="remover-cliente-btn" class="text-red-500 ml-2 hidden">(Remover)</button></p>
             </div>
         </section>
 
@@ -187,6 +201,33 @@
             </div>
         <footer class="pt-4 border-t border-zinc-200 dark:border-zinc-800 mt-4">
             <button class="w-full h-12 bg-primary text-white text-base font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors" onclick="document.getElementById('product-modal').classList.remove('is-open')">
+                Fechar
+            </button>
+        </footer>
+    </div>
+</div>
+
+<div class="modal fixed inset-0 z-50 flex-col items-center justify-end bg-black/50" id="client-modal">
+    <div class="w-full max-w-lg bg-background-light dark:bg-background-dark rounded-t-2xl p-4 flex flex-col max-h-[90dvh]">
+        <header class="flex items-center justify-between pb-4 border-b dark:border-zinc-700">
+            <h2 class="text-secondary dark:text-white text-xl font-bold">Selecionar Cliente</h2>
+            <button class="text-secondary dark:text-white" onclick="document.getElementById('client-modal').classList.remove('is-open')">
+                <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+        </header>
+        <div class="my-4">
+             <label for="input-filtro-cliente-modal" class="sr-only">Buscar cliente</label>
+             <div class="relative">
+                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                     <span class="material-symbols-outlined text-zinc-500 dark:text-zinc-400">search</span>
+                 </div>
+                 <input type="text" id="input-filtro-cliente-modal" class="form-input block w-full pl-10 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg text-secondary dark:text-white bg-white dark:bg-zinc-900 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" placeholder="Buscar cliente por nome..." />
+             </div>
+        </div>
+        <div id="lista-clientes-modal" class="flex-1 overflow-y-auto space-y-1 pr-2">
+            </div>
+        <footer class="pt-4 border-t border-zinc-200 dark:border-zinc-800 mt-4">
+            <button class="w-full h-12 bg-primary text-white text-base font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors" onclick="document.getElementById('client-modal').classList.remove('is-open')">
                 Fechar
             </button>
         </footer>
