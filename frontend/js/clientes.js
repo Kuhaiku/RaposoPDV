@@ -25,13 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let clientesVisiveis = []; // Array para guardar os clientes atualmente exibidos
 
     // --- Funções Auxiliares ---
-    const showModalMessage = (element, message, isError = false) => { /* ... (igual ao de produtos.js) ... */
+    const showModalMessage = (element, message, isError = false) => {
         if (!element) return;
         element.textContent = message;
         element.classList.remove('hidden', 'text-green-600', 'text-red-600');
         element.classList.add(isError ? 'text-red-600' : 'text-green-600');
      };
-    const clearModalMessage = (element) => { /* ... (igual ao de produtos.js) ... */
+    const clearModalMessage = (element) => {
         if (!element) return;
         element.textContent = '';
         element.classList.add('hidden');
@@ -95,22 +95,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         clientesVisiveis.forEach(cliente => {
             const card = document.createElement('div');
-            card.className = 'bg-white dark:bg-zinc-900 rounded-lg shadow-sm overflow-hidden client-card';
+            // Remove 'client-card' se não for mais usada para estilização específica
+            card.className = 'bg-white dark:bg-zinc-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700';
             card.dataset.clientId = cliente.id; // Adiciona ID para navegação
 
-            // Simplificado: Mostra apenas nome e telefone, link para detalhes
-            card.innerHTML = `
-                <a href="cliente-detalhes.html?id=${cliente.id}" class="block p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <h2 class="text-base font-semibold text-text-light dark:text-text-dark truncate" title="${cliente.nome}">${cliente.nome}</h2>
-                             ${cliente.telefone ? `<p class="text-sm text-subtext-light dark:text-subtext-dark">Tel: ${cliente.telefone}</p>` : ''}
-                        </div>
-                        <span class="material-symbols-outlined text-primary">chevron_right</span>
-                    </div>
-                </a>
-                `;
-            clientListContainer.appendChild(card);
+            // Cria o link para a página de detalhes
+            const linkDetalhes = document.createElement('a');
+            linkDetalhes.href = `cliente-detalhes.html?id=${cliente.id}`;
+            linkDetalhes.className = 'block p-4 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors'; // Estilo do link clicável
+
+            linkDetalhes.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-semibold text-text-light dark:text-text-dark truncate" title="${cliente.nome}">${cliente.nome}</h2>
+                         ${cliente.telefone ? `<p class="text-sm text-subtext-light dark:text-subtext-dark">Tel: ${cliente.telefone}</p>` : ''}
+                         </div>
+                    <span class="material-symbols-outlined text-primary">chevron_right</span>
+                </div>
+            `;
+            card.appendChild(linkDetalhes); // Adiciona o link ao card
+            clientListContainer.appendChild(card); // Adiciona o card ao container
         });
     };
 
@@ -135,7 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fechar Modal (botões 'X' e 'Cancelar')
     closeModalButtons.forEach(button => {
         button.addEventListener('click', () => {
-            const modal = button.closest('.fixed.inset-0'); // Encontra o modal pai
+            // Encontra o modal pai do botão clicado
+            const modal = button.closest('.fixed.inset-0');
             if (modal) {
                 closeModal(modal);
             }
@@ -155,23 +160,34 @@ document.addEventListener('DOMContentLoaded', () => {
     addClientForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         clearModalMessage(addClientMessage);
-        const submitButton = addClientForm.closest('.flex.flex-col').querySelector('button[type="submit"]'); // Busca botão Salvar
+        // Seleciona o botão de submit dentro do modal
+        const submitButton = addClientModal.querySelector('button[type="submit"]');
         if (!submitButton) {
              console.error("Botão 'Salvar Cliente' não encontrado no modal.");
+             showModalMessage(addClientMessage, "Erro: Botão salvar não encontrado.", true);
              return;
         }
 
         submitButton.disabled = true;
-        submitButton.textContent = 'Salvando...';
+        // Adiciona spinner ao botão
+        submitButton.innerHTML = `<div class="spinner mr-2 inline-block"></div> Salvando...`;
 
         const formData = new FormData(addClientForm);
-        const novoCliente = Object.fromEntries(formData.entries()); // Converte FormData para objeto
+        const novoCliente = Object.fromEntries(formData.entries());
+
+        // Simples validação para campos obrigatórios (Nome, Telefone)
+        if (!novoCliente.nome || !novoCliente.telefone) {
+            showModalMessage(addClientMessage, "Nome e Telefone são obrigatórios.", true);
+            submitButton.disabled = false;
+            submitButton.textContent = 'Salvar Cliente';
+            return;
+        }
+
 
         try {
             const response = await fetchWithAuth('/api/clientes', {
                 method: 'POST',
-                body: JSON.stringify(novoCliente) // Envia como JSON
-                // Content-Type será application/json por padrão (ajustado em auth.js)
+                body: JSON.stringify(novoCliente)
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Erro ao salvar cliente.');
@@ -189,14 +205,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             if (submitButton) {
                 submitButton.disabled = false;
-                submitButton.textContent = 'Salvar Cliente';
+                submitButton.textContent = 'Salvar Cliente'; // Restaura texto
             }
         }
     });
-
-    // Navegação para detalhes do cliente (via delegação de eventos)
-    // A navegação agora é feita pelo link <a> dentro do card,
-    // então não precisamos mais de um listener JS para isso.
 
     // --- Inicialização ---
     carregarTodosClientes(); // Carrega os clientes ao iniciar
