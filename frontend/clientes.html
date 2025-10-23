@@ -51,6 +51,19 @@
         #add-client-modal.is-open { display: flex; }
          /* Adiciona padding inferior para compensar o botão flutuante */
         body { padding-bottom: 6rem; }
+         /* Estilo para spinner */
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 1rem; /* 16px */
+            height: 1rem; /* 16px */
+            animation: spin 1s linear infinite;
+        }
+         .spinner-small { /* Para botões menores */
+             width: 0.8rem; height: 0.8rem; border-width: 1.5px;
+         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display">
@@ -68,12 +81,12 @@
              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                  <span class="material-symbols-outlined text-gray-400">search</span>
              </div>
-             <input type="search" id="search-client-input" placeholder="Buscar por nome..." class="form-input block w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm focus:ring-primary focus:border-primary"/>
+             <input type="search" id="search-client-input" placeholder="Buscar por nome..." class="form-input block w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-zinc-800 dark:text-white text-sm focus:ring-primary focus:border-primary"/>
         </div>
     </div>
 
     <div id="client-list-container" class="flex-1 p-4 space-y-3">
-        <div id="client-list-placeholder" class="text-center py-10 text-gray-500">Carregando clientes...</div>
+        <div id="client-list-placeholder" class="text-center py-10 text-gray-500 dark:text-gray-400">Carregando clientes...</div>
     </div>
 
     <div class="fixed bottom-6 right-6 z-30">
@@ -147,7 +160,7 @@
         </div>
         <div class="flex justify-end gap-3 p-4 border-t dark:border-zinc-700 flex-shrink-0">
             <button type="button" class="close-modal-btn py-2 px-4 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm font-semibold text-secondary dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-            <button form="add-client-form" type="submit" class="py-2 px-4 bg-primary rounded-lg text-sm font-bold text-white hover:bg-primary/90 transition-colors disabled:opacity-50">Salvar Cliente</button>
+            <button form="add-client-form" type="submit" class="py-2 px-4 bg-primary rounded-lg text-sm font-bold text-white hover:bg-primary/90 transition-colors disabled:opacity-50 inline-flex items-center justify-center">Salvar Cliente</button>
         </div>
     </div>
 </div>
