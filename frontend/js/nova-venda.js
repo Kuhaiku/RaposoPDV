@@ -358,3 +358,151 @@ document.addEventListener('DOMContentLoaded', () => {
         formNovoCliente.reset();
         modalNovoCliente.classList.add('is-open');
     });
+    btnCancelarNovoCliente.addEventListener('click', () => {
+        modalNovoCliente.classList.remove('is-open');
+    });
+    modalNovoCliente.addEventListener('click', (e) => {
+        if (e.target === modalNovoCliente) modalNovoCliente.classList.remove('is-open');
+    });
+    formNovoCliente.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const novoCliente = {
+            nome: document.getElementById('modal-nome').value,
+            telefone: document.getElementById('modal-telefone').value,
+            cpf: document.getElementById('modal-cpf').value
+        };
+        try {
+            const response = await fetchWithAuth('/api/clientes', { method: 'POST', body: JSON.stringify(novoCliente) });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            await carregarClientes();
+            const clienteCriado = todosClientes.find(c => c.id === data.clienteId);
+            if (clienteCriado) selecionarCliente(clienteCriado);
+            modalNovoCliente.classList.remove('is-open');
+        } catch (error) {
+            alert(`Erro ao salvar cliente: ${error.message}`);
+        }
+    });
+
+    // Modal de Busca de Produto
+    btnAbrirBuscaProduto.addEventListener('click', () => {
+        inputBuscaProdutoModal.value = '';
+        renderizarProdutosModal(produtosDisponiveis);
+        productModal.classList.add('is-open');
+        inputBuscaProdutoModal.focus();
+    });
+    inputBuscaProdutoModal.addEventListener('keyup', () => {
+         renderizarProdutosModal(produtosDisponiveis);
+    });
+    productModal.addEventListener('click', (e) => {
+        if (e.target === productModal) productModal.classList.remove('is-open');
+    });
+
+    // Ações no Carrinho
+    carrinhoItensEl.addEventListener('click', (event) => {
+        const target = event.target;
+        const itemEl = target.closest('.carrinho-item');
+        if (!itemEl) return;
+        const produtoId = parseInt(itemEl.dataset.produtoId);
+        if (target.closest('.btn-qty-change')) {
+            const change = parseInt(target.closest('.btn-qty-change').dataset.change);
+            alterarQuantidade(produtoId, change);
+        } else if (target.closest('.btn-remover-item')) {
+            removerDoCarrinho(produtoId);
+        }
+    });
+
+    // Seleção de Método de Pagamento
+    metodosPagamentoContainer.addEventListener('change', renderizarPagamentos);
+
+    // Finalizar Venda
+    finalizarVendaBtn.addEventListener('click', async () => {
+         if (carrinho.length === 0) {
+             alert('Adicione produtos ao carrinho antes de finalizar.');
+             return;
+         }
+         const clienteId = selectedClienteIdInput.value ? parseInt(selectedClienteIdInput.value) : null;
+         const itensVenda = carrinho.map(item => ({ produto_id: item.id, quantidade: item.quantidade }));
+         const checkboxesPagamento = metodosPagamentoContainer.querySelectorAll('input[name="pagamento"]:checked');
+         if (checkboxesPagamento.length === 0) {
+             alert('Selecione pelo menos uma forma de pagamento.');
+             return;
+         }
+         let pagamentos = [];
+         let somaPagamentos = 0;
+         let erroPagamentoParcial = false;
+         let aPrazoSelecionado = false;
+
+          checkboxesPagamento.forEach(chk => { if (chk.value === 'A Prazo') aPrazoSelecionado = true; });
+
+         if (aPrazoSelecionado && checkboxesPagamento.length > 1) {
+              alert('Não é possível combinar "A Prazo" com outras formas de pagamento.');
+              return;
+         }
+
+         if (checkboxesPagamento.length === 1) {
+             const metodo = checkboxesPagamento[0].value;
+             // Se for A Prazo, o valor é o total, senão é o total da venda
+             const valorPagamento = totalVenda; // Para A Prazo ou pagamento único, o valor é o total
+             pagamentos.push({ metodo: metodo, valor: valorPagamento });
+             somaPagamentos = valorPagamento;
+         } else { // Pagamento parcial (já sabemos que não tem 'A Prazo' aqui)
+             const inputsParciais = valoresParciaisContainer.querySelectorAll('.valor-parcial');
+             inputsParciais.forEach(input => {
+                 const valor = parseFloat(input.value) || 0;
+                 if (valor < 0.01) {
+                      erroPagamentoParcial = true;
+                      input.classList.add('border-red-500');
+                 } else {
+                      pagamentos.push({ metodo: input.dataset.metodo, valor: valor });
+                      somaPagamentos += valor;
+                      input.classList.remove('border-red-500');
+                 }
+             });
+             if (erroPagamentoParcial) {
+                  alert('Preencha valores válidos para todas as formas de pagamento selecionadas.');
+                  return;
+             }
+             if (pagamentos.length === 0) { // Garante que pelo menos um valor foi inserido
+                  alert('Insira o valor para pelo menos uma das formas de pagamento.');
+                  return;
+             }
+             // Validar soma em pagamento parcial
+              if (Math.abs(somaPagamentos - totalVenda) > 0.01) {
+                  if (!confirm(`A soma dos pagamentos (R$ ${somaPagamentos.toFixed(2)}) é diferente do total da venda (R$ ${totalVenda.toFixed(2)}). Deseja continuar mesmo assim?`)) {
+                      return;
+                  }
+                  // Se continuar, o backend ainda registrará o valor_total baseado nos itens.
+             }
+         }
+
+
+         try {
+             finalizarVendaBtn.disabled = true;
+             // Adiciona spinner ao botão
+             finalizarVendaBtn.innerHTML = `
+                <div class="spinner mr-2"></div>
+                Processando...`;
+             const response = await fetchWithAuth('/api/vendas', {
+                 method: 'POST',
+                 body: JSON.stringify({ cliente_id: clienteId, itens: itensVenda, pagamentos: pagamentos })
+             });
+             const data = await response.json();
+             if (!response.ok) throw new Error(data.message || 'Erro ao registrar venda.');
+             window.location.href = `venda-concluida.html?id=${data.vendaId}`;
+         } catch (error) {
+             alert(`Erro ao finalizar venda: ${error.message}`);
+             finalizarVendaBtn.disabled = false;
+             // Restaura botão original
+             finalizarVendaBtn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Finalizar Venda';
+         }
+    });
+
+    // Logout
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+
+    // --- INICIALIZAÇÃO DA PÁGINA ---
+    inicializar();
+});
