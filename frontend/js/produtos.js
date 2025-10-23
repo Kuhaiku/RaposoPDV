@@ -47,30 +47,47 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     let indiceOrdenacaoAtual = 0;
 
+    // --- FUNÇÕES DE PRÉ-VISUALIZAÇÃO DE IMAGEM ---
     function criarPreview(file, container) {
         const reader = new FileReader();
         reader.onload = (e) => {
             const div = document.createElement('div');
-            div.className = 'foto-preview';
-            div.innerHTML = `<img src="${e.target.result}" alt="${file.name}"><button type="button" class="btn-remover-foto" title="Remover esta imagem">&times;</button>`;
+            div.className = 'foto-preview relative w-[100px] h-[100px] rounded-lg overflow-hidden'; // Ajustado Tailwind
+            // Ajustado Tailwind para botão
+            div.innerHTML = `
+                <img src="${e.target.result}" alt="${file.name}" class="w-full h-full object-cover">
+                <button type="button" class="btn-remover-foto absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full flex items-center justify-center text-xs font-bold leading-none" title="Remover esta imagem">&times;</button>
+            `;
             container.appendChild(div);
-            div.querySelector('.btn-remover-foto').addEventListener('click', () => div.remove());
+            // Certifica que o botão de remover funciona
+            div.querySelector('.btn-remover-foto').addEventListener('click', (ev) => {
+                ev.stopPropagation(); // Impede outros cliques
+                div.remove();
+                // Limpa o input se remover a última foto (ou ajusta conforme necessidade)
+                // Se for o input de adicionar, pode ser necessário recriar o FileList se quiser reenviar as restantes
+            });
         };
         reader.readAsDataURL(file);
     }
 
     addFileInput.addEventListener('change', (event) => {
-        addPreviewsContainer.innerHTML = '';
-        for (const file of event.target.files) {
-            criarPreview(file, addPreviewsContainer);
+        addPreviewsContainer.innerHTML = ''; // Limpa previews antigos ao selecionar novos arquivos
+        if (event.target.files) {
+            for (const file of event.target.files) {
+                criarPreview(file, addPreviewsContainer);
+            }
         }
     });
 
     editFileInput.addEventListener('change', (event) => {
-        for (const file of event.target.files) {
-            criarPreview(file, editPreviewsContainer);
+         // Não limpa, apenas adiciona novos previews
+        if (event.target.files) {
+            for (const file of event.target.files) {
+                criarPreview(file, editPreviewsContainer);
+            }
         }
     });
+    // --- FIM FUNÇÕES DE PRÉ-VISUALIZAÇÃO ---
 
     function atualizarBotaoOrdenacao() {
         const estado = estadosOrdenacao[indiceOrdenacaoAtual];
@@ -78,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         textoOrdenacao.textContent = estado.texto;
         btnOrdenacao.title = `Ordenar por: ${estado.texto}`;
     }
-    
+
     function obterIdsSelecionados() {
         const checkboxes = produtosTableBody.querySelectorAll('input[type="checkbox"]:checked');
         return Array.from(checkboxes).map(cb => parseInt(cb.closest('tr').dataset.produtoId));
@@ -93,26 +110,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const produtos = await response.json();
             produtosTableBody.innerHTML = '';
 
+            if (produtos.length === 0) {
+                 produtosTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-gray-500">Nenhum produto ativo encontrado.</td></tr>`;
+                 return;
+            }
+
             produtos.forEach(produto => {
                 const tr = document.createElement('tr');
                 tr.dataset.produtoId = produto.id;
+                // Adiciona padding, borda e hover:bg
+                tr.className = 'border-b dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50';
                 tr.innerHTML = `
-                    <td><input type="checkbox" class="produto-checkbox" data-id="${produto.id}"></td>
-                    <td><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img"></td>
-                    <td>${produto.codigo || 'N/A'}</td>
-                    <td>${produto.nome}</td>
-                    <td>R$ ${parseFloat(produto.preco).toFixed(2)}</td>
-                    <td>${produto.estoque}</td>
-                    <td>
-                        <button class="btn-action btn-edit">Editar</button>
-                        <button class="btn-action btn-delete">Inativar</button>
+                    <td class="px-4 py-2 text-center"><input type="checkbox" class="produto-checkbox form-checkbox rounded text-primary focus:ring-primary/50" data-id="${produto.id}"></td>
+                    <td class="px-4 py-2"><img src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}" class="produto-img w-12 h-12 object-cover rounded border dark:border-zinc-700"></td>
+                    <td class="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300">${produto.codigo || 'N/A'}</td>
+                    <td class="px-4 py-2 font-medium text-secondary dark:text-zinc-100">${produto.nome}</td>
+                    <td class="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300">R$ ${parseFloat(produto.preco).toFixed(2)}</td>
+                    <td class="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300">${produto.estoque}</td>
+                    <td class="px-4 py-2 text-sm space-x-2 whitespace-nowrap">
+                        <button class="btn-action btn-edit inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Editar</button>
+                        <button class="btn-action btn-delete inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">Inativar</button>
                     </td>
                 `;
                 produtosTableBody.appendChild(tr);
             });
         } catch (error) {
             console.error(error.message);
-            alert('Não foi possível carregar a lista de produtos.');
+            produtosTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-red-500">Falha ao carregar produtos. Tente novamente.</td></tr>`;
+            // alert('Não foi possível carregar a lista de produtos.'); // Já mostra no console e na tabela
         }
     }
 
@@ -132,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             if (data.slug) {
                 verCatalogoBtn.href = `catalogo.html?empresa=${data.slug}`;
+                verCatalogoBtn.style.display = 'inline-flex'; // Garante que está visível
             } else {
                 verCatalogoBtn.style.display = 'none';
             }
@@ -141,116 +167,200 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- SUBMIT DO FORMULÁRIO DE ADICIONAR PRODUTO (AJUSTADO) ---
     addProdutoForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const formData = new FormData(addProdutoForm);
+        successMessageDiv.textContent = ''; // Limpa mensagens anteriores
+
+        // Cria o FormData e adiciona campos manualmente
+        const formData = new FormData();
+        formData.append('nome', document.getElementById('nome').value);
+        formData.append('codigo', document.getElementById('codigo').value);
+        formData.append('preco', document.getElementById('preco').value);
+        formData.append('estoque', document.getElementById('estoque').value);
+        formData.append('categoria', document.getElementById('categoria').value);
+        formData.append('descricao', document.getElementById('descricao').value);
+
+        // Adiciona os arquivos de imagem selecionados
+        const imageInput = document.getElementById('imagem');
+        if (imageInput.files) {
+            for (let i = 0; i < imageInput.files.length; i++) {
+                // A chave 'imagens' DEVE corresponder ao esperado pelo Multer no backend
+                formData.append('imagens', imageInput.files[i]);
+            }
+        }
+
+        // Log para depuração (ver no console do navegador)
+        console.log('--- Enviando FormData para criar produto ---');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}:`, value instanceof File ? value.name : value);
+        }
+
         try {
-            const response = await fetchWithAuth('/api/produtos', { method: 'POST', body: formData });
+            const response = await fetchWithAuth('/api/produtos', {
+                method: 'POST',
+                body: formData // Envia o objeto FormData
+                // O Content-Type é definido automaticamente pelo navegador para FormData
+            });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message);
-            
-            addProdutoForm.reset();
-            addPreviewsContainer.innerHTML = '';
+
+            if (!response.ok) {
+                console.error('Erro do servidor ao criar produto:', data);
+                throw new Error(data.message || `Erro ${response.status} ao salvar produto.`);
+            }
+
+            // Sucesso
+            addProdutoForm.reset(); // Limpa o formulário
+            addPreviewsContainer.innerHTML = ''; // Limpa os previews
             successMessageDiv.textContent = 'Produto salvo com sucesso!';
+            successMessageDiv.classList.remove('text-red-600'); // Garante estilo de sucesso
+            successMessageDiv.classList.add('text-green-600');
             setTimeout(() => { successMessageDiv.textContent = ''; }, 3000);
-            carregarProdutos();
+            carregarProdutos(); // Recarrega a lista
         } catch (error) {
-            alert(error.message);
+            console.error('Falha ao enviar formulário:', error);
+            successMessageDiv.textContent = `Erro: ${error.message}`; // Mostra erro
+            successMessageDiv.classList.remove('text-green-600');
+            successMessageDiv.classList.add('text-red-600'); // Estilo de erro
+            // alert(`Erro ao salvar produto: ${error.message}`); // Já mostra no successMessageDiv
         }
     });
+    // --- FIM SUBMIT ADICIONAR ---
 
     editForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const id = document.getElementById('edit-produto-id').value;
-        const formData = new FormData();
+        const formData = new FormData(); // Usar FormData para PUT também por causa das imagens
 
+        // Campos de texto
         formData.append('nome', document.getElementById('edit-nome').value);
         formData.append('codigo', document.getElementById('edit-codigo').value);
         formData.append('preco', document.getElementById('edit-preco').value);
         formData.append('estoque', document.getElementById('edit-estoque').value);
         formData.append('categoria', document.getElementById('edit-categoria').value);
         formData.append('descricao', document.getElementById('edit-descricao').value);
+        // Array de fotos a remover (enviado como string JSON)
         formData.append('fotosParaRemover', JSON.stringify(fotosParaRemover));
 
-        for (const file of editFileInput.files) {
-            formData.append('imagens', file);
+        // Novas imagens adicionadas
+        const editImageInput = document.getElementById('edit-imagem');
+        if (editImageInput.files) {
+            for (let i = 0; i < editImageInput.files.length; i++) {
+                formData.append('imagens', editImageInput.files[i]); // Chave 'imagens'
+            }
         }
 
+        console.log('--- Enviando FormData para atualizar produto ---');
+        for (let [key, value] of formData.entries()) {
+             console.log(`${key}:`, value instanceof File ? value.name : value);
+        }
+
+
         try {
-            const response = await fetchWithAuth(`/api/produtos/${id}`, { method: 'PUT', body: formData });
+            const response = await fetchWithAuth(`/api/produtos/${id}`, {
+                 method: 'PUT',
+                 body: formData
+                 // Content-Type é automático para FormData
+            });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.message);
+            if (!response.ok) {
+                 console.error('Erro do servidor ao atualizar produto:', data);
+                 throw new Error(data.message || `Erro ${response.status} ao atualizar produto.`);
+            }
+
             editModal.style.display = 'none';
             carregarProdutos();
+            fotosParaRemover = []; // Limpa o array após sucesso
         } catch (error) {
-            alert(error.message);
+            console.error('Falha ao atualizar produto:', error);
+            alert(`Erro ao atualizar produto: ${error.message}`);
         }
     });
 
+    // Eventos na tabela (Editar, Inativar)
     produtosTableBody.addEventListener('click', async (event) => {
         const target = event.target;
         const tr = target.closest('tr');
-        if (!tr) return;
+        if (!tr || !tr.dataset.produtoId) return; // Sai se não clicou em uma linha válida
+
         const produtoId = tr.dataset.produtoId;
 
+        // Botão Editar
         if (target.classList.contains('btn-edit')) {
             try {
-                editForm.reset();
-                editPreviewsContainer.innerHTML = '';
-                fotosParaRemover = [];
+                editForm.reset(); // Limpa form
+                editPreviewsContainer.innerHTML = ''; // Limpa previews
+                fotosParaRemover = []; // Limpa array de remoção
+                editFileInput.value = ''; // Limpa seleção de arquivos
 
                 const response = await fetchWithAuth(`/api/produtos/${produtoId}`);
                 if (!response.ok) throw new Error('Erro ao buscar dados do produto.');
                 const produto = await response.json();
 
+                // Preenche campos do formulário de edição
                 document.getElementById('edit-produto-id').value = produto.id;
-                document.getElementById('edit-nome').value = produto.nome;
-                document.getElementById('edit-codigo').value = produto.codigo;
-                document.getElementById('edit-preco').value = produto.preco;
-                document.getElementById('edit-estoque').value = produto.estoque;
-                document.getElementById('edit-categoria').value = produto.categoria;
-                document.getElementById('edit-descricao').value = produto.descricao;
+                document.getElementById('edit-nome').value = produto.nome || '';
+                document.getElementById('edit-codigo').value = produto.codigo || '';
+                document.getElementById('edit-preco').value = produto.preco || '';
+                document.getElementById('edit-estoque').value = produto.estoque || '';
+                document.getElementById('edit-categoria').value = produto.categoria || '';
+                document.getElementById('edit-descricao').value = produto.descricao || '';
 
-                if (produto.fotos && produto.fotos.length > 0) {
+                // Renderiza previews das fotos existentes
+                if (produto.fotos && Array.isArray(produto.fotos)) {
                     produto.fotos.forEach(foto => {
                         const div = document.createElement('div');
-                        div.className = 'foto-preview';
-                        div.innerHTML = `<img src="${foto.url}" alt="Preview"><button type="button" class="btn-remover-foto">&times;</button>`;
+                         // Usa Tailwind para layout e botão
+                        div.className = 'foto-preview relative w-[100px] h-[100px] rounded-lg overflow-hidden border dark:border-zinc-700';
+                        div.innerHTML = `
+                            <img src="${foto.url}" alt="Preview" class="w-full h-full object-cover">
+                            <button type="button" class="btn-remover-foto-existente absolute top-1 right-1 w-5 h-5 bg-red-600/80 text-white rounded-full flex items-center justify-center text-xs font-bold leading-none hover:bg-red-700" title="Remover imagem salva">&times;</button>
+                        `;
                         editPreviewsContainer.appendChild(div);
 
-                        div.querySelector('.btn-remover-foto').addEventListener('click', () => {
+                        // Adiciona evento para marcar foto para remoção
+                        div.querySelector('.btn-remover-foto-existente').addEventListener('click', (ev) => {
+                            ev.stopPropagation();
+                            // Adiciona ao array para enviar ao backend
                             fotosParaRemover.push({ id: foto.id, public_id: foto.public_id });
-                            div.remove();
+                            div.remove(); // Remove o preview da tela
+                             console.log("Fotos marcadas para remover:", fotosParaRemover);
                         });
                     });
                 }
 
-                editModal.style.display = 'flex';
+                editModal.style.display = 'flex'; // Abre o modal
             } catch (error) {
-                alert(error.message);
+                console.error("Erro ao abrir modal de edição:", error);
+                alert(`Não foi possível carregar os dados para edição: ${error.message}`);
             }
         }
-        
+
+        // Botão Inativar (anteriormente btn-delete)
         if (target.classList.contains('btn-delete')) {
-             if (confirm('Tem certeza que deseja INATIVAR este produto? Ele não aparecerá mais para novas vendas.')) {
+             if (confirm('Tem certeza que deseja INATIVAR este produto? Ele não aparecerá mais para novas vendas, mas ficará no histórico.')) {
                 try {
+                    // O endpoint DELETE agora significa INATIVAR no backend
                     const response = await fetchWithAuth(`/api/produtos/${produtoId}`, { method: 'DELETE' });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message);
-                    carregarProdutos();
+                    carregarProdutos(); // Recarrega a lista para remover o inativado
                 } catch (error) {
-                    alert(error.message);
+                     console.error("Erro ao inativar produto:", error);
+                    alert(`Erro ao inativar produto: ${error.message}`);
                 }
             }
         }
     });
-    
+
+    // Checkbox "Selecionar Todos"
     selecionarTodosCheck.addEventListener('change', (event) => {
-        document.querySelectorAll('.produto-checkbox').forEach(cb => {
+        produtosTableBody.querySelectorAll('.produto-checkbox').forEach(cb => {
             cb.checked = event.target.checked;
         });
     });
 
+    // Botão Inativar em Massa
     inativarMassaBtn.addEventListener('click', async () => {
         const ids = obterIdsSelecionados();
         if (ids.length === 0) {
@@ -263,31 +373,35 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetchWithAuth('/api/produtos/inativar-em-massa', {
                 method: 'PUT',
-                body: JSON.stringify({ ids })
+                body: JSON.stringify({ ids }) // Envia como JSON
+                 // Content-Type 'application/json' será adicionado por fetchWithAuth
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
             alert(data.message);
             carregarProdutos();
-            selecionarTodosCheck.checked = false;
+            selecionarTodosCheck.checked = false; // Desmarca o "selecionar todos"
         } catch (error) {
-            alert(error.message);
+             console.error("Erro ao inativar em massa:", error);
+            alert(`Erro ao inativar produtos: ${error.message}`);
         }
     });
 
+    // Botão Excluir em Massa
     excluirMassaBtn.addEventListener('click', async () => {
         const ids = obterIdsSelecionados();
         if (ids.length === 0) {
-            alert('Selecione pelo menos um produto para excluir.');
+            alert('Selecione pelo menos um produto para excluir permanentemente.');
             return;
         }
-        if (!confirm(`ATENÇÃO! Você está prestes a EXCLUIR PERMANENTEMENTE ${ids.length} produto(s). Essa ação é irreversível e só é possível para produtos SEM vendas associadas.`)) {
+        if (!confirm(`ATENÇÃO! Excluir ${ids.length} produto(s) permanentemente? Esta ação NÃO PODE ser desfeita e só funciona para produtos SEM vendas associadas.`)) {
             return;
         }
         try {
             const response = await fetchWithAuth('/api/produtos/excluir-em-massa', {
-                method: 'POST',
+                method: 'POST', // Método POST para exclusão em massa conforme rota
                 body: JSON.stringify({ ids })
+                 // Content-Type 'application/json'
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
@@ -295,10 +409,12 @@ document.addEventListener('DOMContentLoaded', () => {
             carregarProdutos();
             selecionarTodosCheck.checked = false;
         } catch (error) {
-            alert(error.message);
+             console.error("Erro ao excluir em massa:", error);
+            alert(`Erro ao excluir produtos: ${error.message}`);
         }
     });
 
+    // Botão Importar CSV
     importCsvBtn.addEventListener('click', async () => {
         const file = csvFileInput.files[0];
         if (!file) {
@@ -306,8 +422,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const formData = new FormData();
-        formData.append('csvfile', file);
+        formData.append('csvfile', file); // Nome deve corresponder ao Multer 'uploadCsv'
         try {
+            // Usa fetchWithAuth que agora lida com FormData corretamente
             const response = await fetchWithAuth('/api/produtos/importar-csv', {
                 method: 'POST',
                 body: formData
@@ -315,36 +432,55 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
             alert(data.message);
-            csvFileInput.value = '';
+            // Limpa o input e o nome do arquivo
+            csvFileInput.value = ''; // Reseta o input file
             csvFileNameSpan.textContent = 'Nenhum arquivo selecionado';
             csvFileNameSpan.style.fontStyle = 'italic';
-            carregarProdutos();
+            carregarProdutos(); // Recarrega a lista
         } catch (error) {
+             console.error("Erro ao importar CSV:", error);
             alert(`Erro ao importar: ${error.message}`);
         }
     });
 
+
+    // Botão Baixar Modelo CSV
     downloadCsvTemplateBtn.addEventListener('click', () => {
-        const csvContent = "nome,codigo,preco,estoque,descricao,categoria,foto_url,foto_public_id\n" +
-             "Exemplo Produto,EX001,99.99,10,Descrição de exemplo.,Exemplo Categoria,http://example.com/foto.jpg,exemplo_public_id\n";
+        const csvContent = "nome,codigo,preco,estoque,descricao,categoria,foto_url,foto_public_id\n" + // Headers corretos
+             "Exemplo Produto A,COD001,49.90,25,Camiseta de algodão confortável,Roupas,https://via.placeholder.com/150/0000FF/FFFFFF?text=FotoA,\n" + // Exemplo 1
+             "Exemplo Produto B,COD002,120.00,10,Calça jeans azul moderna,Roupas,https://via.placeholder.com/150/FF0000/FFFFFF?text=FotoB,\n"; // Exemplo 2
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", "modelo_produtos.csv");
+        link.setAttribute("download", "modelo_importacao_produtos.csv"); // Nome mais descritivo
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url); // Libera memória
     });
 
+    // Botão Cancelar Edição (Modal)
     cancelEditBtn.addEventListener('click', () => {
         editForm.reset();
         editModal.style.display = 'none';
+        fotosParaRemover = []; // Limpa array ao cancelar
     });
-    
-    logoutBtn.addEventListener('click', logout);
 
+    // Logout (verifica se o botão existe)
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    } else {
+         const sidebarFooter = document.querySelector('.sidebar-footer');
+         if (sidebarFooter) {
+              const logoutBtnInFooter = sidebarFooter.querySelector('.btn-logout');
+              if (logoutBtnInFooter) logoutBtnInFooter.addEventListener('click', logout);
+         }
+    }
+
+
+    // --- INICIALIZAÇÃO ---
     atualizarBotaoOrdenacao();
     carregarProdutos();
     configurarLinkCatalogo();
