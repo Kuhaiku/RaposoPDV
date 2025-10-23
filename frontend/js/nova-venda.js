@@ -1,26 +1,29 @@
-checkAuth();
+checkAuth(); // Verifica autenticação do funcionário
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- ELEMENTOS DO DOM ---
-    const selectClienteEl = document.getElementById('select-cliente');
-    const btnAbrirBuscaCliente = document.getElementById('btn-abrir-busca-cliente');
-    const modalBuscaCliente = document.getElementById('modal-busca-cliente');
-    const btnCancelarBuscaCliente = document.getElementById('btn-cancelar-busca-cliente');
-    const inputFiltroCliente = document.getElementById('input-filtro-cliente');
-    const listaClientesModal = document.getElementById('lista-clientes-modal');
-    const logoutBtn = document.getElementById('logout-btn');
-    const listaProdutosEl = document.getElementById('lista-produtos');
-    const buscaProdutoInput = document.getElementById('busca-produto');
+    const logoutBtn = document.getElementById('logout-btn'); // Assumindo que existe no seu layout global
+    const inputBuscaCliente = document.getElementById('input-busca-cliente');
+    const autocompleteResultados = document.getElementById('autocomplete-resultados');
+    const selectedClienteIdInput = document.getElementById('selected-cliente-id');
+    const clienteSelecionadoNomeEl = document.getElementById('cliente-selecionado-nome').querySelector('span');
+    const removerClienteBtn = document.getElementById('remover-cliente-btn');
+    const btnNovoCliente = document.getElementById('btn-novo-cliente');
+    const btnAbrirBuscaProduto = document.getElementById('btn-abrir-busca-produto');
     const carrinhoItensEl = document.getElementById('carrinho-itens');
+    const subtotalVendaEl = document.getElementById('subtotal-venda'); // Adicionado para subtotal
     const vendaTotalEl = document.getElementById('venda-total');
     const finalizarVendaBtn = document.getElementById('finalizar-venda-btn');
-    const btnNovoCliente = document.getElementById('btn-novo-cliente');
+    const metodosPagamentoContainer = document.getElementById('metodos-pagamento-container');
+    const valoresParciaisContainer = document.getElementById('valores-parciais-container');
+
+    // Modais
+    const productModal = document.getElementById('product-modal');
+    const inputBuscaProdutoModal = document.getElementById('input-busca-produto-modal');
+    const listaProdutosModalEl = document.getElementById('lista-produtos-modal');
     const modalNovoCliente = document.getElementById('modal-novo-cliente');
     const formNovoCliente = document.getElementById('form-novo-cliente');
     const btnCancelarNovoCliente = document.getElementById('btn-cancelar-novo-cliente');
-    const gerarReciboCheck = document.getElementById('gerar-recibo-check');
-    const metodosPagamentoContainer = document.querySelector('.metodos-pagamento');
-    const valoresParciaisContainer = document.getElementById('valores-parciais-container');
 
     // --- ESTADO DA APLICAÇÃO ---
     let produtosDisponiveis = [];
@@ -28,274 +31,477 @@ document.addEventListener('DOMContentLoaded', () => {
     let carrinho = [];
     let dadosEmpresa = {};
     let totalVenda = 0;
+    let buscaClienteTimeout;
 
     // --- FUNÇÕES DE LÓGICA E RENDERIZAÇÃO ---
-    async function carregarClientes(selecionarId = null) {
+
+    // Carrega clientes (para busca autocomplete)
+    async function carregarClientes() {
         try {
             const clientesRes = await fetchWithAuth('/api/clientes');
+            if (!clientesRes.ok) throw new Error('Falha ao carregar clientes');
             todosClientes = await clientesRes.json();
-            
-            selectClienteEl.innerHTML = '<option value="">Venda sem cliente</option>';
-            todosClientes.forEach(cliente => {
-                const option = document.createElement('option');
-                option.value = cliente.id;
-                option.textContent = cliente.nome;
-                selectClienteEl.appendChild(option);
-            });
-            
-            if (selecionarId) {
-                selectClienteEl.value = selecionarId;
-            }
         } catch (error) {
             console.error('Erro ao carregar clientes:', error);
+            // Poderia mostrar uma mensagem para o usuário
         }
     }
-    
-    function abrirModalBuscaCliente() {
-        renderizarListaClientesModal();
-        modalBuscaCliente.style.display = 'flex';
-        inputFiltroCliente.value = '';
-        inputFiltroCliente.focus();
-    }
 
-    function renderizarListaClientesModal(filtro = '') {
-        listaClientesModal.innerHTML = '';
-        const termoBusca = filtro.toLowerCase();
-        
-        const clientesFiltrados = todosClientes.filter(c => c.nome.toLowerCase().includes(termoBusca));
-
-        if (clientesFiltrados.length === 0) {
-            listaClientesModal.innerHTML = '<li class="sem-resultado">Nenhum cliente encontrado.</li>';
+    // Filtra e mostra resultados da busca de clientes
+    function mostrarResultadosBuscaCliente(termo) {
+        autocompleteResultados.innerHTML = '';
+        if (!termo) {
+            autocompleteResultados.classList.add('hidden');
             return;
         }
 
-        clientesFiltrados.forEach(cliente => {
-            const li = document.createElement('li');
-            li.textContent = cliente.nome;
-            li.dataset.id = cliente.id;
-            listaClientesModal.appendChild(li);
-        });
-    }
-    
-    function renderizarProdutos(produtos) {
-        listaProdutosEl.innerHTML = '';
-        const termoBusca = buscaProdutoInput.value.toLowerCase();
-        produtos
-            .filter(p => 
-                p.nome.toLowerCase().includes(termoBusca) ||
-                (p.codigo && p.codigo.toLowerCase().includes(termoBusca))
-            )
-            .forEach(produto => {
-                const itemNoCarrinho = carrinho.find(item => item.id === produto.id);
-                const quantidadeNoCarrinho = itemNoCarrinho ? itemNoCarrinho.quantidade : 0;
-                if (produto.estoque > quantidadeNoCarrinho) {
-                    const card = document.createElement('div');
-                    card.className = 'produto-selecao-card';
-                    card.dataset.produtoId = produto.id;
-                    card.innerHTML = `<img src="${produto.foto_url}" alt="${produto.nome}"><h4>${produto.nome}</h4><p>R$ ${parseFloat(produto.preco).toFixed(2)}</p>`;
-                    listaProdutosEl.appendChild(card);
-                }
+        const termoLower = termo.toLowerCase();
+        const filtrados = todosClientes.filter(c => c.nome.toLowerCase().includes(termoLower));
+
+        if (filtrados.length > 0) {
+            filtrados.forEach(cliente => {
+                const div = document.createElement('div');
+                div.className = 'cursor-pointer p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700';
+                div.textContent = cliente.nome;
+                div.dataset.id = cliente.id;
+                div.addEventListener('click', () => selecionarCliente(cliente));
+                autocompleteResultados.appendChild(div);
             });
+            autocompleteResultados.classList.remove('hidden');
+        } else {
+            autocompleteResultados.classList.add('hidden');
+        }
     }
 
+    // Seleciona um cliente da busca
+    function selecionarCliente(cliente) {
+        selectedClienteIdInput.value = cliente.id;
+        clienteSelecionadoNomeEl.textContent = cliente.nome;
+        removerClienteBtn.classList.remove('hidden');
+        inputBuscaCliente.value = cliente.nome; // Preenche o input
+        autocompleteResultados.classList.add('hidden');
+        inputBuscaCliente.disabled = true; // Desabilita busca após selecionar
+    }
+
+    // Remove o cliente selecionado
+    function removerClienteSelecionado() {
+        selectedClienteIdInput.value = '';
+        clienteSelecionadoNomeEl.textContent = 'Não selecionado';
+        removerClienteBtn.classList.add('hidden');
+        inputBuscaCliente.value = '';
+        inputBuscaCliente.disabled = false; // Habilita busca novamente
+        inputBuscaCliente.focus();
+    }
+
+    // Carrega produtos disponíveis (para o modal)
+    async function carregarProdutosDisponiveis() {
+        try {
+            const produtosRes = await fetchWithAuth('/api/produtos');
+             if (!produtosRes.ok) throw new Error('Falha ao carregar produtos');
+            produtosDisponiveis = await produtosRes.json();
+            // Inicialmente renderiza todos no modal
+            renderizarProdutosModal(produtosDisponiveis);
+        } catch (error) {
+            console.error('Erro ao carregar produtos:', error);
+             listaProdutosModalEl.innerHTML = '<p class="text-red-500 p-4">Erro ao carregar produtos.</p>';
+        }
+    }
+
+     // Renderiza produtos no MODAL de busca
+    function renderizarProdutosModal(produtos) {
+        listaProdutosModalEl.innerHTML = '';
+        const termoBusca = inputBuscaProdutoModal.value.toLowerCase();
+
+        const produtosFiltrados = produtos.filter(p =>
+            p.nome.toLowerCase().includes(termoBusca) ||
+            (p.codigo && p.codigo.toLowerCase().includes(termoBusca))
+        );
+
+        if (produtosFiltrados.length === 0) {
+             listaProdutosModalEl.innerHTML = '<p class="text-zinc-500 p-4">Nenhum produto encontrado.</p>';
+             return;
+        }
+
+        produtosFiltrados.forEach(produto => {
+            const itemNoCarrinho = carrinho.find(item => item.id === produto.id);
+            const quantidadeNoCarrinho = itemNoCarrinho ? itemNoCarrinho.quantidade : 0;
+            const estoqueDisponivel = produto.estoque - quantidadeNoCarrinho;
+
+            if (estoqueDisponivel > 0) {
+                 const div = document.createElement('div');
+                 div.className = 'bg-white dark:bg-zinc-900 p-3 rounded-xl flex items-center gap-3 shadow-sm produto-selecao-modal cursor-pointer hover:ring-2 hover:ring-primary/50';
+                 div.dataset.produtoId = produto.id;
+                 div.innerHTML = `
+                      <img class="w-14 h-14 rounded-lg object-cover flex-shrink-0" src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}"/>
+                      <div class="flex-1 min-w-0">
+                           <p class="font-semibold text-secondary dark:text-zinc-100 truncate">${produto.nome}</p>
+                           <p class="text-sm text-zinc-500 dark:text-zinc-400">R$ ${parseFloat(produto.preco).toFixed(2)}</p>
+                           <p class="text-xs text-zinc-400">Estoque: ${estoqueDisponivel}</p>
+                      </div>
+                      <span class="material-symbols-outlined text-primary add-produto-modal-btn">add_circle</span>
+                 `;
+                 div.addEventListener('click', () => adicionarAoCarrinho(produto.id));
+                 listaProdutosModalEl.appendChild(div);
+            }
+        });
+    }
+
+    // Renderiza os itens no carrinho (na tela principal)
     function renderizarCarrinho() {
         carrinhoItensEl.innerHTML = '';
         totalVenda = 0;
+        const carrinhoVazioEl = carrinhoItensEl.querySelector('.carrinho-vazio');
+
         if (carrinho.length === 0) {
-            carrinhoItensEl.innerHTML = '<p class="carrinho-vazio">Selecione produtos para adicioná-los à venda.</p>';
+            if (!carrinhoVazioEl) { // Adiciona mensagem se não existir
+                 carrinhoItensEl.innerHTML = '<p class="text-zinc-500 dark:text-zinc-400 text-center py-4 carrinho-vazio">Nenhum produto adicionado.</p>';
+            }
             finalizarVendaBtn.disabled = true;
         } else {
-            finalizarVendaBtn.disabled = false;
+             if (carrinhoVazioEl) carrinhoVazioEl.remove(); // Remove mensagem de vazio
+             finalizarVendaBtn.disabled = false;
+
             carrinho.forEach(item => {
                 const itemEl = document.createElement('div');
-                itemEl.className = 'carrinho-item';
+                itemEl.className = 'bg-white dark:bg-zinc-900 p-3 rounded-xl flex items-center gap-3 shadow-sm carrinho-item';
                 itemEl.dataset.produtoId = item.id;
                 const subtotal = item.preco * item.quantidade;
                 totalVenda += subtotal;
-                const isEstoqueMaximo = item.quantidade >= item.estoque;
-                itemEl.innerHTML = `<div class="carrinho-item-info"><div class="carrinho-item-nome">${item.nome}</div><div class="carrinho-item-preco">R$ ${parseFloat(item.preco).toFixed(2)}</div></div><div class="carrinho-item-actions"><button class="btn-qty-change" data-change="-1">-</button><span>${item.quantidade}</span><button class="btn-qty-change" data-change="1" ${isEstoqueMaximo ? 'disabled' : ''}>+</button><button class="btn-remover-item">&times;</button></div>`;
+                const produtoOriginal = produtosDisponiveis.find(p => p.id === item.id);
+                const estoqueOriginal = produtoOriginal ? produtoOriginal.estoque : 0; // Pega estoque original
+                const isEstoqueMaximo = item.quantidade >= estoqueOriginal;
+
+                itemEl.innerHTML = `
+                    <img class="w-14 h-14 rounded-lg object-cover flex-shrink-0" src="${item.foto_url || 'img/placeholder.png'}" alt="${item.nome}"/>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-secondary dark:text-zinc-100 truncate">${item.nome}</p>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400">R$ ${parseFloat(item.preco).toFixed(2)}</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button class="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 text-secondary dark:text-zinc-300 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors btn-qty-change" data-change="-1">-</button>
+                        <span class="w-6 text-center font-bold text-secondary dark:text-white">${item.quantidade}</span>
+                        <button class="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 text-secondary dark:text-zinc-300 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors btn-qty-change" data-change="1" ${isEstoqueMaximo ? 'disabled' : ''}>+</button>
+                    </div>
+                    <button class="text-red-500 hover:text-red-700 transition-colors flex-shrink-0 btn-remover-item">
+                        <span class="material-symbols-outlined text-xl">delete</span>
+                    </button>
+                `;
                 carrinhoItensEl.appendChild(itemEl);
             });
         }
+        subtotalVendaEl.textContent = `R$ ${totalVenda.toFixed(2)}`;
         vendaTotalEl.textContent = `R$ ${totalVenda.toFixed(2)}`;
+        // Atualizar renderização de pagamentos sempre que o carrinho mudar
         renderizarPagamentos();
+         // Atualiza a lista de produtos no modal para refletir o estoque disponível
+        renderizarProdutosModal(produtosDisponiveis);
     }
 
+     // Renderiza inputs de pagamento parcial se necessário
     function renderizarPagamentos() {
-        const metodosSelecionados = document.querySelectorAll('input[name="pagamento"]:checked');
-        valoresParciaisContainer.innerHTML = '';
-        if (metodosSelecionados.length > 1) {
-            metodosSelecionados.forEach(input => {
-                const valor = input.value;
+        const checkboxesPagamento = metodosPagamentoContainer.querySelectorAll('input[name="pagamento"]:checked');
+        valoresParciaisContainer.innerHTML = ''; // Limpa antes de renderizar
+
+        // Adiciona/Remove a classe 'active' nos botões de pagamento
+        metodosPagamentoContainer.querySelectorAll('.payment-button').forEach(label => {
+            const input = label.querySelector('input');
+            if (input.checked) {
+                label.classList.add('active');
+            } else {
+                label.classList.remove('active');
+            }
+        });
+
+        if (checkboxesPagamento.length > 1) {
+            checkboxesPagamento.forEach(input => {
+                const valorMetodo = input.value;
                 const div = document.createElement('div');
-                div.className = 'input-group';
+                div.className = 'relative'; // Para posicionar o R$
                 div.innerHTML = `
-                    <label for="valor-${valor.toLowerCase()}">Valor em ${valor}</label>
-                    <input type="number" step="0.01" id="valor-${valor.toLowerCase()}" class="valor-parcial" data-metodo="${valor}" placeholder="0.00">
+                    <label for="valor-${valorMetodo.toLowerCase().replace(' ', '-')}" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Valor em ${valorMetodo}</label>
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6"> <span class="text-zinc-500 sm:text-sm">R$</span>
+                    </div>
+                    <input type="number" step="0.01" min="0.01" id="valor-${valorMetodo.toLowerCase().replace(' ', '-')}" class="valor-parcial form-input block w-full pl-7 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg text-secondary dark:text-white bg-white dark:bg-zinc-900 placeholder:text-zinc-500 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" data-metodo="${valorMetodo}" placeholder="0,00">
                 `;
                 valoresParciaisContainer.appendChild(div);
             });
         }
     }
 
-    async function gerarRecibo(vendaId, somaPagamentos) {
-        try {
-            const response = await fetchWithAuth(`/api/vendas/${vendaId}`);
-            if (!response.ok) throw new Error('Não foi possível buscar os dados para o recibo.');
-            const detalhesVenda = await response.json();
-            const reciboHeader = document.querySelector('#recibo-template .recibo-header');
-            reciboHeader.innerHTML = `<h2>${dadosEmpresa.nome_empresa || ''}</h2><p>${dadosEmpresa.endereco_comercial || ''}</p><p>${dadosEmpresa.telefone_comercial || ''}</p><p>Comprovante de Venda</p>`;
-            document.getElementById('recibo-venda-id').textContent = `#${detalhesVenda.id}`;
-            document.getElementById('recibo-data').textContent = new Date(detalhesVenda.data_venda).toLocaleString('pt-BR');
-            document.getElementById('recibo-cliente').textContent = detalhesVenda.cliente_nome || 'Não identificado';
-            document.getElementById('recibo-vendedor').textContent = detalhesVenda.usuario_nome;
-            const reciboItensBody = document.getElementById('recibo-itens');
-            reciboItensBody.innerHTML = '';
-            let totalProdutos = 0;
-            detalhesVenda.itens.forEach(item => {
-                const subtotal = item.quantidade * item.preco_unitario;
-                totalProdutos += subtotal;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${item.produto_nome}</td><td style="text-align: center;">${item.quantidade}</td><td>R$ ${parseFloat(item.preco_unitario).toFixed(2)}</td><td style="text-align: right;">${subtotal.toFixed(2)}</td>`;
-                reciboItensBody.appendChild(tr);
-            });
-            const taxas = somaPagamentos - totalProdutos;
-            if (taxas > 0.001) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>Taxas/Acréscimos</td><td></td><td></td><td style="text-align: right;">${taxas.toFixed(2)}</td>`;
-                reciboItensBody.appendChild(tr);
-            }
-            const reciboPagamentosDiv = document.getElementById('recibo-pagamentos');
-            reciboPagamentosDiv.innerHTML = '<h4 style="margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">Pagamentos:</h4>';
-            detalhesVenda.pagamentos.forEach(p => {
-                reciboPagamentosDiv.innerHTML += `<p style="margin: 2px 0;">- ${p.metodo}: R$ ${parseFloat(p.valor).toFixed(2)}</p>`;
-            });
-            document.getElementById('recibo-total-valor').textContent = `R$ ${somaPagamentos.toFixed(2)}`;
-            const elementoRecibo = document.getElementById('recibo-template');
-            const canvas = await html2canvas(elementoRecibo);
-            const link = document.createElement('a');
-            link.href = canvas.toDataURL('image/png');
-            link.download = `Recibo-Venda_${detalhesVenda.id}.png`;
-            link.click();
-        } catch (error) {
-            console.error('Erro ao gerar recibo:', error);
-            alert('A venda foi registrada, mas houve um erro ao gerar o recibo.');
-        }
-    }
-    
+
+    // Adiciona produto ao carrinho
     function adicionarAoCarrinho(produtoId) {
         const produto = produtosDisponiveis.find(p => p.id === produtoId);
         if (!produto) return;
-        if (produto.estoque <= 0) { alert(`O produto "${produto.nome}" está fora de estoque.`); return; }
+
         const itemNoCarrinho = carrinho.find(item => item.id === produtoId);
+        const quantidadeNoCarrinho = itemNoCarrinho ? itemNoCarrinho.quantidade : 0;
+
+        if (produto.estoque <= quantidadeNoCarrinho) {
+            alert(`Estoque máximo atingido para "${produto.nome}".`);
+            return;
+        }
+
         if (itemNoCarrinho) {
-            if (itemNoCarrinho.quantidade < produto.estoque) { itemNoCarrinho.quantidade++; } else { alert(`Estoque máximo atingido para "${produto.nome}".`); }
+            itemNoCarrinho.quantidade++;
         } else {
-            carrinho.push({ ...produto, quantidade: 1 });
+            // Adiciona cópia do produto com quantidade 1
+            carrinho.push({
+                id: produto.id,
+                nome: produto.nome,
+                preco: produto.preco,
+                foto_url: produto.foto_url, // Guarda a foto para exibir no carrinho
+                // Não precisa guardar estoque aqui, vamos pegar do produtosDisponiveis
+                quantidade: 1
+            });
         }
         renderizarCarrinho();
-        renderizarProdutos(produtosDisponiveis);
-    }
-    
-    function alterarQuantidade(produtoId, mudanca) {
-        const itemNoCarrinho = carrinho.find(item => item.id === produtoId);
-        if (!itemNoCarrinho) return;
-        if (mudanca > 0) {
-            if (itemNoCarrinho.quantidade < itemNoCarrinho.estoque) { itemNoCarrinho.quantidade += mudanca; } else { alert(`Estoque máximo atingido para "${itemNoCarrinho.nome}".`); }
-        } else {
-            itemNoCarrinho.quantidade += mudanca;
-        }
-        if (itemNoCarrinho.quantidade <= 0) { removerDoCarrinho(produtoId); } else { renderizarCarrinho(); renderizarProdutos(produtosDisponiveis); }
+         // Não precisa fechar o modal, permite adicionar múltiplos produtos
+        // productModal.classList.remove('is-open');
     }
 
+    // Altera quantidade no carrinho
+    function alterarQuantidade(produtoId, mudanca) {
+        const itemIndex = carrinho.findIndex(item => item.id === produtoId);
+        if (itemIndex === -1) return;
+
+        const item = carrinho[itemIndex];
+        const produtoOriginal = produtosDisponiveis.find(p => p.id === produtoId);
+        const estoqueOriginal = produtoOriginal ? produtoOriginal.estoque : 0;
+
+        const novaQuantidade = item.quantidade + mudanca;
+
+        if (novaQuantidade <= 0) {
+            // Remove o item se a quantidade for zero ou menos
+            carrinho.splice(itemIndex, 1);
+        } else if (novaQuantidade > estoqueOriginal) {
+            alert(`Estoque máximo (${estoqueOriginal}) atingido para "${item.nome}".`);
+            // Mantém a quantidade no máximo do estoque
+            item.quantidade = estoqueOriginal;
+        } else {
+            item.quantidade = novaQuantidade;
+        }
+        renderizarCarrinho();
+    }
+
+    // Remove item do carrinho
     function removerDoCarrinho(produtoId) {
         carrinho = carrinho.filter(item => item.id !== produtoId);
         renderizarCarrinho();
-        renderizarProdutos(produtosDisponiveis);
     }
 
+    // Inicializa a página
     async function inicializar() {
+        await carregarClientes();
+        await carregarProdutosDisponiveis(); // Carrega produtos para o modal
+        renderizarCarrinho(); // Garante que o estado inicial do carrinho seja exibido
+
+         // Carrega dados da empresa (pode ser útil para recibo ou outras infos)
         try {
-            const [produtosRes, empresaRes] = await Promise.all([
-                fetchWithAuth('/api/produtos'),
-                fetchWithAuth('/api/empresas/meus-dados')
-            ]);
-            produtosDisponiveis = await produtosRes.json();
-            dadosEmpresa = await empresaRes.json();
-            renderizarProdutos(produtosDisponiveis);
-            await carregarClientes();
+             const empresaRes = await fetchWithAuth('/api/empresas/meus-dados');
+             if (empresaRes.ok) dadosEmpresa = await empresaRes.json();
         } catch (error) {
-            console.error('Erro ao inicializar página:', error);
-            alert('Não foi possível carregar os dados. Tente novamente.');
+             console.error('Erro ao buscar dados da empresa:', error);
         }
     }
 
     // --- EVENT LISTENERS ---
-    buscaProdutoInput.addEventListener('input', () => renderizarProdutos(produtosDisponiveis));
-    btnAbrirBuscaCliente.addEventListener('click', abrirModalBuscaCliente);
-    inputFiltroCliente.addEventListener('keyup', () => renderizarListaClientesModal(inputFiltroCliente.value));
-    listaClientesModal.addEventListener('click', (e) => { if (e.target.tagName === 'LI' && e.target.dataset.id) { const clienteId = e.target.dataset.id; selectClienteEl.value = clienteId; modalBuscaCliente.style.display = 'none'; } });
-    btnCancelarBuscaCliente.addEventListener('click', () => { modalBuscaCliente.style.display = 'none'; });
-    modalBuscaCliente.addEventListener('click', (e) => { if (e.target === modalBuscaCliente) { modalBuscaCliente.style.display = 'none'; } });
 
-    finalizarVendaBtn.addEventListener('click', async () => {
-        if (carrinho.length === 0) return;
-        const clienteId = selectClienteEl.value ? parseInt(selectClienteEl.value) : null;
-        const itensVenda = carrinho.map(item => ({ produto_id: item.id, quantidade: item.quantidade }));
-        const metodosSelecionados = document.querySelectorAll('input[name="pagamento"]:checked');
-        if (metodosSelecionados.length === 0) { return alert('Selecione pelo menos uma forma de pagamento.'); }
-        let pagamentos = [];
-        let somaPagamentos = 0;
-        if (metodosSelecionados.length === 1) {
-            pagamentos.push({ metodo: metodosSelecionados[0].value, valor: totalVenda });
-            somaPagamentos = totalVenda;
-        } else {
-            const inputsParciais = document.querySelectorAll('.valor-parcial');
-            let algumValorPreenchido = false;
-            inputsParciais.forEach(input => {
-                const valor = parseFloat(input.value) || 0;
-                if (valor > 0) { pagamentos.push({ metodo: input.dataset.metodo, valor: valor }); somaPagamentos += valor; algumValorPreenchido = true; }
-            });
-            if (!algumValorPreenchido) { return alert('Preencha o valor para cada forma de pagamento selecionada.'); }
-        }
-        if (Math.abs(somaPagamentos - totalVenda) > 0.01) { if (!confirm(`A soma dos pagamentos (${somaPagamentos.toFixed(2)}) é diferente do total da venda (${totalVenda.toFixed(2)}). Deseja continuar mesmo assim?`)) { return; } }
-        try {
-            finalizarVendaBtn.disabled = true; finalizarVendaBtn.textContent = 'Processando...';
-            const response = await fetchWithAuth('/api/vendas', { method: 'POST', body: JSON.stringify({ cliente_id: clienteId, itens: itensVenda, pagamentos }) });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message);
-            if (gerarReciboCheck.checked) { alert('Venda registrada com sucesso! O recibo será baixado.'); await gerarRecibo(data.vendaId, somaPagamentos); } else { alert('Venda registrada com sucesso!'); }
-            carrinho = [];
-            metodosSelecionados.forEach(c => c.checked = false);
-            await inicializar();
-            renderizarCarrinho();
-        } catch (error) {
-            alert(`Erro ao finalizar venda: ${error.message}`);
-        } finally {
-            finalizarVendaBtn.disabled = false; finalizarVendaBtn.textContent = 'Finalizar Venda';
+    // Busca de Cliente Autocomplete
+    inputBuscaCliente.addEventListener('keyup', (e) => {
+        clearTimeout(buscaClienteTimeout);
+        const termo = e.target.value;
+        // Espera um pouco antes de buscar para não sobrecarregar
+        buscaClienteTimeout = setTimeout(() => {
+            mostrarResultadosBuscaCliente(termo);
+        }, 300);
+    });
+     // Esconde autocomplete se clicar fora
+    document.addEventListener('click', (e) => {
+        if (!inputBuscaCliente.contains(e.target) && !autocompleteResultados.contains(e.target)) {
+            autocompleteResultados.classList.add('hidden');
         }
     });
+    removerClienteBtn.addEventListener('click', removerClienteSelecionado);
 
-    logoutBtn.addEventListener('click', logout);
-    listaProdutosEl.addEventListener('click', (event) => { const card = event.target.closest('.produto-selecao-card'); if (card) adicionarAoCarrinho(parseInt(card.dataset.produtoId)); });
-    carrinhoItensEl.addEventListener('click', (event) => { const target = event.target; const itemEl = target.closest('.carrinho-item'); if (!itemEl) return; const produtoId = parseInt(itemEl.dataset.produtoId); if (target.classList.contains('btn-qty-change')) { alterarQuantidade(produtoId, parseInt(target.dataset.change)); } if (target.classList.contains('btn-remover-item')) { removerDoCarrinho(produtoId); } });
-    btnNovoCliente.addEventListener('click', () => { modalNovoCliente.style.display = 'flex'; });
-    btnCancelarNovoCliente.addEventListener('click', () => { modalNovoCliente.style.display = 'none'; });
-    metodosPagamentoContainer.addEventListener('change', renderizarPagamentos);
+    // Modal de Novo Cliente
+    btnNovoCliente.addEventListener('click', () => {
+        formNovoCliente.reset(); // Limpa o formulário
+        modalNovoCliente.classList.add('is-open');
+    });
+    btnCancelarNovoCliente.addEventListener('click', () => {
+        modalNovoCliente.classList.remove('is-open');
+    });
+     // Fechar modal clicando fora
+    modalNovoCliente.addEventListener('click', (e) => {
+        if (e.target === modalNovoCliente) {
+             modalNovoCliente.classList.remove('is-open');
+        }
+    });
     formNovoCliente.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const novoCliente = { nome: document.getElementById('modal-nome').value, telefone: document.getElementById('modal-telefone').value, cpf: document.getElementById('modal-cpf').value };
+        const novoCliente = {
+            nome: document.getElementById('modal-nome').value,
+            telefone: document.getElementById('modal-telefone').value,
+            cpf: document.getElementById('modal-cpf').value // Adicionado CPF
+        };
         try {
-            const response = await fetchWithAuth('/api/clientes', { method: 'POST', body: JSON.stringify(novoCliente) });
+            const response = await fetchWithAuth('/api/clientes', {
+                method: 'POST',
+                body: JSON.stringify(novoCliente)
+            });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
-            await carregarClientes(data.clienteId);
-            modalNovoCliente.style.display = 'none';
-            formNovoCliente.reset();
+
+            // Recarrega a lista de clientes E seleciona o recém-criado
+            await carregarClientes();
+            const clienteCriado = todosClientes.find(c => c.id === data.clienteId);
+            if (clienteCriado) selecionarCliente(clienteCriado);
+
+            modalNovoCliente.classList.remove('is-open');
         } catch (error) {
-            alert(error.message);
+            alert(`Erro ao salvar cliente: ${error.message}`);
         }
     });
 
+    // Modal de Busca de Produto
+    btnAbrirBuscaProduto.addEventListener('click', () => {
+        inputBuscaProdutoModal.value = ''; // Limpa busca anterior
+        renderizarProdutosModal(produtosDisponiveis); // Mostra todos disponíveis
+        productModal.classList.add('is-open');
+        inputBuscaProdutoModal.focus();
+    });
+    inputBuscaProdutoModal.addEventListener('keyup', () => {
+         renderizarProdutosModal(produtosDisponiveis);
+    });
+     // Fechar modal clicando fora
+     productModal.addEventListener('click', (e) => {
+        // Verifica se o clique foi no overlay e não em um filho dele
+        if (e.target === productModal) {
+            productModal.classList.remove('is-open');
+        }
+    });
+
+    // Ações no Carrinho (delegação de eventos)
+    carrinhoItensEl.addEventListener('click', (event) => {
+        const target = event.target;
+        const itemEl = target.closest('.carrinho-item');
+        if (!itemEl) return;
+
+        const produtoId = parseInt(itemEl.dataset.produtoId);
+
+        if (target.closest('.btn-qty-change')) {
+            const change = parseInt(target.closest('.btn-qty-change').dataset.change);
+            alterarQuantidade(produtoId, change);
+        } else if (target.closest('.btn-remover-item')) {
+            removerDoCarrinho(produtoId);
+        }
+    });
+
+     // Seleção de Método de Pagamento
+    metodosPagamentoContainer.addEventListener('change', renderizarPagamentos);
+
+    // Finalizar Venda
+    finalizarVendaBtn.addEventListener('click', async () => {
+        if (carrinho.length === 0) {
+             alert('Adicione produtos ao carrinho antes de finalizar.');
+             return;
+        }
+
+        const clienteId = selectedClienteIdInput.value ? parseInt(selectedClienteIdInput.value) : null;
+        const itensVenda = carrinho.map(item => ({ produto_id: item.id, quantidade: item.quantidade }));
+        const checkboxesPagamento = metodosPagamentoContainer.querySelectorAll('input[name="pagamento"]:checked');
+
+        if (checkboxesPagamento.length === 0) {
+            alert('Selecione pelo menos uma forma de pagamento.');
+            return;
+        }
+
+        let pagamentos = [];
+        let somaPagamentos = 0;
+        let erroPagamentoParcial = false;
+
+        if (checkboxesPagamento.length === 1) {
+            // Pagamento único
+            const metodo = checkboxesPagamento[0].value;
+            pagamentos.push({ metodo: metodo, valor: totalVenda });
+            somaPagamentos = totalVenda;
+        } else {
+            // Pagamento parcial
+            const inputsParciais = valoresParciaisContainer.querySelectorAll('.valor-parcial');
+            inputsParciais.forEach(input => {
+                const valor = parseFloat(input.value) || 0;
+                if (valor < 0.01 && input.required) { // Considerar validação se necessário
+                     erroPagamentoParcial = true;
+                     input.classList.add('border-red-500'); // Destaca campo inválido
+                } else if (valor >= 0.01) {
+                     pagamentos.push({ metodo: input.dataset.metodo, valor: valor });
+                     somaPagamentos += valor;
+                     input.classList.remove('border-red-500');
+                } else {
+                     input.classList.remove('border-red-500');
+                }
+            });
+
+            if (erroPagamentoParcial) {
+                 alert('Preencha os valores para todas as formas de pagamento selecionadas.');
+                 return;
+            }
+             if (pagamentos.length === 0) { // Garante que pelo menos um valor foi inserido
+                 alert('Insira o valor para pelo menos uma das formas de pagamento selecionadas.');
+                 return;
+             }
+        }
+
+        // Verifica se a soma dos pagamentos bate com o total (com uma pequena margem para erros de ponto flutuante)
+        if (Math.abs(somaPagamentos - totalVenda) > 0.01) {
+            if (!confirm(`A soma dos pagamentos (R$ ${somaPagamentos.toFixed(2)}) é diferente do total da venda (R$ ${totalVenda.toFixed(2)}). Deseja continuar mesmo assim?`)) {
+                return;
+            }
+             // Ajusta o valor_total da venda para ser a soma dos pagamentos, se o usuário confirmar
+             // Nota: O backend atualmente usa a soma dos preços dos itens. Se precisar que o total seja a soma dos pagamentos, o backend precisa ser ajustado.
+             // Para esta implementação, manteremos o valor_total como a soma dos itens.
+        }
+
+        // Envia para o backend
+        try {
+            finalizarVendaBtn.disabled = true;
+            finalizarVendaBtn.innerHTML = `
+                 <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                 </svg>
+                 Processando...`;
+
+            const response = await fetchWithAuth('/api/vendas', {
+                method: 'POST',
+                body: JSON.stringify({
+                    cliente_id: clienteId,
+                    itens: itensVenda,
+                    pagamentos: pagamentos // Envia array de pagamentos
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Erro desconhecido ao registrar venda.');
+
+            // Redireciona para a página de sucesso/compartilhamento
+            window.location.href = `venda-concluida.html?id=${data.vendaId}`;
+
+            // Limpeza não é mais necessária aqui, pois há redirecionamento
+
+        } catch (error) {
+            alert(`Erro ao finalizar venda: ${error.message}`);
+            finalizarVendaBtn.disabled = false;
+            finalizarVendaBtn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Finalizar Venda';
+        }
+    });
+
+    // Logout (se o botão existir no seu layout global)
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+
+    // --- INICIALIZAÇÃO DA PÁGINA ---
     inicializar();
 });
