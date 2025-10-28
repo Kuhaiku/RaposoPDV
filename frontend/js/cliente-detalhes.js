@@ -16,26 +16,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const historicoPlaceholder = document.getElementById('historico-placeholder');
     const gerarRelatorioBtn = document.getElementById('gerar-relatorio-btn');
     const selecionarTodasCheck = document.getElementById('selecionar-todas');
-    const selectAllContainer = document.getElementById('select-all-container'); // Container do checkbox "Selecionar todas"
-    const reciboEmpresaNomeRelatorio = document.getElementById('recibo-empresa-nome-relatorio'); // Nome da empresa no template do relatório
+    const selectAllContainer = document.getElementById('select-all-container');
+    const reciboEmpresaNomeRelatorio = document.getElementById('recibo-empresa-nome-relatorio');
+
+    // --- NOVOS Seletores para Edição/Exclusão ---
+    const editClientButton = document.getElementById('edit-client-button');
+    const deleteClientButton = document.getElementById('delete-client-button');
+    const editClientDetailsModal = document.getElementById('edit-client-details-modal');
+    const editClientDetailsForm = document.getElementById('edit-client-details-form');
+    const editClientDetailsMessage = document.getElementById('edit-client-details-message');
+    const closeModalButtons = document.querySelectorAll('.close-modal-btn'); // Botões de fechar
 
     let currentClienteData = null; // Armazena dados do cliente
     let currentVendasData = []; // Armazena dados das vendas detalhadas
+    let clienteId = null; // Armazena o ID do cliente da página
 
     // --- Funções Auxiliares ---
-    const formatCurrency = (value) => {
+    const formatCurrency = (value) => { /* ... (igual) ... */
         const number = parseFloat(value) || 0;
         return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
-    const formatDateTime = (dataISO) => {
+    const formatDateTime = (dataISO) => { /* ... (igual) ... */
         if (!dataISO) return 'N/A';
         return new Date(dataISO).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
     };
+    // Funções de Modal (openModal, closeModal, showModalMessage, clearModalMessage)
+    const showModalMessage = (element, message, isError = false) => {
+        if (!element) return;
+        element.textContent = message;
+        element.classList.remove('hidden', 'text-green-600', 'text-red-600');
+        element.classList.add(isError ? 'text-red-600' : 'text-green-600');
+    };
+    const clearModalMessage = (element) => {
+        if (!element) return;
+        element.textContent = '';
+        element.classList.add('hidden');
+    };
+    const openModal = (modalElement) => {
+        if (modalElement) {
+             modalElement.classList.add('is-open');
+             document.body.style.overflow = 'hidden';
+        }
+    };
+    const closeModal = (modalElement) => {
+        if (modalElement) {
+             modalElement.classList.remove('is-open');
+             document.body.style.overflow = '';
+             // Limpa mensagem específica do modal de detalhes ao fechar
+             if(editClientDetailsMessage) clearModalMessage(editClientDetailsMessage);
+        }
+    };
+
 
     // --- Funções Principais ---
 
-    // Gera o relatório PDF/Imagem das vendas selecionadas
-    async function gerarRelatorio() {
+    // Gera o relatório PDF/Imagem (igual)
+    async function gerarRelatorio() { /* ... (código existente sem alterações) ... */
         const checkboxesMarcadas = historicoComprasList.querySelectorAll('.venda-checkbox:checked');
         if (checkboxesMarcadas.length === 0) {
             alert('Por favor, selecione pelo menos uma venda para gerar o relatório.');
@@ -50,13 +86,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Filtra os detalhes das vendas já carregadas (currentVendasData)
-            // Se currentVendasData não tiver os itens, precisaríamos buscar novamente
             const vendasParaRelatorio = currentVendasData.filter(venda => vendaIdsSelecionadas.includes(String(venda.id)));
 
             // Preenche o template oculto do recibo/relatório
             document.getElementById('recibo-cliente-nome').textContent = currentClienteData?.nome || 'Cliente';
-            // Pega nome da empresa (se disponível, buscar via API se necessário)
-            reciboEmpresaNomeRelatorio.textContent = localStorage.getItem('nomeEmpresa') || 'Relatório de Vendas'; // Pega do localStorage ou usa padrão
+            reciboEmpresaNomeRelatorio.textContent = localStorage.getItem('nomeEmpresa') || 'Relatório de Vendas';
 
             const reciboVendasContainer = document.getElementById('recibo-vendas-container');
             reciboVendasContainer.innerHTML = '';
@@ -64,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             vendasParaRelatorio.forEach(venda => {
                 let itensHtml = '';
-                // Assume que venda.itens está disponível. Se não estiver, buscaria aqui.
                 if (venda.itens && venda.itens.length > 0) {
                     venda.itens.forEach(item => {
                         const subtotal = (item.quantidade || 0) * (item.preco_unitario || 0);
@@ -74,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     itensHtml = '<tr><td colspan="3">Nenhum item detalhado.</td></tr>';
                 }
 
-                // Adiciona informações de pagamento
                  let pagamentosHtml = '<p style="margin-top: 5px;"><strong>Pagamento:</strong> ';
                  if (venda.pagamentos && venda.pagamentos.length > 0) {
                       pagamentosHtml += venda.pagamentos.map(p => `${p.metodo}: ${formatCurrency(p.valor)}`).join(' / ');
@@ -82,7 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
                       pagamentosHtml += 'N/A';
                  }
                  pagamentosHtml += '</p>';
-
 
                 reciboVendasContainer.innerHTML += `
                     <div class="recibo-info" style="border-top: 2px solid #000; padding-top: 15px; margin-top: 15px;">
@@ -102,11 +133,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('recibo-total-geral').textContent = formatCurrency(totalGeral);
             document.getElementById('recibo-data-geracao').textContent = new Date().toLocaleString('pt-BR');
 
-            // Gera a imagem usando html2canvas
             const elementoRecibo = document.getElementById('recibo-template');
             if (!elementoRecibo) throw new Error("Elemento do template de recibo não encontrado.");
 
-            const canvas = await html2canvas(elementoRecibo, { scale: 2, backgroundColor: '#ffffff', useCORS: true }); // useCORS pode ajudar com imagens externas
+            const canvas = await html2canvas(elementoRecibo, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/png');
             link.download = `Relatorio_${(currentClienteData?.nome || 'Cliente').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.png`;
@@ -119,12 +149,26 @@ document.addEventListener('DOMContentLoaded', () => {
              gerarRelatorioBtn.disabled = false;
              gerarRelatorioBtn.innerHTML = '<span class="material-symbols-outlined mr-1 text-sm">download</span> Relatório';
         }
+     }
+
+    // Preenche os dados cadastrais na tela (NOVA FUNÇÃO)
+    const preencherDadosCadastraisNaTela = (cliente) => {
+        dadosCadastraisEl.innerHTML = `
+            <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Nome:</strong> <span class="text-text-light dark:text-zinc-200">${cliente.nome || 'N/A'}</span></p>
+            <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Telefone:</strong> <span class="text-text-light dark:text-zinc-200">${cliente.telefone || 'N/A'}</span></p>
+            <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">CPF:</strong> <span class="text-text-light dark:text-zinc-200">${cliente.cpf || 'N/A'}</span></p>
+            <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Email:</strong> <span class="text-text-light dark:text-zinc-200">${cliente.email || 'N/A'}</span></p>
+            <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Endereço:</strong> <span class="text-text-light dark:text-zinc-200">${[cliente.logradouro, cliente.numero, cliente.bairro, cliente.cidade, cliente.estado, cliente.cep].filter(Boolean).join(', ') || 'N/A'}</span></p>
+        `;
+        // Atualiza o header também
+        nomeClienteHeader.textContent = cliente.nome || 'Cliente sem nome';
+        document.title = `Detalhes | ${cliente.nome || 'Cliente'}`;
     }
 
     // Carrega os detalhes do cliente e seu histórico
     async function carregarDetalhesCliente() {
         const urlParams = new URLSearchParams(window.location.search);
-        const clienteId = urlParams.get('id');
+        clienteId = urlParams.get('id'); // Armazena na variável global
         if (!clienteId) {
             alert('ID do cliente não encontrado na URL.');
             window.location.href = 'clientes.html';
@@ -134,70 +178,53 @@ document.addEventListener('DOMContentLoaded', () => {
         historicoPlaceholder.textContent = 'Carregando dados...';
         historicoPlaceholder.classList.remove('hidden');
         historicoComprasList.innerHTML = '';
-        currentVendasData = []; // Limpa dados antigos
+        currentVendasData = [];
 
         try {
-            // Busca detalhes do cliente (que inclui histórico resumido)
             const clienteResponse = await fetchWithAuth(`/api/clientes/${clienteId}/detalhes`);
             if (!clienteResponse.ok) {
-                const errorData = await clienteResponse.json().catch(() => ({ message: 'Erro desconhecido' }));
-                throw new Error(errorData.message || `Erro ${clienteResponse.status} ao carregar detalhes.`);
+                const errorData = await clienteResponse.json().catch(() => ({ message: 'Erro desconhecido.' }));
+                throw new Error(errorData.message || `Erro ${clienteResponse.status}.`);
             }
-            currentClienteData = await clienteResponse.json(); // Armazena dados do cliente
+            currentClienteData = await clienteResponse.json();
 
-            // Preenche dados gerais
-            nomeClienteHeader.textContent = currentClienteData.nome || 'Cliente sem nome';
-            document.title = `Detalhes | ${currentClienteData.nome || 'Cliente'}`;
+            // Preenche dados gerais e cadastrais usando a nova função
+            preencherDadosCadastraisNaTela(currentClienteData);
             totalGastoEl.textContent = formatCurrency(currentClienteData.total_gasto);
             totalComprasEl.textContent = currentClienteData.historico_compras ? currentClienteData.historico_compras.length : 0;
 
-            // Preenche dados cadastrais
-            dadosCadastraisEl.innerHTML = `
-                <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Nome:</strong> <span class="text-text-light dark:text-zinc-200">${currentClienteData.nome || 'N/A'}</span></p>
-                <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Telefone:</strong> <span class="text-text-light dark:text-zinc-200">${currentClienteData.telefone || 'N/A'}</span></p>
-                <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">CPF:</strong> <span class="text-text-light dark:text-zinc-200">${currentClienteData.cpf || 'N/A'}</span></p>
-                <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Email:</strong> <span class="text-text-light dark:text-zinc-200">${currentClienteData.email || 'N/A'}</span></p>
-                <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Endereço:</strong> <span class="text-text-light dark:text-zinc-200">${[currentClienteData.logradouro, currentClienteData.numero, currentClienteData.bairro, currentClienteData.cidade, currentClienteData.estado, currentClienteData.cep].filter(Boolean).join(', ') || 'N/A'}</span></p>
-            `;
-
-            // Preenche histórico de compras
+            // Preenche histórico de compras (lógica existente mantida)
             historicoPlaceholder.classList.add('hidden');
             if (currentClienteData.historico_compras && currentClienteData.historico_compras.length > 0) {
-                gerarRelatorioBtn.classList.remove('hidden');
-                selectAllContainer.classList.remove('hidden');
-
-                // Busca detalhes completos de CADA venda para ter os itens e pagamentos
+                 gerarRelatorioBtn.classList.remove('hidden');
+                 selectAllContainer.classList.remove('hidden');
+                // Busca detalhes completos das vendas (igual)
                 const detalhesPromessas = currentClienteData.historico_compras.map(vendaResumo =>
                      fetchWithAuth(`/api/vendas/${vendaResumo.id}`).then(res => res.ok ? res.json() : Promise.reject(`Erro ${res.status} venda ${vendaResumo.id}`))
                 );
-
-                currentVendasData = await Promise.all(detalhesPromessas); // Armazena detalhes completos
-
-                currentVendasData.sort((a, b) => new Date(b.data_venda) - new Date(a.data_venda)); // Ordena por data decrescente
-
+                currentVendasData = await Promise.all(detalhesPromessas);
+                currentVendasData.sort((a, b) => new Date(b.data_venda) - new Date(a.data_venda));
 
                 currentVendasData.forEach(venda => {
                     const vendaCard = document.createElement('div');
+                    /* ... (renderização do card de venda igual) ... */
                     vendaCard.className = 'bg-white dark:bg-zinc-800 rounded-lg shadow-sm overflow-hidden venda-card border dark:border-zinc-700';
                     vendaCard.dataset.vendaId = venda.id;
 
-                    // Itens (mostra apenas os nomes, por exemplo)
                     let itensPreview = '';
                     if (venda.itens && venda.itens.length > 0) {
                          itensPreview = venda.itens.map(item => `${item.quantidade}x ${item.produto_nome}`).join(', ');
-                         if(itensPreview.length > 50) itensPreview = itensPreview.substring(0, 50) + '...'; // Limita tamanho
+                         if(itensPreview.length > 50) itensPreview = itensPreview.substring(0, 50) + '...';
                     } else {
                          itensPreview = 'Nenhum item detalhado';
                     }
 
-                    // Pagamentos
                     let pagamentosPreview = '';
                     if (venda.pagamentos && venda.pagamentos.length > 0) {
                          pagamentosPreview = venda.pagamentos.map(p => p.metodo).join(' / ');
                     } else {
                          pagamentosPreview = 'N/A';
                     }
-
 
                     vendaCard.innerHTML = `
                         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
@@ -228,42 +255,168 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 gerarRelatorioBtn.classList.add('hidden');
                 selectAllContainer.classList.add('hidden');
-                historicoComprasList.innerHTML = '<p class="text-center py-6 text-zinc-500 dark:text-zinc-400">Nenhuma compra registrada para este cliente.</p>';
+                historicoComprasList.innerHTML = '<p class="text-center py-6 text-zinc-500 dark:text-zinc-400">Nenhuma compra registrada.</p>';
             }
         } catch (error) {
             console.error('Erro ao carregar detalhes do cliente:', error);
             historicoPlaceholder.textContent = `Erro: ${error.message}`;
             historicoPlaceholder.classList.remove('hidden');
             alert(`Não foi possível carregar os detalhes: ${error.message}`);
-            // Limpa dados parciais em caso de erro
             nomeClienteHeader.textContent = 'Erro';
             totalGastoEl.textContent = 'Erro';
             totalComprasEl.textContent = 'Erro';
             dadosCadastraisEl.innerHTML = '<p class="text-red-500">Falha ao carregar dados.</p>';
-
         }
     }
+
+    // --- NOVAS Funções para Edição e Exclusão ---
+
+    const abrirModalEdicaoDetalhes = () => {
+         if (!currentClienteData) {
+             alert("Dados do cliente ainda não carregados.");
+             return;
+         }
+         clearModalMessage(editClientDetailsMessage);
+         editClientDetailsForm.reset();
+
+         // Preenche o formulário do modal com os dados atuais
+         document.getElementById('edit-details-nome').value = currentClienteData.nome || '';
+         document.getElementById('edit-details-telefone').value = currentClienteData.telefone || '';
+         document.getElementById('edit-details-cpf').value = currentClienteData.cpf || '';
+         document.getElementById('edit-details-email').value = currentClienteData.email || '';
+         document.getElementById('edit-details-cep').value = currentClienteData.cep || '';
+         document.getElementById('edit-details-logradouro').value = currentClienteData.logradouro || '';
+         document.getElementById('edit-details-numero').value = currentClienteData.numero || '';
+         document.getElementById('edit-details-bairro').value = currentClienteData.bairro || '';
+         document.getElementById('edit-details-cidade').value = currentClienteData.cidade || '';
+         document.getElementById('edit-details-estado').value = currentClienteData.estado || '';
+
+         openModal(editClientDetailsModal);
+    };
+
+    const handleEditDetalhesSubmit = async (event) => {
+         event.preventDefault();
+         clearModalMessage(editClientDetailsMessage);
+         const submitButton = editClientDetailsModal.querySelector('button[type="submit"]');
+         if (!submitButton || !clienteId) return;
+
+         submitButton.disabled = true;
+         submitButton.innerHTML = `<div class="spinner mr-2 inline-block"></div> Salvando...`;
+
+         const formData = new FormData(editClientDetailsForm);
+         const clienteAtualizado = Object.fromEntries(formData.entries());
+
+         if (!clienteAtualizado.nome || !clienteAtualizado.telefone) {
+             showModalMessage(editClientDetailsMessage, "Nome e Telefone são obrigatórios.", true);
+             submitButton.disabled = false;
+             submitButton.textContent = 'Salvar Alterações';
+             return;
+         }
+
+         try {
+             const response = await fetchWithAuth(`/api/clientes/${clienteId}`, {
+                 method: 'PUT',
+                 body: JSON.stringify(clienteAtualizado)
+             });
+             const data = await response.json();
+             if (!response.ok) throw new Error(data.message || 'Erro ao atualizar.');
+
+             // Atualiza os dados na memória local
+             currentClienteData = { ...currentClienteData, ...clienteAtualizado };
+             // Re-renderiza os dados cadastrais na tela
+             preencherDadosCadastraisNaTela(currentClienteData);
+
+             showModalMessage(editClientDetailsMessage, 'Dados atualizados com sucesso!');
+             setTimeout(() => { closeModal(editClientDetailsModal); }, 1500);
+
+         } catch (error) {
+             console.error("Erro ao atualizar:", error);
+             showModalMessage(editClientDetailsMessage, `Erro: ${error.message}`, true);
+         } finally {
+             if (submitButton) {
+                 submitButton.disabled = false;
+                 submitButton.textContent = 'Salvar Alterações';
+             }
+         }
+     };
+
+     const handleDeleteDetalhesClick = async () => {
+         if (!currentClienteData) return;
+         const nomeCliente = currentClienteData.nome || 'este cliente';
+
+         if (!confirm(`Tem certeza que deseja excluir ${nomeCliente}?\n\nATENÇÃO: A exclusão é permanente e só é permitida se não houver vendas associadas.`)) {
+             return;
+         }
+
+         // Desabilita botões durante a exclusão
+         deleteClientButton.disabled = true;
+         editClientButton.disabled = true;
+         deleteClientButton.innerHTML = '<div class="spinner spinner-small"></div>'; // Adiciona spinner
+
+         try {
+             const response = await fetchWithAuth(`/api/clientes/${clienteId}`, { method: 'DELETE' });
+             const data = await response.json();
+             if (!response.ok) {
+                 if (response.status === 400 && data.message.includes("vendas existentes")) {
+                      throw new Error(data.message);
+                 } else {
+                      throw new Error(data.message || 'Erro ao excluir.');
+                 }
+             }
+
+             alert(data.message || 'Cliente excluído com sucesso!');
+             window.location.href = 'clientes.html'; // Redireciona para a lista
+
+         } catch (error) {
+             console.error("Erro ao excluir:", error);
+             alert(`Erro: ${error.message}`);
+             // Reabilita botões em caso de erro
+             deleteClientButton.disabled = false;
+             editClientButton.disabled = false;
+             deleteClientButton.innerHTML = '<span class="material-symbols-outlined mr-1 text-sm">delete</span> Excluir';
+         }
+     };
+
 
     // --- EVENT LISTENERS ---
     gerarRelatorioBtn.addEventListener('click', gerarRelatorio);
 
-    selecionarTodasCheck.addEventListener('change', (event) => {
+    selecionarTodasCheck.addEventListener('change', (event) => { /* ... (igual) ... */
         const isChecked = event.target.checked;
         historicoComprasList.querySelectorAll('.venda-checkbox').forEach(cb => {
             cb.checked = isChecked;
         });
     });
 
-     historicoComprasList.addEventListener('change', (event) => {
+     historicoComprasList.addEventListener('change', (event) => { /* ... (igual) ... */
          if (event.target.classList.contains('venda-checkbox') && !event.target.checked) {
              selecionarTodasCheck.checked = false;
          } else if (event.target.classList.contains('venda-checkbox') && event.target.checked) {
-             // Opcional: Marcar "Selecionar todas" se todas individuais estiverem marcadas
              const allCheckboxes = historicoComprasList.querySelectorAll('.venda-checkbox');
              const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
              selecionarTodasCheck.checked = allChecked;
          }
      });
+
+     // --- NOVOS Event Listeners ---
+     editClientButton.addEventListener('click', abrirModalEdicaoDetalhes);
+     deleteClientButton.addEventListener('click', handleDeleteDetalhesClick);
+     editClientDetailsForm.addEventListener('submit', handleEditDetalhesSubmit);
+
+     // Fechar Modal (botões 'X' e 'Cancelar')
+     closeModalButtons.forEach(button => {
+         button.addEventListener('click', () => {
+             const modal = button.closest('.modal');
+             if (modal) closeModal(modal);
+         });
+     });
+     // Fechar Modal (clicando fora)
+     if(editClientDetailsModal) {
+         editClientDetailsModal.addEventListener('click', (event) => {
+             if (event.target === editClientDetailsModal) closeModal(editClientDetailsModal);
+         });
+     }
+
 
     // --- Inicialização ---
     carregarDetalhesCliente();
