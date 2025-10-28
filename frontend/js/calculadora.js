@@ -1,100 +1,136 @@
 // kuhaiku/raposopdv/RaposoPDV-085802f1cf98b5935bfd28bc7b0705fa97753a17/frontend/js/calculadora.js
+
+// Garante que as funções de autenticação estejam disponíveis
 if (typeof checkAuth !== 'function' || typeof fetchWithAuth !== 'function') {
-    console.error("Funções 'checkAuth' ou 'fetchWithAuth' não encontradas.");
+    console.error("Funções 'checkAuth' ou 'fetchWithAuth' não encontradas em auth.js.");
+    // Poderia adicionar um alerta ou bloquear a funcionalidade aqui
+    alert("Erro crítico: Arquivo de autenticação não carregado corretamente.");
 } else {
-    checkAuth();
+    checkAuth(); // Verifica se o usuário está logado
 }
 
+// --- Funções Auxiliares ---
+
+// Formata um número como moeda BRL
+const formatCurrency = (value) => {
+    const number = parseFloat(value) || 0;
+    return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+
+// Limpa e formata um valor de input (remove R$, pontos, troca vírgula por ponto)
+const parseInputValue = (value) => {
+    if (!value) return 0;
+    const cleaned = String(value)
+        .replace('R$', '')
+        .replace(/\./g, '') // Remove pontos de milhar
+        .replace(',', '.') // Troca vírgula decimal por ponto
+        .trim();
+    const number = parseFloat(cleaned);
+    return isNaN(number) ? 0 : number; // Retorna 0 se não for um número válido
+};
+
+// --- Lógica Principal ---
+
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM Calculadora carregado."); // Log para confirmar execução
+
+    // Seleciona todos os elementos necessários logo no início
     const totalValueInput = document.getElementById('total-value');
     const percentageInput = document.getElementById('percentage');
     const resultInput = document.getElementById('result');
-    // *** Seleção por ID para ambos os botões ***
     const clearButton = document.getElementById('clear-button');
-    const loadFromSalesButton = document.getElementById('load-sales-button'); // <<-- SELEÇÃO ATUALIZADA
+    const loadFromSalesButton = document.getElementById('load-sales-button');
 
-    // Função para formatar o valor como moeda
-    const formatCurrency = (value) => {
-        const number = parseFloat(value) || 0;
-        return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    };
+    // **Verificação Imediata dos Elementos**
+    if (!totalValueInput) console.error("Elemento 'total-value' não encontrado!");
+    if (!percentageInput) console.error("Elemento 'percentage' não encontrado!");
+    if (!resultInput) console.error("Elemento 'result' não encontrado!");
+    if (!clearButton) console.error("Elemento 'clear-button' não encontrado!"); // Linha ~72 original estaria aqui
+    if (!loadFromSalesButton) console.error("Elemento 'load-sales-button' não encontrado!");
 
     // Função principal de cálculo
     const calculatePercentage = () => {
-        // Remove pontos (milhares) e troca vírgula por ponto (decimal) para o parseFloat
-        const rawTotal = totalValueInput.value.replace(/\./g, '').replace(',', '.');
-        const rawPercentage = percentageInput.value.replace(/\./g, '').replace(',', '.');
+        // Verifica se os inputs existem antes de ler o valor
+        if (!totalValueInput || !percentageInput || !resultInput) return;
 
-        const total = parseFloat(rawTotal) || 0;
-        const percentage = parseFloat(rawPercentage) || 0;
+        const total = parseInputValue(totalValueInput.value);
+        const percentage = parseInputValue(percentageInput.value);
 
         if (total > 0 && percentage >= 0) {
             const result = (total * percentage) / 100;
             resultInput.value = formatCurrency(result);
         } else {
-            resultInput.value = formatCurrency(0);
+            resultInput.value = formatCurrency(0); // Garante formato de moeda mesmo zerado
         }
     };
 
-    // Carrega o valor total de vendas do período atual (usando o mesmo endpoint do painel)
+    // Carrega o valor total de vendas do período atual
     async function loadTotalSales() {
-        // *** Verifica se o botão existe antes de usá-lo ***
-        if (!loadFromSalesButton) return;
+        if (!loadFromSalesButton || !totalValueInput) {
+            console.error("Botão 'Carregar Vendas' ou input 'Valor Total' não encontrado para executar a função.");
+            return;
+        }
+
+        const originalButtonHTML = loadFromSalesButton.innerHTML; // Salva o HTML original (ícone)
+        loadFromSalesButton.disabled = true;
+        loadFromSalesButton.innerHTML = `<div class="spinner spinner-small inline-block"></div>`; // Adiciona spinner
 
         try {
-            // Desabilita e adiciona loading
-            loadFromSalesButton.disabled = true;
-            // Salva o ícone original para restaurar depois
-            const originalIconHTML = '<span class="material-symbols-outlined">add</span>';
-            loadFromSalesButton.innerHTML = `<div class="spinner spinner-small inline-block"></div>`;
-
-            // Requisita as métricas
-            const response = await fetchWithAuth('/api/dashboard/metricas'); // O endpoint parece correto
-            if (!response.ok) throw new Error('Falha ao buscar total de vendas.');
+            const response = await fetchWithAuth('/api/dashboard/metricas');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({})); // Tenta pegar erro da API
+                throw new Error(errorData.message || `Falha ao buscar total de vendas (Status: ${response.status})`);
+            }
 
             const data = await response.json();
-            // Confirma o uso de 'faturamentoPeriodo'
             const total = parseFloat(data.faturamentoPeriodo) || 0;
 
-            // Define o valor no input (formatado com vírgula para o usuário)
+            // Formata com vírgula para exibição no input
             totalValueInput.value = total.toFixed(2).replace('.', ',');
 
             calculatePercentage(); // Recalcula com o novo valor
+
         } catch (error) {
-            alert(`Erro ao carregar o total de vendas: ${error.message}`);
+            console.error('Erro ao carregar o total de vendas:', error); // Loga o erro no console
+            alert(`Erro ao carregar o total de vendas: ${error.message}`); // Mostra alerta para o usuário
         } finally {
-            // Restaura o botão
+            // Restaura o botão, independentemente de sucesso ou falha
             loadFromSalesButton.disabled = false;
-            // Restaura o ícone original
-            loadFromSalesButton.innerHTML = '<span class="material-symbols-outlined">add</span>';
+            loadFromSalesButton.innerHTML = originalButtonHTML; // Restaura o ícone
         }
     }
 
-    // --- Event Listeners ---
-    totalValueInput.addEventListener('input', calculatePercentage);
-    percentageInput.addEventListener('input', calculatePercentage);
+    // --- Adiciona Event Listeners somente se os elementos existirem ---
 
-    // Botão Adicionar de Vendas (com verificação)
+    if (totalValueInput) {
+        totalValueInput.addEventListener('input', calculatePercentage);
+    }
+
+    if (percentageInput) {
+        percentageInput.addEventListener('input', calculatePercentage);
+    }
+
     if (loadFromSalesButton) {
         loadFromSalesButton.addEventListener('click', loadTotalSales);
-    } else {
-        console.error("Botão Carregar Vendas (ID: load-sales-button) não encontrado no HTML.");
     }
 
-
-    // Botão Limpar (com verificação)
+    // O listener do botão limpar (onde o erro ocorria originalmente)
     if (clearButton) {
-        clearButton.addEventListener('click', () => { // <<-- ANTIGA LINHA 73
-            totalValueInput.value = '';
-            percentageInput.value = '';
-            resultInput.value = formatCurrency(0);
-            totalValueInput.focus();
+        clearButton.addEventListener('click', () => {
+            console.log("Botão Limpar clicado."); // Log para confirmar clique
+            if (totalValueInput) totalValueInput.value = '';
+            if (percentageInput) percentageInput.value = '';
+            if (resultInput) resultInput.value = formatCurrency(0);
+            if (totalValueInput) totalValueInput.focus(); // Foca no primeiro campo
         });
-    } else {
-        // Este erro será logado se o botão Limpar não for encontrado
-        console.error("Botão Limpar (ID: clear-button) não encontrado no HTML.");
     }
 
-    // Inicializa com o valor zero
-    resultInput.value = formatCurrency(0);
+    // --- Inicialização ---
+    if (resultInput) {
+        resultInput.value = formatCurrency(0); // Define valor inicial formatado
+    } else {
+        console.warn("Input de resultado não encontrado para inicialização.");
+    }
+
+    console.log("Listeners da Calculadora adicionados."); // Confirma que chegou ao fim do setup
 });
