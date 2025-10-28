@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalValueInput = document.getElementById('total-value');
     const percentageInput = document.getElementById('percentage');
     const resultInput = document.getElementById('result');
-    const clearButton = document.querySelector('footer button');
-    // Seletor corrigido para pegar o botão '+' corretamente
+    // *** CORREÇÃO: Usando getElementById para garantir a seleção ***
+    const clearButton = document.getElementById('clear-button'); 
     const loadFromSalesButton = document.querySelector('#total-value').closest('.flex').querySelector('button');
 
     // Função para formatar o valor como moeda
@@ -41,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Desabilita e adiciona loading
             loadFromSalesButton.disabled = true;
-            // O spinner será colocado aqui
             const originalIcon = loadFromSalesButton.innerHTML;
             loadFromSalesButton.innerHTML = `<div class="spinner spinner-small inline-block"></div>`; 
             
@@ -73,12 +72,17 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFromSalesButton.addEventListener('click', loadTotalSales);
 
     // Botão Limpar
-    clearButton.addEventListener('click', () => {
-        totalValueInput.value = '';
-        percentageInput.value = '';
-        resultInput.value = formatCurrency(0);
-        totalValueInput.focus();
-    });
+    // *** CORREÇÃO: Verifica se o botão foi encontrado antes de adicionar o listener ***
+    if (clearButton) {
+        clearButton.addEventListener('click', () => { // Esta é a linha 73 agora
+            totalValueInput.value = '';
+            percentageInput.value = '';
+            resultInput.value = formatCurrency(0);
+            totalValueInput.focus();
+        });
+    } else {
+        console.error("Botão Limpar (ID: clear-button) não encontrado no HTML.");
+    }
     
     // Inicializa com o valor zero
     resultInput.value = formatCurrency(0);
