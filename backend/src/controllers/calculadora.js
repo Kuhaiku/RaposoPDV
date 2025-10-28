@@ -1,9 +1,8 @@
-// Novo arquivo: frontend/js/calculadora.js
-// Garante que checkAuth e fetchWithAuth estão disponíveis (de auth.js)
+// kuhaiku/raposopdv/RaposoPDV-769745521c52e0c8dd0eaa6a76ce386c5a6d5e4d/frontend/js/calculadora.js
 if (typeof checkAuth !== 'function' || typeof fetchWithAuth !== 'function') {
     console.error("Funções 'checkAuth' ou 'fetchWithAuth' não encontradas.");
 } else {
-    checkAuth(); // Verifica login
+    checkAuth();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const percentageInput = document.getElementById('percentage');
     const resultInput = document.getElementById('result');
     const clearButton = document.querySelector('footer button');
-    const loadFromSalesButton = document.querySelector('#total-value').closest('.flex').querySelector('button[aria-label="Adicionar de uma venda"]');
+    // Seletor corrigido para pegar o botão '+' corretamente
+    const loadFromSalesButton = document.querySelector('#total-value').closest('.flex').querySelector('button');
 
     // Função para formatar o valor como moeda
     const formatCurrency = (value) => {
@@ -21,14 +21,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Função principal de cálculo
     const calculatePercentage = () => {
-        const total = parseFloat(totalValueInput.value.replace(',', '.')) || 0;
-        const percentage = parseFloat(percentageInput.value.replace(',', '.')) || 0;
+        // Usa regex para remover pontos e trocar vírgula por ponto para o parse
+        const rawTotal = totalValueInput.value.replace('.', '').replace(',', '.');
+        const rawPercentage = percentageInput.value.replace('.', '').replace(',', '.');
+        
+        const total = parseFloat(rawTotal) || 0;
+        const percentage = parseFloat(rawPercentage) || 0;
 
         if (total > 0 && percentage >= 0) {
             const result = (total * percentage) / 100;
             resultInput.value = formatCurrency(result);
         } else {
-            resultInput.value = 'R$ 0,00';
+            resultInput.value = formatCurrency(0);
         }
     };
     
@@ -37,15 +41,18 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Desabilita e adiciona loading
             loadFromSalesButton.disabled = true;
-            loadFromSalesButton.innerHTML = '<div class="spinner spinner-small inline-block"></div>'; 
+            // O spinner será colocado aqui
+            const originalIcon = loadFromSalesButton.innerHTML;
+            loadFromSalesButton.innerHTML = `<div class="spinner spinner-small inline-block"></div>`; 
             
+            // Requisita as métricas
             const response = await fetchWithAuth('/api/dashboard/metricas');
             if (!response.ok) throw new Error('Falha ao buscar total de vendas.');
             
             const data = await response.json();
-            const total = parseFloat(data.faturamentoPeriodo) || 0;
+            const total = parseFloat(data.faturamentoPeriodo) || 0; // Lê a métrica CORRETA
             
-            // Define o valor no input (sem R$ ou formatação)
+            // Define o valor no input (formatado com vírgula para o usuário)
             totalValueInput.value = total.toFixed(2).replace('.', ',');
             
             calculatePercentage(); // Recalcula com o novo valor
@@ -69,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clearButton.addEventListener('click', () => {
         totalValueInput.value = '';
         percentageInput.value = '';
-        resultInput.value = 'R$ 0,00';
+        resultInput.value = formatCurrency(0);
         totalValueInput.focus();
     });
     
