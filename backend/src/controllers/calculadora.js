@@ -1,4 +1,4 @@
-// kuhaiku/raposopdv/RaposoPDV-769745521c52e0c8dd0eaa6a76ce386c5a6d5e4d/frontend/js/calculadora.js
+// kuhaiku/raposopdv/RaposoPDV-769745521c52eoc8dd0eaa6a76ce386c5a6d5e4d/frontend/js/calculadora.js
 if (typeof checkAuth !== 'function' || typeof fetchWithAuth !== 'function') {
     console.error("Funções 'checkAuth' ou 'fetchWithAuth' não encontradas.");
 } else {
