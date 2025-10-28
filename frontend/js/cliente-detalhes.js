@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gerarRelatorioBtn = document.getElementById('gerar-relatorio-btn');
     const selecionarTodasCheck = document.getElementById('selecionar-todas');
     const selectAllContainer = document.getElementById('select-all-container');
-    const reciboEmpresaNomeRelatorio = document.getElementById('recibo-empresa-nome-relatorio');
+    // const reciboEmpresaNomeRelatorio = document.getElementById('recibo-empresa-nome-relatorio'); // Removido, será buscado dentro da função
 
     // --- NOVOS Seletores para Edição/Exclusão ---
     const editClientButton = document.getElementById('edit-client-button');
@@ -82,41 +82,50 @@ document.addEventListener('DOMContentLoaded', () => {
         gerarRelatorioBtn.disabled = true;
         gerarRelatorioBtn.innerHTML = '<div class="spinner spinner-small mr-1 inline-block"></div> Gerando...';
 
+        // *** CORREÇÃO PRINCIPAL: Busca o template primeiro ***
+        const elementoRecibo = document.getElementById('recibo-template');
+        if (!elementoRecibo) {
+            console.error("Elemento do template de recibo #recibo-template não encontrado!");
+            alert("Erro interno: Template do relatório não encontrado.");
+            gerarRelatorioBtn.disabled = false;
+            gerarRelatorioBtn.innerHTML = '<span class="material-symbols-outlined mr-1 text-sm">download</span> Relatório';
+            return;
+        }
+
         try {
             const vendasParaRelatorio = currentVendasData.filter(venda => vendaIdsSelecionadas.includes(String(venda.id)));
 
-            // --- VERIFICAÇÕES ADICIONADAS ---
-            const reciboClienteNomeEl = document.getElementById('recibo-cliente-nome');
-            if (reciboClienteNomeEl) {
-                reciboClienteNomeEl.textContent = currentClienteData?.nome || 'Cliente';
-            } else {
-                console.error("Elemento 'recibo-cliente-nome' não encontrado no template.");
-                // Você pode optar por lançar um erro ou continuar sem essa informação
-                // throw new Error("Elemento 'recibo-cliente-nome' não encontrado.");
+            // --- Busca elementos DENTRO do template ---
+            const reciboClienteNomeEl = elementoRecibo.querySelector('#recibo-cliente-nome');
+            const reciboEmpresaNomeRelatorioEl = elementoRecibo.querySelector('#recibo-empresa-nome-relatorio');
+            const reciboVendasContainer = elementoRecibo.querySelector('#recibo-vendas-container');
+            const reciboTotalGeralEl = elementoRecibo.querySelector('#recibo-total-geral');
+            const reciboDataGeracaoEl = elementoRecibo.querySelector('#recibo-data-geracao');
+            // --- Fim da busca DENTRO do template ---
+
+            // Verifica se os elementos essenciais foram encontrados
+            if (!reciboClienteNomeEl || !reciboEmpresaNomeRelatorioEl || !reciboVendasContainer || !reciboTotalGeralEl || !reciboDataGeracaoEl) {
+                 console.error("Um ou mais elementos internos do #recibo-template não foram encontrados:", {
+                     reciboClienteNomeEl: !!reciboClienteNomeEl,
+                     reciboEmpresaNomeRelatorioEl: !!reciboEmpresaNomeRelatorioEl,
+                     reciboVendasContainer: !!reciboVendasContainer,
+                     reciboTotalGeralEl: !!reciboTotalGeralEl,
+                     reciboDataGeracaoEl: !!reciboDataGeracaoEl
+                 });
+                 throw new Error("Erro ao encontrar elementos internos do template do relatório.");
             }
 
-            const reciboEmpresaNomeRelatorioEl = document.getElementById('recibo-empresa-nome-relatorio');
-             if (reciboEmpresaNomeRelatorioEl) {
-                 reciboEmpresaNomeRelatorioEl.textContent = localStorage.getItem('nomeEmpresa') || 'Relatório de Vendas';
-             } else {
-                  console.error("Elemento 'recibo-empresa-nome-relatorio' não encontrado no template.");
-             }
-            // --- FIM VERIFICAÇÕES ---
-
-            const reciboVendasContainer = document.getElementById('recibo-vendas-container');
-            // Verifica se o container existe antes de limpar
-            if (reciboVendasContainer) {
-                 reciboVendasContainer.innerHTML = '';
-            } else {
-                 console.error("Elemento 'recibo-vendas-container' não encontrado no template.");
-                 throw new Error("Elemento 'recibo-vendas-container' não encontrado."); // Importante para o relatório
-            }
+            // Preenche os elementos encontrados
+            reciboClienteNomeEl.textContent = currentClienteData?.nome || 'Cliente';
+            reciboEmpresaNomeRelatorioEl.textContent = localStorage.getItem('nomeEmpresa') || 'Relatório de Vendas';
+            reciboVendasContainer.innerHTML = ''; // Limpa o container
+            reciboDataGeracaoEl.textContent = new Date().toLocaleString('pt-BR');
 
             let totalGeral = 0;
 
             vendasParaRelatorio.forEach(venda => {
                 let itensHtml = '';
-                // ... (lógica dos itens)
+                // ... (lógica dos itens - igual)
                 if (venda.itens && venda.itens.length > 0) {
                     venda.itens.forEach(item => {
                         const subtotal = (item.quantidade || 0) * (item.preco_unitario || 0);
@@ -150,26 +159,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalGeral += parseFloat(venda.valor_total || 0);
             });
 
-            // --- VERIFICAÇÕES ADICIONADAS ---
-            const reciboTotalGeralEl = document.getElementById('recibo-total-geral');
-            if (reciboTotalGeralEl) {
-                reciboTotalGeralEl.textContent = formatCurrency(totalGeral);
-            } else {
-                 console.error("Elemento 'recibo-total-geral' não encontrado no template.");
-            }
+            // Preenche o total geral
+            reciboTotalGeralEl.textContent = formatCurrency(totalGeral);
 
-            const reciboDataGeracaoEl = document.getElementById('recibo-data-geracao');
-            if (reciboDataGeracaoEl) {
-                 reciboDataGeracaoEl.textContent = new Date().toLocaleString('pt-BR');
-            } else {
-                 console.error("Elemento 'recibo-data-geracao' não encontrado no template.");
-            }
-            // --- FIM VERIFICAÇÕES ---
-
-            const elementoRecibo = document.getElementById('recibo-template');
-            if (!elementoRecibo) throw new Error("Elemento do template de recibo não encontrado.");
-
-            // Gera a imagem usando html2canvas
+            // Gera a imagem usando html2canvas (passando o elementoRecibo que já pegamos)
             const canvas = await html2canvas(elementoRecibo, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/png');
@@ -337,28 +330,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- EVENT LISTENERS ---
-    gerarRelatorioBtn.addEventListener('click', gerarRelatorio);
-    selecionarTodasCheck.addEventListener('change', (event) => { /* ... (igual) ... */
-        const isChecked = event.target.checked; historicoComprasList.querySelectorAll('.venda-checkbox').forEach(cb => { cb.checked = isChecked; });
+    // Listeners existentes...
+    if(gerarRelatorioBtn) gerarRelatorioBtn.addEventListener('click', gerarRelatorio);
+    if(selecionarTodasCheck) selecionarTodasCheck.addEventListener('change', (event) => { /* ... */
+         const isChecked = event.target.checked; historicoComprasList.querySelectorAll('.venda-checkbox').forEach(cb => { cb.checked = isChecked; });
     });
-     historicoComprasList.addEventListener('change', (event) => { /* ... (igual) ... */
+    if(historicoComprasList) historicoComprasList.addEventListener('change', (event) => { /* ... */
          if (event.target.classList.contains('venda-checkbox') && !event.target.checked) { selecionarTodasCheck.checked = false; } else if (event.target.classList.contains('venda-checkbox') && event.target.checked) { const allCheckboxes = historicoComprasList.querySelectorAll('.venda-checkbox'); const allChecked = Array.from(allCheckboxes).every(cb => cb.checked); selecionarTodasCheck.checked = allChecked; }
      });
 
-     // Event Listeners para Editar/Excluir
+     // Novos Listeners...
      if(editClientButton) editClientButton.addEventListener('click', abrirModalEdicaoDetalhes);
      if(deleteClientButton) deleteClientButton.addEventListener('click', handleDeleteDetalhesClick);
      if(editClientDetailsForm) editClientDetailsForm.addEventListener('submit', handleEditDetalhesSubmit);
-
-     // Fechar Modal (botões 'X' e 'Cancelar')
-     closeModalButtons.forEach(button => { /* ... (igual) ... */
+     closeModalButtons.forEach(button => { /* ... */
          button.addEventListener('click', () => { const modal = button.closest('.modal'); if (modal) closeModal(modal); });
      });
-     // Fechar Modal (clicando fora)
-     if(editClientDetailsModal) { /* ... (igual) ... */
+     if(editClientDetailsModal) { /* ... */
          editClientDetailsModal.addEventListener('click', (event) => { if (event.target === editClientDetailsModal) closeModal(editClientDetailsModal); });
      }
-
 
     // --- Inicialização ---
     carregarDetalhesCliente();
