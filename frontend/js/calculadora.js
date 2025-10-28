@@ -21,9 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Função principal de cálculo
     const calculatePercentage = () => {
-        // Usa regex para remover pontos e trocar vírgula por ponto para o parse
-        const rawTotal = totalValueInput.value.replace('.', '').replace(',', '.');
-        const rawPercentage = percentageInput.value.replace('.', '').replace(',', '.');
+        // Remove pontos (milhares) e troca vírgula por ponto (decimal) para o parseFloat
+        const rawTotal = totalValueInput.value.replace(/\./g, '').replace(',', '.');
+        const rawPercentage = percentageInput.value.replace(/\./g, '').replace(',', '.');
         
         const total = parseFloat(rawTotal) || 0;
         const percentage = parseFloat(rawPercentage) || 0;
