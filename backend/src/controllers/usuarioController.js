@@ -221,11 +221,11 @@ exports.obterDadosPerfil = async (req, res) => {
 
         const connection = await pool.getConnection();
 
-        // 1. Query principal para métricas de vendas
+        // 1. Query principal para métricas de vendas (CORRIGIDA)
         const queryMetricas = `
             SELECT
-                IFNULL(SUM(v.valor_total), 0) AS totalFaturado,
-                COUNT(v.id) AS numeroVendas,
+                IFNULL(SUM(DISTINCT v.valor_total), 0) AS totalFaturado,
+                COUNT(DISTINCT v.id) AS numeroVendas,
                 IFNULL(SUM(vi.quantidade), 0) AS itensVendidos
             FROM vendas AS v
             LEFT JOIN venda_itens AS vi ON v.id = vi.venda_id
@@ -333,11 +333,11 @@ exports.fecharPeriodo = async (req, res) => {
         const data_inicio = toSqlDatetime(usuario.data_inicio_periodo_atual);
         const data_fim = toSqlDatetime(new Date());
 
-        // 2. Calcular as métricas do período atual
+        // 2. Calcular as métricas do período atual (CORRIGIDA)
         const queryMetricas = `
             SELECT
-                IFNULL(SUM(v.valor_total), 0) AS totalFaturado,
-                COUNT(v.id) AS numeroVendas,
+                IFNULL(SUM(DISTINCT v.valor_total), 0) AS totalFaturado,
+                COUNT(DISTINCT v.id) AS numeroVendas,
                 IFNULL(SUM(vi.quantidade), 0) AS itensVendidos
             FROM vendas AS v
             LEFT JOIN venda_itens AS vi ON v.id = vi.venda_id
