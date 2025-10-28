@@ -18,12 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const addClientForm = document.getElementById('add-client-form');
     const addClientMessage = document.getElementById('add-client-message');
 
-    // --- Modal Editar Cliente (NOVO) ---
-    const editClientModal = document.getElementById('edit-client-modal');
-    const editClientForm = document.getElementById('edit-client-form');
-    const editClientMessage = document.getElementById('edit-client-message');
-    const editClientIdInput = document.getElementById('edit-client-id'); // Campo hidden para o ID
-
     // --- Botões comuns de fechar modal ---
     const closeModalButtons = document.querySelectorAll('.close-modal-btn');
 
@@ -33,33 +27,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let clientesVisiveis = [];
 
     // --- Funções Auxiliares ---
-    const showModalMessage = (element, message, isError = false) => {
+    const showModalMessage = (element, message, isError = false) => { /* ... (igual) ... */
         if (!element) return;
         element.textContent = message;
         element.classList.remove('hidden', 'text-green-600', 'text-red-600');
         element.classList.add(isError ? 'text-red-600' : 'text-green-600');
      };
-    const clearModalMessage = (element) => {
+    const clearModalMessage = (element) => { /* ... (igual) ... */
         if (!element) return;
         element.textContent = '';
         element.classList.add('hidden');
      };
-    const openModal = (modalElement) => {
+    const openModal = (modalElement) => { /* ... (igual) ... */
         if (modalElement) modalElement.classList.add('is-open');
         document.body.style.overflow = 'hidden';
     };
-    const closeModal = (modalElement) => {
+    const closeModal = (modalElement) => { /* ... (igual) ... */
         if (modalElement) modalElement.classList.remove('is-open');
         document.body.style.overflow = '';
-        // Limpa mensagens ao fechar qualquer modal
         if (addClientMessage) clearModalMessage(addClientMessage);
-        if (editClientMessage) clearModalMessage(editClientMessage);
     };
 
     // --- Funções Principais ---
 
     // Carrega TODOS os clientes da API
-    const carregarTodosClientes = async () => {
+    const carregarTodosClientes = async () => { /* ... (igual) ... */
         clientListPlaceholder.textContent = 'Carregando clientes...';
         clientListPlaceholder.classList.remove('hidden');
         clientListContainer.innerHTML = '';
@@ -82,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Renderiza a lista de clientes na tela com base na busca (COM BOTÕES)
+    // Renderiza a lista de clientes (APENAS LINK PARA DETALHES)
     const renderizarClientes = () => {
         clientListContainer.innerHTML = '';
         clientListPlaceholder.classList.add('hidden');
@@ -90,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clientesVisiveis = todosClientes.filter(cliente => {
             const nomeMatch = cliente.nome.toLowerCase().includes(termoBusca);
             const telMatch = cliente.telefone && cliente.telefone.toLowerCase().includes(termoBusca);
-            return nomeMatch || telMatch; // Busca por nome ou telefone
+            return nomeMatch || telMatch;
         });
 
         if (clientesVisiveis.length === 0) {
@@ -101,157 +93,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         clientesVisiveis.forEach(cliente => {
             const card = document.createElement('div');
-            card.className = 'bg-white dark:bg-zinc-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700 flex justify-between items-start client-card'; // Adicionado client-card para referência
-            card.dataset.clientId = cliente.id; // Mantém o ID no card
+            // Remove 'client-card' se não for mais usada para estilização específica
+            card.className = 'bg-white dark:bg-zinc-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700';
+            card.dataset.clientId = cliente.id; // Adiciona ID para navegação
 
-            card.innerHTML = `
-                <div class="flex-1 min-w-0 mr-4">
-                    <h2 class="text-base font-semibold text-text-light dark:text-text-dark truncate" title="${cliente.nome}">${cliente.nome}</h2>
-                    ${cliente.telefone ? `<p class="text-sm text-subtext-light dark:text-subtext-dark">Tel: ${cliente.telefone}</p>` : ''}
-                     <a href="cliente-detalhes.html?id=${cliente.id}" class="text-xs text-primary hover:underline mt-1 inline-block">Ver Detalhes</a>
-                 </div>
-                <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
-                    <button class="btn-edit flex items-center justify-center rounded-md h-7 px-2 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
-                        <span class="material-symbols-outlined mr-1 text-sm">edit</span> Editar
-                    </button>
-                    <button class="btn-delete flex items-center justify-center rounded-md h-7 px-2 bg-danger/10 text-danger text-xs font-medium hover:bg-danger/20 transition-colors">
-                        <span class="material-symbols-outlined mr-1 text-sm">delete</span> Excluir
-                    </button>
+            // Cria o link para a página de detalhes
+            const linkDetalhes = document.createElement('a');
+            linkDetalhes.href = `cliente-detalhes.html?id=${cliente.id}`;
+            linkDetalhes.className = 'block p-4 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors'; // Estilo do link clicável
+
+            linkDetalhes.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-semibold text-text-light dark:text-text-dark truncate" title="${cliente.nome}">${cliente.nome}</h2>
+                         ${cliente.telefone ? `<p class="text-sm text-subtext-light dark:text-subtext-dark">Tel: ${cliente.telefone}</p>` : ''}
+                         </div>
+                    <span class="material-symbols-outlined text-primary">chevron_right</span>
                 </div>
             `;
-            clientListContainer.appendChild(card);
+            card.appendChild(linkDetalhes); // Adiciona o link ao card
+            clientListContainer.appendChild(card); // Adiciona o card ao container
         });
     };
-
-     // --- Funções de Edição (NOVO) ---
-    const abrirModalEdicao = async (clienteId) => {
-        clearModalMessage(editClientMessage);
-        editClientForm.reset(); // Limpa antes de preencher
-        openModal(editClientModal);
-
-        try {
-            // 1. Buscar dados atuais do cliente
-            const response = await fetchWithAuth(`/api/clientes/${clienteId}`);
-            if (!response.ok) throw new Error('Falha ao buscar dados do cliente para edição.');
-            const cliente = await response.json();
-
-            // 2. Preencher o formulário de edição
-            editClientIdInput.value = cliente.id; // Seta o ID no campo hidden
-            document.getElementById('edit-nome').value = cliente.nome || '';
-            document.getElementById('edit-telefone').value = cliente.telefone || '';
-            document.getElementById('edit-cpf').value = cliente.cpf || '';
-            document.getElementById('edit-email').value = cliente.email || '';
-            document.getElementById('edit-cep').value = cliente.cep || '';
-            document.getElementById('edit-logradouro').value = cliente.logradouro || '';
-            document.getElementById('edit-numero').value = cliente.numero || '';
-            document.getElementById('edit-bairro').value = cliente.bairro || '';
-            document.getElementById('edit-cidade').value = cliente.cidade || '';
-            document.getElementById('edit-estado').value = cliente.estado || '';
-
-        } catch (error) {
-            console.error("Erro ao preparar edição:", error);
-            showModalMessage(editClientMessage, `Erro ao carregar dados: ${error.message}`, true);
-            // Poderia desabilitar o form ou fechar o modal
-        }
-    };
-
-    const handleEditSubmit = async (event) => {
-        event.preventDefault();
-        clearModalMessage(editClientMessage);
-        const submitButton = editClientModal.querySelector('button[type="submit"]');
-        if (!submitButton) return;
-
-        submitButton.disabled = true;
-        submitButton.innerHTML = `<div class="spinner mr-2 inline-block"></div> Salvando...`;
-
-        const clienteId = editClientIdInput.value;
-        const formData = new FormData(editClientForm);
-        const clienteAtualizado = Object.fromEntries(formData.entries());
-         // Remove o campo 'id' do objeto que será enviado no body, pois ele vai na URL
-         delete clienteAtualizado.id;
-
-         // Validação básica (nome e telefone)
-         if (!clienteAtualizado.nome || !clienteAtualizado.telefone) {
-             showModalMessage(editClientMessage, "Nome e Telefone são obrigatórios.", true);
-             submitButton.disabled = false;
-             submitButton.textContent = 'Salvar Alterações';
-             return;
-         }
-
-
-        try {
-            const response = await fetchWithAuth(`/api/clientes/${clienteId}`, {
-                method: 'PUT',
-                body: JSON.stringify(clienteAtualizado)
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Erro ao atualizar cliente.');
-
-            showModalMessage(editClientMessage, 'Cliente atualizado com sucesso!');
-            await carregarTodosClientes(); // Recarrega a lista
-
-            setTimeout(() => {
-                closeModal(editClientModal);
-            }, 1500);
-
-        } catch (error) {
-            console.error("Erro ao atualizar cliente:", error);
-            showModalMessage(editClientMessage, `Erro: ${error.message}`, true);
-        } finally {
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.textContent = 'Salvar Alterações';
-            }
-        }
-    };
-
-     // --- Função de Exclusão (NOVO) ---
-    const handleDeleteClick = async (clienteId, nomeCliente) => {
-         if (!confirm(`Tem certeza que deseja excluir o cliente "${nomeCliente}"?\n\nATENÇÃO: Esta ação não pode ser desfeita e só funcionará se o cliente não tiver vendas associadas.`)) {
-             return;
-         }
-
-         // Encontra o botão no card para adicionar o spinner
-         const card = clientListContainer.querySelector(`.client-card[data-client-id="${clienteId}"]`);
-         const deleteButton = card ? card.querySelector('.btn-delete') : null;
-         if (deleteButton) {
-              deleteButton.disabled = true;
-              deleteButton.innerHTML = '<div class="spinner spinner-small"></div>'; // Spinner pequeno
-         }
-
-         try {
-             const response = await fetchWithAuth(`/api/clientes/${clienteId}`, {
-                 method: 'DELETE'
-             });
-             const data = await response.json(); // Tenta ler a resposta mesmo em caso de erro
-             if (!response.ok) {
-                  // Mensagem de erro específica se for por causa de vendas associadas
-                  if (response.status === 400 && data.message.includes("vendas existentes")) {
-                      throw new Error(data.message); // Usa a mensagem do backend
-                  } else {
-                      throw new Error(data.message || 'Erro ao excluir cliente.');
-                  }
-             }
-
-             alert(data.message || 'Cliente excluído com sucesso!');
-             await carregarTodosClientes(); // Recarrega a lista
-
-         } catch (error) {
-             console.error("Erro ao excluir cliente:", error);
-             alert(`Erro: ${error.message}`);
-             // Restaura o botão se deu erro
-             if (deleteButton) {
-                  deleteButton.disabled = false;
-                  deleteButton.innerHTML = '<span class="material-symbols-outlined mr-1 text-sm">delete</span> Excluir';
-             }
-         }
-     };
-
 
     // --- Tratamento de Eventos ---
 
     // Busca
-    searchInput.addEventListener('input', () => {
+    searchInput.addEventListener('input', () => { /* ... (igual) ... */
         clearTimeout(searchInput.timer);
         searchInput.timer = setTimeout(() => {
             termoBusca = searchInput.value.toLowerCase();
@@ -260,22 +128,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Abrir Modal Adicionar Cliente
-    addClientButton.addEventListener('click', () => {
+    addClientButton.addEventListener('click', () => { /* ... (igual) ... */
         addClientForm.reset();
         clearModalMessage(addClientMessage);
         openModal(addClientModal);
     });
 
     // Fechar Modais (botões 'X' e 'Cancelar')
-    closeModalButtons.forEach(button => {
+    closeModalButtons.forEach(button => { /* ... (igual) ... */
         button.addEventListener('click', () => {
-            const modal = button.closest('.modal'); // Encontra o modal pai
+            const modal = button.closest('.modal');
             if (modal) closeModal(modal);
         });
     });
 
      // Fechar Modais (clicando fora)
-     [addClientModal, editClientModal].forEach(modal => {
+     [addClientModal].forEach(modal => { // Remove editClientModal daqui
           if (modal) {
                modal.addEventListener('click', (event) => {
                     if (event.target === modal) closeModal(modal);
@@ -283,9 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
           }
      });
 
-
     // Submeter Formulário Adicionar Cliente
-    addClientForm.addEventListener('submit', async (event) => {
+    addClientForm.addEventListener('submit', async (event) => { /* ... (igual) ... */
         event.preventDefault();
         clearModalMessage(addClientMessage);
         const submitButton = addClientModal.querySelector('button[type="submit"]');
@@ -297,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(addClientForm);
         const novoCliente = Object.fromEntries(formData.entries());
 
-        if (!novoCliente.nome || !novoCliente.telefone) { /* ... (validação) ... */
+        if (!novoCliente.nome || !novoCliente.telefone) {
              showModalMessage(addClientMessage, "Nome e Telefone são obrigatórios.", true);
              submitButton.disabled = false;
              submitButton.textContent = 'Salvar Cliente';
@@ -324,30 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-
-     // Submeter Formulário Editar Cliente (NOVO)
-     editClientForm.addEventListener('submit', handleEditSubmit);
-
-     // Event Listeners para botões Editar e Excluir (NOVO - Delegação)
-     clientListContainer.addEventListener('click', (event) => {
-         const editButton = event.target.closest('.btn-edit');
-         const deleteButton = event.target.closest('.btn-delete');
-         const card = event.target.closest('.client-card');
-
-         if (!card) return; // Sai se o clique não foi dentro de um card
-
-         const clienteId = card.dataset.clientId;
-         const nomeClienteEl = card.querySelector('h2'); // Pega o nome do H2
-         const nomeCliente = nomeClienteEl ? nomeClienteEl.textContent : 'Cliente';
-
-         if (editButton) {
-             abrirModalEdicao(clienteId);
-         } else if (deleteButton) {
-             handleDeleteClick(clienteId, nomeCliente);
-         }
-         // Se clicar em "Ver Detalhes", o link <a> cuidará da navegação
-     });
-
 
     // --- Inicialização ---
     carregarTodosClientes();
