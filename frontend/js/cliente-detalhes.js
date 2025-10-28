@@ -32,36 +32,37 @@ document.addEventListener('DOMContentLoaded', () => {
     let clienteId = null; // Armazena o ID do cliente da página
 
     // --- Funções Auxiliares ---
-    const formatCurrency = (value) => { /* ... (igual) ... */
+    const formatCurrency = (value) => {
         const number = parseFloat(value) || 0;
         return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
-    const formatDateTime = (dataISO) => { /* ... (igual) ... */
+    const formatDateTime = (dataISO) => {
         if (!dataISO) return 'N/A';
         return new Date(dataISO).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
     };
     // Funções de Modal (openModal, closeModal, showModalMessage, clearModalMessage)
-    const showModalMessage = (element, message, isError = false) => { /* ... (igual) ... */
+    const showModalMessage = (element, message, isError = false) => {
         if (!element) return;
         element.textContent = message;
         element.classList.remove('hidden', 'text-green-600', 'text-red-600');
         element.classList.add(isError ? 'text-red-600' : 'text-green-600');
      };
-    const clearModalMessage = (element) => { /* ... (igual) ... */
+    const clearModalMessage = (element) => {
         if (!element) return;
         element.textContent = '';
         element.classList.add('hidden');
      };
-    const openModal = (modalElement) => { /* ... (igual) ... */
+    const openModal = (modalElement) => {
         if (modalElement) {
              modalElement.classList.add('is-open');
              document.body.style.overflow = 'hidden';
         }
     };
-    const closeModal = (modalElement) => { /* ... (igual) ... */
+    const closeModal = (modalElement) => {
         if (modalElement) {
              modalElement.classList.remove('is-open');
              document.body.style.overflow = '';
+             // Limpa mensagem específica do modal de detalhes ao fechar
              if(editClientDetailsMessage) clearModalMessage(editClientDetailsMessage);
         }
     };
@@ -71,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Gera o relatório PDF/Imagem das vendas selecionadas
     async function gerarRelatorio() {
+        console.log("Iniciando gerarRelatorio..."); // Log inicial
         const checkboxesMarcadas = historicoComprasList.querySelectorAll('.venda-checkbox:checked');
         if (checkboxesMarcadas.length === 0) {
             alert('Por favor, selecione pelo menos uma venda para gerar o relatório.');
@@ -82,37 +84,46 @@ document.addEventListener('DOMContentLoaded', () => {
         gerarRelatorioBtn.disabled = true;
         gerarRelatorioBtn.innerHTML = '<div class="spinner spinner-small mr-1 inline-block"></div> Gerando...';
 
-        // *** CORREÇÃO PRINCIPAL: Busca o template primeiro ***
         const elementoRecibo = document.getElementById('recibo-template');
+
+        // --- Log para verificar se o template PAI foi encontrado ---
         if (!elementoRecibo) {
-            console.error("Elemento do template de recibo #recibo-template não encontrado!");
-            alert("Erro interno: Template do relatório não encontrado.");
+            console.error("FALHA CRÍTICA: Elemento #recibo-template NÃO encontrado no DOM!");
+            alert("Erro interno: Template do relatório não encontrado. Verifique o HTML.");
             gerarRelatorioBtn.disabled = false;
             gerarRelatorioBtn.innerHTML = '<span class="material-symbols-outlined mr-1 text-sm">download</span> Relatório';
-            return;
+            return; // Interrompe a função aqui
+        } else {
+            console.log("Elemento #recibo-template encontrado com sucesso.");
+            // console.log("Conteúdo interno do #recibo-template:", elementoRecibo.innerHTML); // Descomente se precisar ver o HTML interno
         }
+        // --- Fim do Log ---
+
 
         try {
             const vendasParaRelatorio = currentVendasData.filter(venda => vendaIdsSelecionadas.includes(String(venda.id)));
 
-            // --- Busca elementos DENTRO do template ---
+            // Busca elementos DENTRO do template
             const reciboClienteNomeEl = elementoRecibo.querySelector('#recibo-cliente-nome');
             const reciboEmpresaNomeRelatorioEl = elementoRecibo.querySelector('#recibo-empresa-nome-relatorio');
             const reciboVendasContainer = elementoRecibo.querySelector('#recibo-vendas-container');
             const reciboTotalGeralEl = elementoRecibo.querySelector('#recibo-total-geral');
             const reciboDataGeracaoEl = elementoRecibo.querySelector('#recibo-data-geracao');
-            // --- Fim da busca DENTRO do template ---
+
+             // --- Logs para verificar CADA elemento interno ---
+             console.log("Verificando elementos internos:");
+             console.log("#recibo-cliente-nome:", reciboClienteNomeEl);
+             console.log("#recibo-empresa-nome-relatorio:", reciboEmpresaNomeRelatorioEl);
+             console.log("#recibo-vendas-container:", reciboVendasContainer);
+             console.log("#recibo-total-geral:", reciboTotalGeralEl);
+             console.log("#recibo-data-geracao:", reciboDataGeracaoEl);
+             // --- Fim dos Logs ---
+
 
             // Verifica se os elementos essenciais foram encontrados
             if (!reciboClienteNomeEl || !reciboEmpresaNomeRelatorioEl || !reciboVendasContainer || !reciboTotalGeralEl || !reciboDataGeracaoEl) {
-                 console.error("Um ou mais elementos internos do #recibo-template não foram encontrados:", {
-                     reciboClienteNomeEl: !!reciboClienteNomeEl,
-                     reciboEmpresaNomeRelatorioEl: !!reciboEmpresaNomeRelatorioEl,
-                     reciboVendasContainer: !!reciboVendasContainer,
-                     reciboTotalGeralEl: !!reciboTotalGeralEl,
-                     reciboDataGeracaoEl: !!reciboDataGeracaoEl
-                 });
-                 throw new Error("Erro ao encontrar elementos internos do template do relatório.");
+                 console.error("Um ou mais elementos internos do #recibo-template retornaram null.");
+                 throw new Error("Erro ao encontrar elementos internos do template do relatório. Verifique os IDs no HTML.");
             }
 
             // Preenche os elementos encontrados
@@ -125,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             vendasParaRelatorio.forEach(venda => {
                 let itensHtml = '';
-                // ... (lógica dos itens - igual)
                 if (venda.itens && venda.itens.length > 0) {
                     venda.itens.forEach(item => {
                         const subtotal = (item.quantidade || 0) * (item.preco_unitario || 0);
@@ -134,43 +144,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     itensHtml = '<tr><td colspan="3">Nenhum item detalhado.</td></tr>';
                 }
-
                 let pagamentosHtml = '<p style="margin-top: 5px;"><strong>Pagamento:</strong> ';
                  if (venda.pagamentos && venda.pagamentos.length > 0) {
                       pagamentosHtml += venda.pagamentos.map(p => `${p.metodo}: ${formatCurrency(p.valor)}`).join(' / ');
-                 } else {
-                      pagamentosHtml += 'N/A';
-                 }
+                 } else { pagamentosHtml += 'N/A'; }
                  pagamentosHtml += '</p>';
-
-                // Adiciona o HTML ao container (que já foi verificado)
                 reciboVendasContainer.innerHTML += `
-                    <div class="recibo-info" style="border-top: 2px solid #000; padding-top: 15px; margin-top: 15px;">
-                        <p><strong>Venda:</strong> #${venda.id}</p>
-                        <p><strong>Data:</strong> ${formatDateTime(venda.data_venda)}</p>
-                         ${pagamentosHtml} </div>
-                    <table class="recibo-tabela">
-                        <thead><tr><th>Item</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Subtotal</th></tr></thead>
-                        <tbody>${itensHtml}</tbody>
-                    </table>
-                    <div class="recibo-total" style="font-size: 1rem; border-top: 1px dashed #000;">
-                        <strong>TOTAL DA VENDA: ${formatCurrency(venda.valor_total)}</strong>
-                    </div>`;
+                    <div class="recibo-info" style="border-top: 2px solid #000; padding-top: 15px; margin-top: 15px;"> <p><strong>Venda:</strong> #${venda.id}</p> <p><strong>Data:</strong> ${formatDateTime(venda.data_venda)}</p> ${pagamentosHtml} </div>
+                    <table class="recibo-tabela"> <thead><tr><th>Item</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Subtotal</th></tr></thead> <tbody>${itensHtml}</tbody> </table>
+                    <div class="recibo-total" style="font-size: 1rem; border-top: 1px dashed #000;"> <strong>TOTAL DA VENDA: ${formatCurrency(venda.valor_total)}</strong> </div>`;
                 totalGeral += parseFloat(venda.valor_total || 0);
             });
 
             // Preenche o total geral
             reciboTotalGeralEl.textContent = formatCurrency(totalGeral);
 
-            // Gera a imagem usando html2canvas (passando o elementoRecibo que já pegamos)
+            console.log("Template preenchido, iniciando html2canvas...");
+
+            // Gera a imagem usando html2canvas
             const canvas = await html2canvas(elementoRecibo, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+            console.log("html2canvas concluído.");
+
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/png');
             link.download = `Relatorio_${(currentClienteData?.nome || 'Cliente').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.png`;
             link.click();
+            console.log("Download iniciado.");
 
         } catch (error) {
-            console.error('Erro ao gerar relatório:', error);
+            console.error('Erro detalhado ao gerar relatório:', error);
             alert(`Ocorreu um erro ao gerar o relatório: ${error.message}`);
         } finally {
              gerarRelatorioBtn.disabled = false;
@@ -180,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Preenche os dados cadastrais na tela
-    const preencherDadosCadastraisNaTela = (cliente) => { /* ... (igual) ... */
+    const preencherDadosCadastraisNaTela = (cliente) => {
         dadosCadastraisEl.innerHTML = `
             <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Nome:</strong> <span class="text-text-light dark:text-zinc-200">${cliente.nome || 'N/A'}</span></p>
             <p><strong class="font-medium text-zinc-600 dark:text-zinc-400 block text-xs">Telefone:</strong> <span class="text-text-light dark:text-zinc-200">${cliente.telefone || 'N/A'}</span></p>
@@ -193,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
      };
 
     // Carrega os detalhes do cliente e seu histórico
-    async function carregarDetalhesCliente() { /* ... (igual) ... */
+    async function carregarDetalhesCliente() {
         const urlParams = new URLSearchParams(window.location.search);
         clienteId = urlParams.get('id');
         if (!clienteId) {
@@ -231,7 +233,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 currentVendasData.forEach(venda => {
                     const vendaCard = document.createElement('div');
-                    /* ... (renderização do card de venda igual) ... */
                     vendaCard.className = 'bg-white dark:bg-zinc-800 rounded-lg shadow-sm overflow-hidden venda-card border dark:border-zinc-700';
                     vendaCard.dataset.vendaId = venda.id;
                     let itensPreview = '';
@@ -263,11 +264,14 @@ document.addEventListener('DOMContentLoaded', () => {
             totalGastoEl.textContent = 'Erro';
             totalComprasEl.textContent = 'Erro';
             dadosCadastraisEl.innerHTML = '<p class="text-red-500">Falha ao carregar dados.</p>';
+             // Desabilita botões de ação se falhar ao carregar
+             if(editClientButton) editClientButton.disabled = true;
+             if(deleteClientButton) deleteClientButton.disabled = true;
         }
     }
 
     // --- Funções para Edição e Exclusão ---
-    const abrirModalEdicaoDetalhes = () => { /* ... (igual) ... */
+    const abrirModalEdicaoDetalhes = () => {
          if (!currentClienteData) { alert("Dados do cliente ainda não carregados."); return; }
          clearModalMessage(editClientDetailsMessage);
          editClientDetailsForm.reset();
@@ -284,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
          openModal(editClientDetailsModal);
      };
 
-    const handleEditDetalhesSubmit = async (event) => { /* ... (igual) ... */
+    const handleEditDetalhesSubmit = async (event) => {
          event.preventDefault();
          clearModalMessage(editClientDetailsMessage);
          const submitButton = editClientDetailsModal.querySelector('button[type="submit"]');
@@ -312,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
          }
      };
 
-     const handleDeleteDetalhesClick = async () => { /* ... (igual) ... */
+     const handleDeleteDetalhesClick = async () => {
          if (!currentClienteData) return;
          const nomeCliente = currentClienteData.nome || 'este cliente';
          if (!confirm(`Tem certeza que deseja excluir ${nomeCliente}?\n\nATENÇÃO: A exclusão é permanente e só é permitida se não houver vendas associadas.`)) return;
@@ -330,12 +334,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- EVENT LISTENERS ---
-    // Listeners existentes...
     if(gerarRelatorioBtn) gerarRelatorioBtn.addEventListener('click', gerarRelatorio);
-    if(selecionarTodasCheck) selecionarTodasCheck.addEventListener('change', (event) => { /* ... */
-         const isChecked = event.target.checked; historicoComprasList.querySelectorAll('.venda-checkbox').forEach(cb => { cb.checked = isChecked; });
+    if(selecionarTodasCheck) selecionarTodasCheck.addEventListener('change', (event) => {
+        const isChecked = event.target.checked; historicoComprasList.querySelectorAll('.venda-checkbox').forEach(cb => { cb.checked = isChecked; });
     });
-    if(historicoComprasList) historicoComprasList.addEventListener('change', (event) => { /* ... */
+    if(historicoComprasList) historicoComprasList.addEventListener('change', (event) => {
          if (event.target.classList.contains('venda-checkbox') && !event.target.checked) { selecionarTodasCheck.checked = false; } else if (event.target.classList.contains('venda-checkbox') && event.target.checked) { const allCheckboxes = historicoComprasList.querySelectorAll('.venda-checkbox'); const allChecked = Array.from(allCheckboxes).every(cb => cb.checked); selecionarTodasCheck.checked = allChecked; }
      });
 
@@ -343,12 +346,14 @@ document.addEventListener('DOMContentLoaded', () => {
      if(editClientButton) editClientButton.addEventListener('click', abrirModalEdicaoDetalhes);
      if(deleteClientButton) deleteClientButton.addEventListener('click', handleDeleteDetalhesClick);
      if(editClientDetailsForm) editClientDetailsForm.addEventListener('submit', handleEditDetalhesSubmit);
-     closeModalButtons.forEach(button => { /* ... */
+
+     closeModalButtons.forEach(button => {
          button.addEventListener('click', () => { const modal = button.closest('.modal'); if (modal) closeModal(modal); });
      });
-     if(editClientDetailsModal) { /* ... */
+     if(editClientDetailsModal) {
          editClientDetailsModal.addEventListener('click', (event) => { if (event.target === editClientDetailsModal) closeModal(editClientDetailsModal); });
      }
+
 
     // --- Inicialização ---
     carregarDetalhesCliente();
