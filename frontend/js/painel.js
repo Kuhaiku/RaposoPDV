@@ -8,15 +8,15 @@ if (typeof checkAuth !== 'function' || typeof fetchWithAuth !== 'function') {
 document.addEventListener('DOMContentLoaded', () => {
     // --- Elementos do DOM ---
     const logoutBtn = document.getElementById('logout-btn');
-    const faturamentoMesEl = document.getElementById('faturamento-mes'); // ID da métrica principal
+    const faturamentoPeriodoEl = document.getElementById('faturamento-periodo'); // ID da métrica principal (ALTERADO)
     const darkModeToggle = document.getElementById('dark-mode-toggle'); // Botão dark mode (opcional)
 
     // --- Funções ---
 
-    // Função para carregar as métricas (agora só faturamento do mês)
+    // Função para carregar as métricas (agora só faturamento do período)
     async function carregarMetricas() {
         // Mostra um estado de carregamento inicial
-        if (faturamentoMesEl) faturamentoMesEl.textContent = 'Carregando...';
+        if (faturamentoPeriodoEl) faturamentoPeriodoEl.textContent = 'Carregando...'; // (ALTERADO)
 
         try {
             const response = await fetchWithAuth('/api/dashboard/metricas'); // Endpoint da API
@@ -27,17 +27,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             // Atualiza apenas a métrica existente
-            if (faturamentoMesEl) {
-                const faturamentoNumerico = parseFloat(data.faturamentoMes) || 0;
+            if (faturamentoPeriodoEl) { // (ALTERADO)
+                const faturamentoNumerico = parseFloat(data.faturamentoPeriodo) || 0; // Usa 'faturamentoPeriodo' (ALTERADO)
                 // Formata como moeda brasileira
-                faturamentoMesEl.textContent = faturamentoNumerico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                faturamentoPeriodoEl.textContent = faturamentoNumerico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             }
 
             // A lógica de Novos Clientes e Gráficos foi REMOVIDA
 
         } catch (error) {
             console.error('Erro ao buscar métricas:', error);
-            if (faturamentoMesEl) faturamentoMesEl.textContent = 'Erro'; // Indica erro na UI
+            if (faturamentoPeriodoEl) faturamentoPeriodoEl.textContent = 'Erro'; // Indica erro na UI (ALTERADO)
             // Poderia mostrar um alert ou mensagem mais detalhada
             // alert(`Não foi possível carregar as métricas: ${error.message}`);
         }
