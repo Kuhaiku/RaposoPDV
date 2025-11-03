@@ -1,3 +1,4 @@
+// backend/src/controllers/vendaController.js
 const pool = require('../config/database');
 
 exports.criar = async (req, res) => {
@@ -166,9 +167,15 @@ exports.cancelar = async (req, res) => {
             return res.status(404).json({ message: 'Venda não encontrada ou já cancelada.' });
         }
 
-        // 2. Reverte o estoque para cada produto
+        // 2. Reverte o estoque e REATIVA o produto
         for (const item of itens) {
-            await connection.query('UPDATE produtos SET estoque = estoque + ? WHERE id = ? AND empresa_id = ?', [item.quantidade, item.produto_id, empresa_id]);
+            // ***** MODIFICAÇÃO AQUI *****
+            // Atualiza o estoque E define 'ativo = 1'
+            await connection.query(
+                'UPDATE produtos SET estoque = estoque + ?, ativo = 1 WHERE id = ? AND empresa_id = ?', 
+                [item.quantidade, item.produto_id, empresa_id]
+            );
+            // ***** FIM DA MODIFICAÇÃO *****
         }
 
         // 3. Exclui os pagamentos, itens da venda e a própria venda
