@@ -134,27 +134,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let totalGeral = 0;
 
+            // ***** INÍCIO DA MODIFICAÇÃO *****
             vendasParaRelatorio.forEach(venda => {
                 let itensHtml = '';
                 if (venda.itens && venda.itens.length > 0) {
                     venda.itens.forEach(item => {
                         const subtotal = (item.quantidade || 0) * (item.preco_unitario || 0);
-                        itensHtml += `<tr><td>${item.produto_nome || '?'}</td><td style="text-align: center;">${item.quantidade || 0}</td><td style="text-align: right;">${subtotal.toFixed(2)}</td></tr>`;
+                        
+                        // Adicionamos a coluna formatCurrency(item.preco_unitario)
+                        itensHtml += `<tr>
+                                        <td>${item.produto_nome || '?'}</td>
+                                        <td style="text-align: center;">${item.quantidade || 0}</td>
+                                        <td style="text-align: right;">${formatCurrency(item.preco_unitario)}</td>
+                                        <td style="text-align: right;">${formatCurrency(subtotal)}</td>
+                                      </tr>`;
                     });
                 } else {
-                    itensHtml = '<tr><td colspan="3">Nenhum item detalhado.</td></tr>';
+                    // Colspan atualizado para 4
+                    itensHtml = '<tr><td colspan="4">Nenhum item detalhado.</td></tr>';
                 }
+                
                 let pagamentosHtml = '<p style="margin-top: 5px;"><strong>Pagamento:</strong> ';
                  if (venda.pagamentos && venda.pagamentos.length > 0) {
                       pagamentosHtml += venda.pagamentos.map(p => `${p.metodo}: ${formatCurrency(p.valor)}`).join(' / ');
                  } else { pagamentosHtml += 'N/A'; }
                  pagamentosHtml += '</p>';
+                
+                // Adicionado <th>Unit.</th> no cabeçalho da tabela
                 reciboVendasContainer.innerHTML += `
                     <div class="recibo-info" style="border-top: 2px solid #000; padding-top: 15px; margin-top: 15px;"> <p><strong>Venda:</strong> #${venda.id}</p> <p><strong>Data:</strong> ${formatDateTime(venda.data_venda)}</p> ${pagamentosHtml} </div>
-                    <table class="recibo-tabela"> <thead><tr><th>Item</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Subtotal</th></tr></thead> <tbody>${itensHtml}</tbody> </table>
+                    <table class="recibo-tabela"> 
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th style="text-align: center;">Qtd.</th>
+                                <th style="text-align: right;">Unit.</th>
+                                <th style="text-align: right;">Subtotal</th>
+                            </tr>
+                        </thead> 
+                        <tbody>${itensHtml}</tbody> 
+                    </table>
                     <div class="recibo-total" style="font-size: 1rem; border-top: 1px dashed #000;"> <strong>TOTAL DA VENDA: ${formatCurrency(venda.valor_total)}</strong> </div>`;
+                
                 totalGeral += parseFloat(venda.valor_total || 0);
             });
+            // ***** FIM DA MODIFICAÇÃO *****
 
             // Preenche o total geral
             reciboTotalGeralEl.textContent = formatCurrency(totalGeral);
