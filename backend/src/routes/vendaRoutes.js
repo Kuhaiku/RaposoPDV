@@ -8,12 +8,11 @@ router.use(authMiddleware);
 // Rota para criar uma nova venda
 router.post('/', vendaController.criar);
 
-// Rota para listar todas as vendas
+// Rota para listar todas as vendas (resumo)
 router.get('/', vendaController.listarTodas);
 
-// --- NOVO: Rota para o relatório de itens (Inserir ANTES de /:id) ---
+// Rota para o relatório de itens (IMPORTANTE: Antes de /:id)
 router.get('/relatorio/itens', vendaController.relatorioItens);
-// --------------------------------------------------------------------
 
 // Rota para ver detalhes de uma venda
 router.get('/:id', vendaController.obterPorId);
