@@ -10,13 +10,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Seletores DOM ---
     const vendasListContainer = document.getElementById('vendas-list-container');
     const vendasListPlaceholder = document.getElementById('vendas-list-placeholder');
-    const searchButton = document.getElementById('search-button'); // Botão de busca no header
-    // const searchInput = document.getElementById('search-input'); // Campo de busca (se implementado)
+    const searchButton = document.getElementById('search-button'); 
 
     // --- Filtros ---
     const filtrosForm = document.getElementById('filtros-vendas-form');
     const limparFiltrosBtn = document.getElementById('limpar-filtros-btn');
     const filtroVendedorSelect = document.getElementById('filtro-vendedor');
+    
+    // --- Relatório ---
+    const btnRelatorioItens = document.getElementById('btn-relatorio-itens');
+    const relatorioTemplate = document.getElementById('relatorio-template');
 
     // --- Modal Detalhes ---
     const detailsModal = document.getElementById('details-modal');
@@ -24,35 +27,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalVendaInfoEl = document.getElementById('modal-venda-info');
     const modalItensBody = document.getElementById('modal-itens-body');
     const modalPagamentosList = document.getElementById('modal-pagamentos-list');
-    const closeModalBtns = document.querySelectorAll('.close-modal-btn'); // Botões de fechar modal
+    const closeModalBtns = document.querySelectorAll('.close-modal-btn'); 
 
     // --- Estado ---
-    let todasVendas = []; // Armazena todas as vendas carregadas
-    let vendedores = []; // Armazena a lista de vendedores
+    let todasVendas = []; 
+    let vendedores = []; 
 
     // --- Funções Auxiliares ---
-    const formatCurrency = (value) => { /* ... (igual) ... */
+    const formatCurrency = (value) => {
         const number = parseFloat(value) || 0;
         return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
      };
-    const formatDateTime = (dataISO) => { /* ... (igual) ... */
+    const formatDateTime = (dataISO) => {
         if (!dataISO) return 'N/A';
-        // Ajuste para formato mais comum DD/MM/AAAA HH:MM
         return new Date(dataISO).toLocaleString('pt-BR', {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
      };
-     const formatDateShort = (dataISO) => { // Formato DD/MM/AAAA
+     const formatDateShort = (dataISO) => { 
           if (!dataISO) return 'N/A';
           return new Date(dataISO).toLocaleDateString('pt-BR');
      };
-    const openModal = (modalElement) => { /* ... (igual) ... */
-        if (modalElement) modalElement.classList.remove('hidden'); // Usa hidden do Tailwind
+    const openModal = (modalElement) => {
+        if (modalElement) modalElement.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
      };
-    const closeModal = (modalElement) => { /* ... (igual) ... */
-        if (modalElement) modalElement.classList.add('hidden'); // Usa hidden do Tailwind
+    const closeModal = (modalElement) => {
+        if (modalElement) modalElement.classList.add('hidden'); 
         document.body.style.overflow = '';
      };
 
@@ -78,11 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Carrega vendedores para o filtro
     async function carregarVendedores() {
         try {
-            const response = await fetchWithAuth('/api/usuarios'); // Endpoint que lista usuários/vendedores
+            const response = await fetchWithAuth('/api/usuarios'); 
             if (!response.ok) throw new Error('Erro ao carregar vendedores.');
             vendedores = await response.json();
 
-            // Limpa opções antigas (exceto a primeira "Todos")
             filtroVendedorSelect.innerHTML = '<option value="">Todos</option>';
 
             vendedores.forEach(vendedor => {
@@ -93,7 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error('Falha ao carregar vendedores:', error);
-            // Poderia desabilitar o select ou mostrar mensagem
         }
     }
 
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function carregarVendas(queryParams = '') {
         vendasListPlaceholder.textContent = 'Carregando histórico...';
         vendasListPlaceholder.classList.remove('hidden');
-        vendasListContainer.innerHTML = ''; // Limpa lista
+        vendasListContainer.innerHTML = ''; 
 
         try {
             const response = await fetchWithAuth(`/api/vendas${queryParams}`);
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             todasVendas = await response.json();
 
-            renderizarVendasAgrupadas(); // Renderiza a lista agrupada
+            renderizarVendasAgrupadas(); 
 
         } catch (error) {
             console.error('Erro ao carregar vendas:', error);
@@ -124,12 +124,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Renderiza a lista de vendas agrupadas por mês/ano
     const renderizarVendasAgrupadas = () => {
-        vendasListContainer.innerHTML = ''; // Limpa o container
-        vendasListPlaceholder.classList.add('hidden'); // Esconde o placeholder
+        vendasListContainer.innerHTML = ''; 
+        vendasListPlaceholder.classList.add('hidden'); 
 
-         // Filtra primeiro pela busca (se implementada)
-         // const vendasFiltradasPorBusca = todasVendas.filter(v => ...);
-         const vendasFiltradasPorBusca = todasVendas; // Por enquanto, usa todas
+         const vendasFiltradasPorBusca = todasVendas; 
 
         if (vendasFiltradasPorBusca.length === 0) {
             vendasListPlaceholder.textContent = 'Nenhuma venda encontrada para os filtros aplicados.';
@@ -139,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const vendasAgrupadas = groupByMonthYear(vendasFiltradasPorBusca);
 
-        // Ordena os grupos de mês/ano (mais recente primeiro)
         const mesesOrdenados = Object.keys(vendasAgrupadas).sort((a, b) => {
              const [mesA, anoA] = a.split('/');
              const [mesB, anoB] = b.split('/');
@@ -178,19 +175,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Abre o modal de detalhes da venda
     async function abrirModalDetalhes(vendaId) {
-         // Limpa dados anteriores
         modalVendaIdEl.textContent = `#${vendaId}`;
         modalVendaInfoEl.innerHTML = '<p>Carregando...</p>';
         modalItensBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Carregando...</td></tr>';
         modalPagamentosList.innerHTML = '<p>Carregando...</p>';
-        openModal(detailsModal); // Abre o modal
+        openModal(detailsModal); 
 
         try {
             const response = await fetchWithAuth(`/api/vendas/${vendaId}`);
             if (!response.ok) throw new Error('Erro ao buscar detalhes da venda.');
             const detalhes = await response.json();
 
-            // Preenche informações básicas
             modalVendaInfoEl.innerHTML = `
                 <p class="col-span-2"><strong class="text-zinc-600 dark:text-zinc-400">Cliente:</strong> <span class="text-text-light dark:text-zinc-200">${detalhes.cliente_nome || 'Não identificado'}</span></p>
                 <p><strong class="text-zinc-600 dark:text-zinc-400">Vendedor:</strong> <span class="text-text-light dark:text-zinc-200">${detalhes.usuario_nome || 'N/A'}</span></p>
@@ -198,8 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p class="col-span-2 mt-1"><strong class="text-zinc-600 dark:text-zinc-400">Valor Total:</strong> <span class="text-primary font-semibold">${formatCurrency(detalhes.valor_total)}</span></p>
             `;
 
-            // Preenche tabela de itens
-            modalItensBody.innerHTML = ''; // Limpa
+            modalItensBody.innerHTML = ''; 
             if (detalhes.itens && detalhes.itens.length > 0) {
                 detalhes.itens.forEach(item => {
                     const subtotal = (item.quantidade || 0) * (item.preco_unitario || 0);
@@ -217,8 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  modalItensBody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-zinc-500">Nenhum item encontrado nesta venda.</td></tr>';
             }
 
-             // Preenche lista de pagamentos
-             modalPagamentosList.innerHTML = ''; // Limpa
+             modalPagamentosList.innerHTML = ''; 
              if (detalhes.pagamentos && detalhes.pagamentos.length > 0) {
                   detalhes.pagamentos.forEach(p => {
                        modalPagamentosList.innerHTML += `<p>- ${p.metodo || '?'}: ${formatCurrency(p.valor)}</p>`;
@@ -244,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         buttonElement.disabled = true;
-        buttonElement.innerHTML = '<div class="spinner spinner-small inline-block"></div>'; // Spinner
+        buttonElement.innerHTML = '<div class="spinner spinner-small inline-block"></div>'; 
 
         try {
             const response = await fetchWithAuth(`/api/vendas/${vendaId}`, { method: 'DELETE' });
@@ -252,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(data.message || 'Erro desconhecido ao cancelar.');
 
             alert(data.message || 'Venda cancelada com sucesso!');
-            // Recarrega as vendas COM os filtros atuais
              const formData = new FormData(filtrosForm);
              const params = new URLSearchParams(formData).toString();
              await carregarVendas(params ? `?${params}` : '');
@@ -260,20 +252,85 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             alert(`Erro ao cancelar venda: ${error.message}`);
             buttonElement.disabled = false;
-            buttonElement.textContent = 'Cancelar'; // Restaura botão
+            buttonElement.textContent = 'Cancelar'; 
+        }
+    }
+
+    // --- NOVA FUNÇÃO: Gerar Relatório de Itens ---
+    async function gerarRelatorioItens() {
+        const dataInicio = document.getElementById('data-inicio').value;
+        const dataFim = document.getElementById('data-fim').value;
+
+        if (!dataInicio || !dataFim) {
+            alert('Por favor, selecione uma Data Início e Data Fim no filtro para gerar o relatório.');
+            return;
+        }
+
+        const btnOriginalText = btnRelatorioItens.innerHTML;
+        btnRelatorioItens.disabled = true;
+        btnRelatorioItens.innerHTML = '<div class="spinner spinner-small mr-1 inline-block"></div> Gerando...';
+
+        try {
+            const params = new URLSearchParams({ dataInicio, dataFim }).toString();
+            const response = await fetchWithAuth(`/api/vendas/relatorio/itens?${params}`);
+            
+            if (!response.ok) throw new Error('Erro ao buscar dados do relatório.');
+            
+            const data = await response.json();
+
+            // Preenche o Template Oculto
+            document.getElementById('rel-empresa-nome').textContent = "Relatório de Vendas por Item";
+            document.getElementById('rel-periodo').textContent = `${formatDateShort(dataInicio)} até ${formatDateShort(dataFim)}`;
+            document.getElementById('rel-data-geracao').textContent = new Date().toLocaleString('pt-BR');
+
+            const tbody = document.getElementById('rel-itens-body');
+            tbody.innerHTML = '';
+
+            if (data.itens.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">Nenhum item vendido neste período.</td></tr>';
+            } else {
+                data.itens.forEach((item, index) => {
+                    const tr = document.createElement('tr');
+                    tr.style.backgroundColor = index % 2 === 0 ? '#fff' : '#f9f9f9';
+                    tr.innerHTML = `
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.produto_nome}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.produto_codigo || '-'}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(item.preco_medio)}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantidade_total}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(item.valor_total_vendido)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById('rel-total-qtd').textContent = data.totais.qtd;
+            document.getElementById('rel-total-valor').textContent = formatCurrency(data.totais.valor);
+
+            const canvas = await html2canvas(relatorioTemplate, { scale: 2, backgroundColor: '#ffffff' });
+            
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `Relatorio_Itens_${dataInicio}_a_${dataFim}.png`;
+            link.click();
+
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao gerar relatório: ' + error.message);
+        } finally {
+            btnRelatorioItens.disabled = false;
+            btnRelatorioItens.innerHTML = btnOriginalText;
         }
     }
 
     // --- Event Listeners ---
 
-    // Aplicar Filtros
+    // Filtros
     filtrosForm.addEventListener('submit', (event) => {
         event.preventDefault();
         const formData = new FormData(filtrosForm);
-        // Remove campos vazios dos parâmetros
         const params = new URLSearchParams();
          for (const [key, value] of formData.entries()) {
-             if (value) { // Só adiciona se tiver valor
+             if (value) { 
                  params.append(key, value);
              }
          }
@@ -283,44 +340,43 @@ document.addEventListener('DOMContentLoaded', () => {
     // Limpar Filtros
     limparFiltrosBtn.addEventListener('click', () => {
         filtrosForm.reset();
-        // Garante que o select do vendedor volte para "Todos" visualmente se ele tiver sido resetado
         filtroVendedorSelect.value = "";
-        carregarVendas(); // Carrega sem filtros
-        // Fecha o <details> se estiver aberto
+        carregarVendas(); 
         const detailsElement = filtrosForm.closest('details');
         if (detailsElement) detailsElement.open = false;
     });
 
-    // Abrir Modal de Detalhes ou Cancelar Venda (Delegação de Eventos)
+    // Relatório
+    if (btnRelatorioItens) {
+        btnRelatorioItens.addEventListener('click', gerarRelatorioItens);
+    }
+
+    // Delegação de Eventos na Lista
     vendasListContainer.addEventListener('click', (event) => {
          const vendaItem = event.target.closest('.venda-item');
          const cancelButton = event.target.closest('.btn-cancelar');
 
          if (cancelButton && vendaItem && vendaItem.dataset.vendaId) {
-             event.stopPropagation(); // Impede que o clique no botão abra o modal
+             event.stopPropagation(); 
              handleCancelClick(vendaItem.dataset.vendaId, cancelButton);
          } else if (vendaItem && vendaItem.dataset.vendaId) {
             abrirModalDetalhes(vendaItem.dataset.vendaId);
          }
     });
 
-
-    // Fechar Modal (Botões 'X' e 'Fechar')
+    // Fechar Modal
     closeModalBtns.forEach(button => {
         button.addEventListener('click', () => closeModal(detailsModal));
     });
 
-    // Fechar Modal (Clicando fora)
     detailsModal.addEventListener('click', (event) => {
         if (event.target === detailsModal) {
             closeModal(detailsModal);
         }
     });
 
-    // TODO: Adicionar lógica para o botão de busca no header se necessário
-
     // --- INICIALIZAÇÃO ---
-    carregarVendedores(); // Carrega a lista de vendedores para o filtro
-    carregarVendas(); // Carrega as vendas iniciais (sem filtros)
+    carregarVendedores(); 
+    carregarVendas(); 
 
-}); // Fim do DOMContentLoaded
+});
