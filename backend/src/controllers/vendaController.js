@@ -1,6 +1,6 @@
-// backend/src/controllers/vendaController.js
 const pool = require('../config/database');
 
+// Função para criar uma nova venda
 exports.criar = async (req, res) => {
     // Agora esperamos também um array de pagamentos
     const { cliente_id, itens, pagamentos } = req.body;
@@ -45,7 +45,7 @@ exports.criar = async (req, res) => {
             );
             await connection.query('UPDATE produtos SET estoque = estoque - ? WHERE id = ?', [item.quantidade, item.produto_id]);
             
-            // NOVO: Verifica se o estoque chegou a zero e inativa o produto
+            // Verifica se o estoque chegou a zero e inativa o produto
             const [estoqueAtual] = await connection.query('SELECT estoque FROM produtos WHERE id = ?', [item.produto_id]);
             if (estoqueAtual[0].estoque === 0) {
                 await connection.query('UPDATE produtos SET ativo = 0 WHERE id = ?', [item.produto_id]);
@@ -71,6 +71,7 @@ exports.criar = async (req, res) => {
     }
 };
 
+// Função para obter detalhes de uma venda
 exports.obterPorId = async (req, res) => {
     const { id } = req.params;
     try {
@@ -100,7 +101,7 @@ exports.obterPorId = async (req, res) => {
         const vendaDetalhada = { 
             ...vendaRows[0], 
             itens: itensRows,
-            pagamentos: pagamentosRows // Adiciona os pagamentos à resposta
+            pagamentos: pagamentosRows
         };
         res.status(200).json(vendaDetalhada);
     } catch (error) {
@@ -109,7 +110,7 @@ exports.obterPorId = async (req, res) => {
     }
 };
 
-// A função listarTodas pode permanecer a mesma, pois ela só mostra um resumo.
+// Função para listar todas as vendas (com filtros)
 exports.listarTodas = async (req, res) => {
     const { dataInicio, dataFim, cliente, vendedor } = req.query;
     let query = `
@@ -150,7 +151,7 @@ exports.listarTodas = async (req, res) => {
     }
 };
 
-// Nova função para cancelar uma venda
+// Função para cancelar uma venda
 exports.cancelar = async (req, res) => {
     const { id } = req.params;
     const empresa_id = req.empresaId;
@@ -169,13 +170,10 @@ exports.cancelar = async (req, res) => {
 
         // 2. Reverte o estoque e REATIVA o produto
         for (const item of itens) {
-            // ***** MODIFICAÇÃO AQUI *****
-            // Atualiza o estoque E define 'ativo = 1'
             await connection.query(
                 'UPDATE produtos SET estoque = estoque + ?, ativo = 1 WHERE id = ? AND empresa_id = ?', 
                 [item.quantidade, item.produto_id, empresa_id]
             );
-            // ***** FIM DA MODIFICAÇÃO *****
         }
 
         // 3. Exclui os pagamentos, itens da venda e a própria venda
@@ -191,5 +189,59 @@ exports.cancelar = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao cancelar a venda.' });
     } finally {
         if (connection) connection.release();
+    }
+};
+
+// NOVO: Relatório de itens vendidos por período
+exports.relatorioItens = async (req, res) => {
+    const { dataInicio, dataFim } = req.query;
+    const empresa_id = req.empresaId;
+
+    let query = `
+        SELECT 
+            p.nome AS produto_nome,
+            p.codigo AS produto_codigo,
+            SUM(vi.quantidade) AS quantidade_total,
+            SUM(vi.quantidade * vi.preco_unitario) AS valor_total_vendido,
+            AVG(vi.preco_unitario) AS preco_medio
+        FROM venda_itens vi
+        JOIN vendas v ON vi.venda_id = v.id
+        JOIN produtos p ON vi.produto_id = p.id
+        WHERE v.empresa_id = ?
+    `;
+    
+    const params = [empresa_id];
+
+    if (dataInicio) {
+        query += " AND v.data_venda >= ?";
+        params.push(dataInicio);
+    }
+    
+    if (dataFim) {
+        // Ajusta para o final do dia para incluir o dia inteiro
+        query += " AND v.data_venda <= CONCAT(?, ' 23:59:59')";
+        params.push(dataFim);
+    }
+
+    query += " GROUP BY p.id, p.nome, p.codigo ORDER BY quantidade_total DESC";
+
+    try {
+        const [itens] = await pool.query(query, params);
+        
+        // Totais gerais
+        const totais = itens.reduce((acc, item) => {
+            acc.qtd += parseFloat(item.quantidade_total);
+            acc.valor += parseFloat(item.valor_total_vendido);
+            return acc;
+        }, { qtd: 0, valor: 0 });
+
+        res.status(200).json({
+            periodo: { inicio: dataInicio, fim: dataFim },
+            itens: itens,
+            totais: totais
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao gerar relatório de itens.' });
     }
 };
