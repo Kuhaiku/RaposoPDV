@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Vendas em Imagem</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="css/global.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3498db",
+                        "secondary": "#2c3e50",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "danger": "#e74c3c",
+                        "success": "#2ecc71"
+                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Estilos específicos para o relatório que será gerado */
+        #relatorio-render-container {
+            position: absolute;
+            left: -9999px; /* Escondido da tela, mas visível para o DOM */
+            top: 0;
+            width: 800px; /* Largura fixa para boa resolução */
+            background-color: white;
+            padding: 40px;
+            font-family: 'Courier New', Courier, monospace; /* Fonte estilo cupom */
+            color: #000;
+            z-index: -1;
+        }
+        
+        /* Estilos copiados e adaptados do recibo original */
+        .rel-header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #000; padding-bottom: 20px; }
+        .rel-header h2 { font-size: 1.5rem; font-weight: bold; margin: 0; }
+        .rel-info-geral { margin-bottom: 20px; font-size: 0.9rem; }
+        
+        .rel-venda-card { border: 1px solid #000; margin-bottom: 15px; padding: 10px; border-radius: 5px; }
+        .rel-venda-header { display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; font-weight: bold; }
+        
+        .rel-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .rel-table th { text-align: left; border-bottom: 1px solid #000; }
+        .rel-table td { padding: 4px 0; }
+        .rel-text-right { text-align: right; }
+        .rel-text-center { text-align: center; }
+        
+        .rel-total-geral { margin-top: 30px; text-align: right; font-size: 1.5rem; font-weight: bold; border-top: 2px dashed #000; padding-top: 10px; }
+        .rel-footer { text-align: center; margin-top: 30px; font-size: 0.8rem; color: #555; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+    <div class="painel-container flex min-h-screen">
+        <aside class="sidebar w-64 bg-secondary text-white hidden md:flex flex-col flex-shrink-0">
+            <div class="sidebar-header p-5 border-b border-gray-700"> <h2 class="text-xl font-bold">Raposo PDV</h2> </div>
+            <nav class="sidebar-nav flex-1 p-4">
+                <ul class="space-y-2">
+                    <li><a href="painel.html" class="block p-3 rounded hover:bg-primary/50">Dashboard</a></li>
+                    <li><a href="historico.html" class="block p-3 rounded hover:bg-primary/50">Histórico Geral</a></li>
+                    <li class="bg-primary/20 rounded"><a href="#" class="block p-3 font-bold">Relatório Imagem</a></li>
+                    </ul>
+            </nav>
+            <div class="sidebar-footer p-4"> <button id="logout-btn" class="btn-logout w-full border border-white p-2 rounded hover:bg-white hover:text-secondary">Sair</button> </div>
+        </aside>
+
+        <main class="main-content flex-1 p-4 md:p-8 overflow-x-hidden">
+            <header class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <a href="painel.html" class="md:hidden text-secondary dark:text-white"><span class="material-symbols-outlined">arrow_back</span></a>
+                    <h1 class="text-2xl font-bold text-secondary dark:text-white">Gerador de Comprovantes em Lote</h1>
+                </div>
+            </header>
+
+            <section class="card bg-white dark:bg-zinc-900 p-5 rounded-lg shadow-sm mb-6 border dark:border-zinc-700">
+                <form id="filtro-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div class="input-group">
+                        <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Data Início</label>
+                        <input type="date" id="data-inicio" class="w-full p-2 border rounded dark:bg-zinc-800 dark:border-zinc-700 dark:text-white">
+                    </div>
+                    <div class="input-group">
+                        <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Data Fim</label>
+                        <input type="date" id="data-fim" class="w-full p-2 border rounded dark:bg-zinc-800 dark:border-zinc-700 dark:text-white">
+                    </div>
+                    <div class="input-group">
+                        <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Cliente (Opcional)</label>
+                        <input type="text" id="filtro-cliente" placeholder="Nome..." class="w-full p-2 border rounded dark:bg-zinc-800 dark:border-zinc-700 dark:text-white">
+                    </div>
+                    <button type="submit" class="bg-primary text-white font-bold p-2 rounded hover:bg-primary/90 h-[42px]">
+                        Buscar Vendas
+                    </button>
+                </form>
+            </section>
+
+            <section class="card bg-white dark:bg-zinc-900 p-5 rounded-lg shadow-sm mb-20 border dark:border-zinc-700">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold">Selecione as Vendas</h2>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="select-all" class="w-5 h-5 text-primary rounded focus:ring-primary">
+                        <label for="select-all" class="text-sm font-semibold cursor-pointer">Selecionar Todos</label>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 text-sm uppercase">
+                                <th class="p-3 w-10"></th> <th class="p-3">ID</th>
+                                <th class="p-3">Data</th>
+                                <th class="p-3">Cliente</th>
+                                <th class="p-3 text-right">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-vendas-body" class="text-sm divide-y divide-gray-200 dark:divide-zinc-700">
+                            <tr><td colspan="5" class="p-4 text-center text-gray-500">Utilize os filtros para buscar vendas.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <div class="fixed bottom-6 right-6 z-30">
+                <button id="btn-gerar-imagem" class="flex items-center justify-center gap-2 bg-secondary text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-secondary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="material-symbols-outlined">image</span>
+                    Baixar Relatório (Imagem)
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <div id="relatorio-render-container">
+        <div class="rel-header">
+            <h2 id="render-nome-empresa">EMPRESA MODELO</h2>
+            <p id="render-info-empresa">Endereço da Empresa - CNPJ</p>
+        </div>
+        
+        <div class="rel-info-geral">
+            <p><strong>Relatório de Vendas Selecionadas</strong></p>
+            <p>Gerado em: <span id="render-data-geracao"></span></p>
+            <p>Período/Filtro: <span id="render-periodo">Personalizado</span></p>
+        </div>
+
+        <div id="render-vendas-lista">
+            </div>
+
+        <div class="rel-total-geral">
+            TOTAL GERAL: <span id="render-total-geral">R$ 0,00</span>
+        </div>
+        
+        <div class="rel-footer">
+            <p>Sistema Raposo PDV</p>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/relatorio-imagem.js"></script>
+</body>
+</html>
