@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/global.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <script id="tailwind-config">
         tailwind.config = {
@@ -39,7 +40,6 @@
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
         body { min-height: 100vh; font-family: 'Inter', sans-serif; }
         
-        /* Spinner */
         .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -60,16 +60,13 @@
         .rel-header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #000; padding-bottom: 20px; }
         .rel-header h2 { font-size: 1.8rem; font-weight: bold; margin: 0; text-transform: uppercase; }
         .rel-info-geral { margin-bottom: 20px; font-size: 1rem; }
-        
         .rel-venda-card { border: 1px solid #000; margin-bottom: 15px; padding: 15px; border-radius: 8px; }
         .rel-venda-header { display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding-bottom: 8px; margin-bottom: 8px; font-weight: bold; font-size: 1.1rem;}
-        
         .rel-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; margin-top: 5px; }
         .rel-table th { text-align: left; border-bottom: 1px solid #000; padding: 5px 0; }
         .rel-table td { padding: 5px 0; border-bottom: 1px dashed #eee; }
         .rel-text-right { text-align: right; }
         .rel-text-center { text-align: center; }
-        
         .rel-total-geral { margin-top: 30px; text-align: right; font-size: 2rem; font-weight: bold; border-top: 3px double #000; padding-top: 15px; }
         .rel-footer { text-align: center; margin-top: 40px; font-size: 0.9rem; color: #555; }
     </style>
@@ -131,9 +128,12 @@
         </div>
     </div>
 
-    <div class="fixed bottom-6 right-6 z-30">
-        <button id="btn-gerar-imagem" class="flex items-center justify-center rounded-full bg-primary text-white shadow-lg h-14 w-14 hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" title="Baixar Relatório">
-            <span class="material-symbols-outlined text-4xl text-white">calculate</span>
+    <div class="fixed bottom-6 right-6 z-30 flex flex-col gap-3">
+        <button id="btn-gerar-pdf" class="flex items-center justify-center rounded-full bg-danger text-white shadow-lg h-14 w-14 hover:bg-danger/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-danger" title="Baixar PDF">
+            <span class="material-symbols-outlined text-3xl">picture_as_pdf</span>
+        </button>
+        <button id="btn-gerar-imagem" class="flex items-center justify-center rounded-full bg-primary text-white shadow-lg h-14 w-14 hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" title="Baixar Imagem">
+            <span class="material-symbols-outlined text-4xl">calculate</span>
         </button>
     </div>
 
@@ -144,18 +144,14 @@
         <h2 id="render-nome-empresa">EMPRESA</h2>
         <p id="render-info-empresa" style="margin-top: 5px;">CNPJ / Endereço</p>
     </div>
-    
     <div class="rel-info-geral">
         <p><strong>RELATÓRIO DE VENDAS</strong></p>
         <p>Emissão: <span id="render-data-geracao"></span></p>
     </div>
-
     <div id="render-vendas-lista"></div>
-
     <div class="rel-total-geral">
         TOTAL GERAL: <span id="render-total-geral">R$ 0,00</span>
     </div>
-    
     <div class="rel-footer">
         <p>Sistema Raposo PDV</p>
     </div>
