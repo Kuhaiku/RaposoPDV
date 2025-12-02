@@ -1,6 +1,5 @@
 // frontend/js/relatorio-imagem.js
 
-// Verifica autenticação
 if (typeof checkAuth !== 'function') { console.error("Auth não carregado"); } else { checkAuth(); }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,9 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectAllCheckbox = document.getElementById('select-all');
     const contadorSelecionados = document.getElementById('contador-selecionados');
     const btnGerarImagem = document.getElementById('btn-gerar-imagem');
+    const btnGerarPDF = document.getElementById('btn-gerar-pdf'); // Novo botão
     const logoutBtn = document.getElementById('logout-btn');
 
-    // --- Elementos do Template de Relatório ---
+    // --- Elementos Template ---
     const renderContainer = document.getElementById('relatorio-render-container');
     const renderNomeEmpresa = document.getElementById('render-nome-empresa');
     const renderInfoEmpresa = document.getElementById('render-info-empresa');
@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderTotalGeral = document.getElementById('render-total-geral');
     const renderDataGeracao = document.getElementById('render-data-geracao');
 
-    // --- Estado ---
     let vendasCarregadas = []; 
     let dadosEmpresa = null;
 
@@ -29,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatCurrency = (val) => parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const formatDate = (iso) => new Date(iso).toLocaleString('pt-BR');
 
-    // 1. Carregar Dados da Empresa
+    // 1. Carregar Empresa
     async function carregarDadosEmpresa() {
         try {
             const res = await fetchWithAuth('/api/empresas/meus-dados');
@@ -41,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.warn("Erro ao carregar empresa"); }
     }
 
-    // 2. Buscar Vendas (Automático e Manual)
+    // 2. Carregar Vendas
     async function carregarVendas(event = null) {
         if (event) event.preventDefault();
 
@@ -49,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataFim = document.getElementById('data-fim').value;
         const cliente = document.getElementById('filtro-cliente').value;
 
-        // Reset visual
         vendasListContainer.innerHTML = '';
         vendasListPlaceholder.textContent = 'Carregando...';
         vendasListPlaceholder.classList.remove('hidden');
@@ -65,7 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetchWithAuth(`/api/vendas?${params.toString()}`);
             if (!response.ok) throw new Error("Erro ao buscar vendas");
-            
             vendasCarregadas = await response.json();
             renderizarLista(vendasCarregadas);
         } catch (error) {
@@ -78,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Renderizar Lista
     function renderizarLista(vendas) {
         vendasListContainer.innerHTML = '';
-        
         if (vendas.length === 0) {
             vendasListPlaceholder.textContent = 'Nenhuma venda encontrada.';
             vendasListContainer.appendChild(vendasListPlaceholder);
@@ -90,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
         vendas.forEach(venda => {
             const div = document.createElement('div');
             div.className = 'bg-white dark:bg-zinc-800 rounded-xl shadow-sm border dark:border-zinc-700 p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors select-none mb-3';
-            
             div.innerHTML = `
                 <div class="flex items-center gap-3 overflow-hidden w-full">
                     <input type="checkbox" class="venda-checkbox form-checkbox rounded text-primary focus:ring-primary/50 h-5 w-5 border-gray-300 dark:border-gray-600 dark:bg-gray-700 cursor-pointer flex-shrink-0" value="${venda.id}">
@@ -101,10 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <p class="text-xs text-subtext-light dark:text-subtext-dark mt-1">#${venda.id} • ${formatDate(venda.data_venda)}</p>
                     </div>
-                </div>
-            `;
-
-            // Lógica de clique no card
+                </div>`;
             div.addEventListener('click', (e) => {
                 if(e.target.type !== 'checkbox') {
                     const cb = div.querySelector('.venda-checkbox');
@@ -112,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     atualizarContador();
                 }
             });
-            
             div.querySelector('.venda-checkbox').addEventListener('change', atualizarContador);
             vendasListContainer.appendChild(div);
         });
@@ -122,8 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Selecionar Todos
     selectAllCheckbox.addEventListener('change', (e) => {
         const isChecked = e.target.checked;
-        const checkboxes = document.querySelectorAll('.venda-checkbox');
-        checkboxes.forEach(chk => { chk.checked = isChecked; });
+        document.querySelectorAll('.venda-checkbox').forEach(chk => chk.checked = isChecked);
         atualizarContador();
     });
 
@@ -132,25 +122,25 @@ document.addEventListener('DOMContentLoaded', () => {
         contadorSelecionados.textContent = `${count} selecionados`;
     }
 
-    // 5. Gerar Imagem (ALTA QUALIDADE RESTAURADA)
-    btnGerarImagem.addEventListener('click', async () => {
+    // --- FUNÇÃO CENTRAL DE GERAÇÃO (PDF e IMAGEM) ---
+    async function processarRelatorio(tipo) {
         const selecionados = Array.from(document.querySelectorAll('.venda-checkbox:checked')).map(cb => cb.value);
-        
-        if (selecionados.length === 0) {
-            alert("Selecione pelo menos uma venda.");
-            return;
-        }
+        if (selecionados.length === 0) { alert("Selecione pelo menos uma venda."); return; }
 
-        const btnOriginalHtml = btnGerarImagem.innerHTML;
+        const botao = tipo === 'pdf' ? btnGerarPDF : btnGerarImagem;
+        const htmlOriginal = botao.innerHTML;
+        
+        // Desabilita ambos os botões
         btnGerarImagem.disabled = true;
-        btnGerarImagem.innerHTML = `<div class="spinner"></div>`; 
+        btnGerarPDF.disabled = true;
+        botao.innerHTML = `<div class="spinner"></div>`;
 
         try {
             // A. Buscar Detalhes
             const promessas = selecionados.map(id => fetchWithAuth(`/api/vendas/${id}`).then(r => r.json()));
             const vendasDetalhadas = await Promise.all(promessas);
 
-            // B. Preencher Template Oculto
+            // B. Preencher Template HTML
             renderVendasLista.innerHTML = '';
             let totalAcumulado = 0;
             renderDataGeracao.textContent = new Date().toLocaleString('pt-BR');
@@ -158,91 +148,87 @@ document.addEventListener('DOMContentLoaded', () => {
             vendasDetalhadas.forEach(venda => {
                 totalAcumulado += parseFloat(venda.valor_total);
                 
-                // Itens
                 let linhasItens = '';
                 if(venda.itens && venda.itens.length > 0) {
                     venda.itens.forEach(item => {
                         const subtotal = item.quantidade * item.preco_unitario;
-                        linhasItens += `
-                            <tr>
-                                <td>${item.produto_nome}</td>
-                                <td class="rel-text-center">${item.quantidade}</td>
-                                <td class="rel-text-right">${formatCurrency(item.preco_unitario)}</td>
-                                <td class="rel-text-right">${formatCurrency(subtotal)}</td>
-                            </tr>`;
+                        linhasItens += `<tr><td>${item.produto_nome}</td><td class="rel-text-center">${item.quantidade}</td><td class="rel-text-right">${formatCurrency(item.preco_unitario)}</td><td class="rel-text-right">${formatCurrency(subtotal)}</td></tr>`;
                     });
-                } else {
-                    linhasItens = '<tr><td colspan="4" class="rel-text-center">- Sem itens -</td></tr>';
-                }
+                } else { linhasItens = '<tr><td colspan="4" class="rel-text-center">- Sem itens -</td></tr>'; }
 
-                // Pagamento
                 let infoPagamento = '';
                 if(venda.pagamentos && venda.pagamentos.length > 0) {
                     const pags = venda.pagamentos.map(p => `${p.metodo} (${formatCurrency(p.valor)})`).join(', ');
                     infoPagamento = `<p style="margin: 5px 0 0 0; font-size: 0.8rem; font-style:italic;">Pagamento: ${pags}</p>`;
                 }
 
-                const vendaHTML = `
+                renderVendasLista.innerHTML += `
                     <div class="rel-venda-card">
-                        <div class="rel-venda-header">
-                            <span>Venda #${venda.id}</span>
-                            <span>${formatDate(venda.data_venda)}</span>
-                        </div>
-                        <div style="margin-bottom: 8px;">
-                            <strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor Final'}<br>
-                            ${venda.usuario_nome ? `<strong>Vendedor:</strong> ${venda.usuario_nome}` : ''}
-                        </div>
-                        <table class="rel-table">
-                            <thead><tr><th>Item</th><th class="rel-text-center">Qtd</th><th class="rel-text-right">Unit.</th><th class="rel-text-right">Total</th></tr></thead>
-                            <tbody>${linhasItens}</tbody>
-                        </table>
+                        <div class="rel-venda-header"><span>Venda #${venda.id}</span><span>${formatDate(venda.data_venda)}</span></div>
+                        <div style="margin-bottom: 8px;"><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor Final'}<br>${venda.usuario_nome ? `<strong>Vendedor:</strong> ${venda.usuario_nome}` : ''}</div>
+                        <table class="rel-table"><thead><tr><th>Item</th><th class="rel-text-center">Qtd</th><th class="rel-text-right">Unit.</th><th class="rel-text-right">Total</th></tr></thead><tbody>${linhasItens}</tbody></table>
                         ${infoPagamento}
-                        <div class="rel-text-right" style="margin-top: 8px; font-weight:bold; font-size: 1.1rem;">
-                            Total: ${formatCurrency(venda.valor_total)}
-                        </div>
+                        <div class="rel-text-right" style="margin-top: 8px; font-weight:bold; font-size: 1.1rem;">Total: ${formatCurrency(venda.valor_total)}</div>
                     </div>`;
-                renderVendasLista.innerHTML += vendaHTML;
             });
-
             renderTotalGeral.textContent = formatCurrency(totalAcumulado);
 
-            // C. CONFIGURAÇÃO DE ALTA QUALIDADE (Scale 4 + onClone)
-            // Isso garante que a imagem não saia cortada e tenha alta resolução
+            // C. Gerar Canvas com Alta Qualidade
             const canvas = await html2canvas(renderContainer, {
-                scale: 4, // 4x a resolução da tela
+                scale: 4, 
                 backgroundColor: "#ffffff",
                 useCORS: true,
-                onclone: (clonedDoc) => {
-                    const element = clonedDoc.getElementById('relatorio-render-container');
-                    if(element) {
-                        // Remove o posicionamento "escondido" no clone para que o canvas capture tudo
-                        element.style.display = 'block';
-                        element.style.left = '0px';
-                        element.style.top = '0px';
-                        element.style.position = 'static'; 
-                    }
+                onclone: (doc) => {
+                    const el = doc.getElementById('relatorio-render-container');
+                    if(el) { el.style.display = 'block'; el.style.position = 'static'; el.style.left = '0'; el.style.top = '0'; }
                 }
             });
 
-            // D. Download
-            const link = document.createElement('a');
-            link.download = `Relatorio_Vendas_${new Date().toISOString().slice(0,10)}.png`;
-            // Qualidade máxima do PNG
-            link.href = canvas.toDataURL('image/png', 1.0);
-            link.click();
+            const nomeArquivo = `Relatorio_Vendas_${new Date().toISOString().slice(0,10)}`;
+
+            if (tipo === 'image') {
+                const link = document.createElement('a');
+                link.download = `${nomeArquivo}.png`;
+                link.href = canvas.toDataURL('image/png', 1.0);
+                link.click();
+            } 
+            else if (tipo === 'pdf') {
+                // Cria PDF com tamanho customizado para caber a imagem inteira sem cortes
+                const { jsPDF } = window.jspdf;
+                // Converte pixels do canvas para dimensão do PDF (mantendo proporção)
+                // Usando 'pt' (pontos) facilita a conversão direta se assumirmos 72dpi, mas vamos usar pixels unitários do canvas
+                const imgWidth = canvas.width / 4; // Divide pelo scale para voltar ao tamanho original em "pixels de tela"
+                const imgHeight = canvas.height / 4;
+                
+                // Cria um PDF com o tamanho exato da imagem gerada
+                const doc = new jsPDF({
+                    orientation: 'p',
+                    unit: 'px',
+                    format: [imgWidth, imgHeight] 
+                });
+
+                // Adiciona a imagem cobrindo todo o PDF
+                doc.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, imgWidth, imgHeight);
+                doc.save(`${nomeArquivo}.pdf`);
+            }
 
         } catch (error) {
             console.error(error);
-            alert("Erro ao gerar imagem: " + error.message);
+            alert(`Erro ao gerar ${tipo.toUpperCase()}: ${error.message}`);
         } finally {
             btnGerarImagem.disabled = false;
-            btnGerarImagem.innerHTML = btnOriginalHtml;
+            btnGerarPDF.disabled = false;
+            botao.innerHTML = htmlOriginal;
         }
-    });
+    }
+
+    // Listeners dos Botões
+    btnGerarImagem.addEventListener('click', () => processarRelatorio('image'));
+    btnGerarPDF.addEventListener('click', () => processarRelatorio('pdf'));
 
     if(logoutBtn) logoutBtn.addEventListener('click', logout);
     
     // Inicialização
     carregarDadosEmpresa();
-    carregarVendas(); // Carrega automaticamente ao iniciar
+    carregarVendas();
 });
