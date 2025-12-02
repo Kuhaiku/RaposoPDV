@@ -39,16 +39,16 @@
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
         body { min-height: 100vh; font-family: 'Inter', sans-serif; }
         
-        /* Spinner para o botão de loading */
+        /* Spinner */
         .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Container Oculto para Renderização (Estilo Cupom Fiscal) */
+        /* Container Oculto para Renderização */
         #relatorio-render-container {
             position: absolute;
-            left: -9999px; /* Escondido da visão do usuário */
+            left: -9999px;
             top: 0;
-            width: 800px; /* Largura fixa para garantir qualidade */
+            width: 800px;
             background-color: white;
             padding: 40px;
             font-family: 'Courier New', Courier, monospace;
@@ -56,7 +56,7 @@
             z-index: -1;
         }
         
-        /* Estilos do Relatório Gerado */
+        /* Estilos do Relatório */
         .rel-header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #000; padding-bottom: 20px; }
         .rel-header h2 { font-size: 1.8rem; font-weight: bold; margin: 0; text-transform: uppercase; }
         .rel-info-geral { margin-bottom: 20px; font-size: 1rem; }
@@ -118,16 +118,16 @@
     </section>
 
     <div class="px-4 pt-4 pb-2 flex items-center justify-between">
-        <div class="flex items-center gap-2" onclick="document.getElementById('select-all').click()">
+        <div class="flex items-center gap-2">
             <input type="checkbox" id="select-all" class="form-checkbox rounded text-primary focus:ring-primary/50 h-5 w-5 border-gray-300 dark:border-gray-600 dark:bg-gray-700 cursor-pointer">
-            <label class="text-sm font-semibold text-secondary dark:text-white cursor-pointer select-none">Selecionar Todos</label>
+            <label for="select-all" class="text-sm font-semibold text-secondary dark:text-white cursor-pointer select-none">Selecionar Todos</label>
         </div>
         <span id="contador-selecionados" class="text-xs text-zinc-500 font-medium">0 selecionados</span>
     </div>
 
     <div id="vendas-list-container" class="flex-1 p-4 space-y-4">
         <div id="vendas-list-placeholder" class="text-center py-10 text-gray-500 dark:text-gray-400">
-            Utilize os filtros acima para carregar as vendas.
+            Carregando vendas...
         </div>
     </div>
 
@@ -150,8 +150,7 @@
         <p>Emissão: <span id="render-data-geracao"></span></p>
     </div>
 
-    <div id="render-vendas-lista">
-        </div>
+    <div id="render-vendas-lista"></div>
 
     <div class="rel-total-geral">
         TOTAL GERAL: <span id="render-total-geral">R$ 0,00</span>
