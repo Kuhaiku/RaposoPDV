@@ -3,13 +3,13 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Relatório em Imagem</title>
+    <title>Gerar Relatório</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="css/global.css">
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script id="tailwind-config">
         tailwind.config = {
@@ -30,9 +30,7 @@
                         "warning": "#f39c12",
                     },
                     fontFamily: { "display": ["Inter", "sans-serif"] },
-                    borderRadius: {
-                         "DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"
-                     },
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px" },
                 },
             },
         }
@@ -41,35 +39,39 @@
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
         body { min-height: 100vh; font-family: 'Inter', sans-serif; }
         
-        /* Spinner */
-        .spinner { border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 2px solid white; width: 1rem; height: 1rem; animation: spin 1s linear infinite; }
+        /* Spinner para o botão de loading */
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Container Oculto para Renderização da Imagem */
+        /* Container Oculto para Renderização (Estilo Cupom Fiscal) */
         #relatorio-render-container {
             position: absolute;
-            left: -9999px;
+            left: -9999px; /* Escondido da visão do usuário */
             top: 0;
-            width: 800px;
+            width: 800px; /* Largura fixa para garantir qualidade */
             background-color: white;
             padding: 40px;
             font-family: 'Courier New', Courier, monospace;
             color: #000;
             z-index: -1;
         }
-        /* Estilos do cupom */
+        
+        /* Estilos do Relatório Gerado */
         .rel-header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #000; padding-bottom: 20px; }
-        .rel-header h2 { font-size: 1.5rem; font-weight: bold; margin: 0; }
-        .rel-info-geral { margin-bottom: 20px; font-size: 0.9rem; }
-        .rel-venda-card { border: 1px solid #000; margin-bottom: 15px; padding: 10px; border-radius: 5px; }
-        .rel-venda-header { display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; font-weight: bold; }
-        .rel-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .rel-table th { text-align: left; border-bottom: 1px solid #000; }
-        .rel-table td { padding: 4px 0; }
+        .rel-header h2 { font-size: 1.8rem; font-weight: bold; margin: 0; text-transform: uppercase; }
+        .rel-info-geral { margin-bottom: 20px; font-size: 1rem; }
+        
+        .rel-venda-card { border: 1px solid #000; margin-bottom: 15px; padding: 15px; border-radius: 8px; }
+        .rel-venda-header { display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding-bottom: 8px; margin-bottom: 8px; font-weight: bold; font-size: 1.1rem;}
+        
+        .rel-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; margin-top: 5px; }
+        .rel-table th { text-align: left; border-bottom: 1px solid #000; padding: 5px 0; }
+        .rel-table td { padding: 5px 0; border-bottom: 1px dashed #eee; }
         .rel-text-right { text-align: right; }
         .rel-text-center { text-align: center; }
-        .rel-total-geral { margin-top: 30px; text-align: right; font-size: 1.5rem; font-weight: bold; border-top: 2px dashed #000; padding-top: 10px; }
-        .rel-footer { text-align: center; margin-top: 30px; font-size: 0.8rem; color: #555; }
+        
+        .rel-total-geral { margin-top: 30px; text-align: right; font-size: 2rem; font-weight: bold; border-top: 3px double #000; padding-top: 15px; }
+        .rel-footer { text-align: center; margin-top: 40px; font-size: 0.9rem; color: #555; }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display">
@@ -83,16 +85,14 @@
         </div>
         <h1 class="text-text-light dark:text-text-dark text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Gerar Relatório</h1>
         <div class="flex w-10 items-center justify-end">
-             <button id="search-button" class="flex items-center justify-center h-10 w-10 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
-                <span class="material-symbols-outlined text-text-light dark:text-text-dark text-2xl">search</span>
-            </button>
+             <div class="size-10"></div>
         </div>
     </div>
 
     <section class="p-4 bg-white dark:bg-zinc-900 border-b dark:border-zinc-700 shadow-sm">
         <details> 
             <summary class="cursor-pointer text-sm font-medium text-primary flex items-center justify-between">
-                <span>Filtrar Período e Cliente</span>
+                <span>Filtrar Vendas</span>
                 <span class="material-symbols-outlined">filter_list</span>
             </summary>
             <form id="filtro-form" class="mt-4 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
@@ -110,7 +110,7 @@
                 </div>
                 <div class="form-actions col-span-full flex justify-end gap-2 mt-3">
                     <button type="submit" class="py-1.5 px-4 bg-primary rounded-md text-xs font-bold text-white hover:bg-primary/90 transition-colors inline-flex items-center">
-                        Aplicar Filtros
+                        Buscar
                     </button>
                 </div>
             </form>
@@ -118,22 +118,22 @@
     </section>
 
     <div class="px-4 pt-4 pb-2 flex items-center justify-between">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2" onclick="document.getElementById('select-all').click()">
             <input type="checkbox" id="select-all" class="form-checkbox rounded text-primary focus:ring-primary/50 h-5 w-5 border-gray-300 dark:border-gray-600 dark:bg-gray-700 cursor-pointer">
-            <label for="select-all" class="text-sm font-semibold text-secondary dark:text-white cursor-pointer">Selecionar Todos</label>
+            <label class="text-sm font-semibold text-secondary dark:text-white cursor-pointer select-none">Selecionar Todos</label>
         </div>
         <span id="contador-selecionados" class="text-xs text-zinc-500 font-medium">0 selecionados</span>
     </div>
 
     <div id="vendas-list-container" class="flex-1 p-4 space-y-4">
         <div id="vendas-list-placeholder" class="text-center py-10 text-gray-500 dark:text-gray-400">
-            Utilize os filtros para buscar vendas.
+            Utilize os filtros acima para carregar as vendas.
         </div>
     </div>
 
     <div class="fixed bottom-6 right-6 z-30">
         <button id="btn-gerar-imagem" class="flex items-center justify-center rounded-full bg-primary text-white shadow-lg h-14 w-14 hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" title="Baixar Relatório">
-            <span class="material-symbols-outlined text-3xl">summarize</span>
+            <span class="material-symbols-outlined text-4xl text-white">calculate</span>
         </button>
     </div>
 
@@ -142,20 +142,19 @@
 <div id="relatorio-render-container">
     <div class="rel-header">
         <h2 id="render-nome-empresa">EMPRESA</h2>
-        <p id="render-info-empresa">CNPJ</p>
+        <p id="render-info-empresa" style="margin-top: 5px;">CNPJ / Endereço</p>
     </div>
     
     <div class="rel-info-geral">
         <p><strong>RELATÓRIO DE VENDAS</strong></p>
-        <p>Gerado em: <span id="render-data-geracao"></span></p>
-        <p>Filtro: <span id="render-periodo">Personalizado</span></p>
+        <p>Emissão: <span id="render-data-geracao"></span></p>
     </div>
 
     <div id="render-vendas-lista">
         </div>
 
     <div class="rel-total-geral">
-        TOTAL: <span id="render-total-geral">R$ 0,00</span>
+        TOTAL GERAL: <span id="render-total-geral">R$ 0,00</span>
     </div>
     
     <div class="rel-footer">
