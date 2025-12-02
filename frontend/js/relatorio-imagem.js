@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.warn("Erro ao carregar empresa"); }
     }
 
-    // 2. Buscar Vendas
+    // 2. Buscar Vendas (Automático e Manual)
     async function carregarVendas(event = null) {
         if (event) event.preventDefault();
 
@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataFim = document.getElementById('data-fim').value;
         const cliente = document.getElementById('filtro-cliente').value;
 
+        // Reset visual
         vendasListContainer.innerHTML = '';
         vendasListPlaceholder.textContent = 'Carregando...';
         vendasListPlaceholder.classList.remove('hidden');
@@ -103,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
+            // Lógica de clique no card
             div.addEventListener('click', (e) => {
                 if(e.target.type !== 'checkbox') {
                     const cb = div.querySelector('.venda-checkbox');
@@ -130,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         contadorSelecionados.textContent = `${count} selecionados`;
     }
 
-    // 5. Gerar Imagem (Alta Qualidade)
+    // 5. Gerar Imagem (ALTA QUALIDADE RESTAURADA)
     btnGerarImagem.addEventListener('click', async () => {
         const selecionados = Array.from(document.querySelectorAll('.venda-checkbox:checked')).map(cb => cb.value);
         
@@ -144,11 +146,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btnGerarImagem.innerHTML = `<div class="spinner"></div>`; 
 
         try {
-            // Busca detalhes
+            // A. Buscar Detalhes
             const promessas = selecionados.map(id => fetchWithAuth(`/api/vendas/${id}`).then(r => r.json()));
             const vendasDetalhadas = await Promise.all(promessas);
 
-            // Preenche HTML Oculto
+            // B. Preencher Template Oculto
             renderVendasLista.innerHTML = '';
             let totalAcumulado = 0;
             renderDataGeracao.textContent = new Date().toLocaleString('pt-BR');
@@ -156,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             vendasDetalhadas.forEach(venda => {
                 totalAcumulado += parseFloat(venda.valor_total);
                 
+                // Itens
                 let linhasItens = '';
                 if(venda.itens && venda.itens.length > 0) {
                     venda.itens.forEach(item => {
@@ -172,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     linhasItens = '<tr><td colspan="4" class="rel-text-center">- Sem itens -</td></tr>';
                 }
 
+                // Pagamento
                 let infoPagamento = '';
                 if(venda.pagamentos && venda.pagamentos.length > 0) {
                     const pags = venda.pagamentos.map(p => `${p.metodo} (${formatCurrency(p.valor)})`).join(', ');
@@ -202,28 +206,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderTotalGeral.textContent = formatCurrency(totalAcumulado);
 
-            // --- CONFIGURAÇÃO DE ALTA QUALIDADE ---
-            // Usa 'onclone' para garantir que o elemento oculto seja renderizado corretamente na memória
+            // C. CONFIGURAÇÃO DE ALTA QUALIDADE (Scale 4 + onClone)
+            // Isso garante que a imagem não saia cortada e tenha alta resolução
             const canvas = await html2canvas(renderContainer, {
-                scale: 4, // Aumenta a escala para 4x (Alta Resolução)
+                scale: 4, // 4x a resolução da tela
                 backgroundColor: "#ffffff",
                 useCORS: true,
-                logging: false,
                 onclone: (clonedDoc) => {
                     const element = clonedDoc.getElementById('relatorio-render-container');
-                    // Garante que o elemento esteja visível e posicionado no topo para o renderizador
                     if(element) {
+                        // Remove o posicionamento "escondido" no clone para que o canvas capture tudo
                         element.style.display = 'block';
                         element.style.left = '0px';
                         element.style.top = '0px';
-                        element.style.position = 'static'; // Remove o absolute para evitar cortes
+                        element.style.position = 'static'; 
                     }
                 }
             });
 
+            // D. Download
             const link = document.createElement('a');
             link.download = `Relatorio_Vendas_${new Date().toISOString().slice(0,10)}.png`;
-            link.href = canvas.toDataURL('image/png', 1.0); // Qualidade máxima
+            // Qualidade máxima do PNG
+            link.href = canvas.toDataURL('image/png', 1.0);
             link.click();
 
         } catch (error) {
@@ -239,5 +244,5 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Inicialização
     carregarDadosEmpresa();
-    carregarVendas();
+    carregarVendas(); // Carrega automaticamente ao iniciar
 });
