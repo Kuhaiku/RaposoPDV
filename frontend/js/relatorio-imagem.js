@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.warn("Erro ao carregar empresa"); }
     }
 
-    // 2. Função para Carregar Vendas (Automática e Filtro)
+    // 2. Buscar Vendas
     async function carregarVendas(event = null) {
         if (event) event.preventDefault();
 
@@ -49,12 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataFim = document.getElementById('data-fim').value;
         const cliente = document.getElementById('filtro-cliente').value;
 
-        // Limpa lista e mostra loading
         vendasListContainer.innerHTML = '';
         vendasListPlaceholder.textContent = 'Carregando...';
         vendasListPlaceholder.classList.remove('hidden');
         vendasListContainer.appendChild(vendasListPlaceholder);
-        selectAllCheckbox.checked = false; // Reseta o selecionar todos
+        selectAllCheckbox.checked = false;
         atualizarContador();
 
         const params = new URLSearchParams();
@@ -73,7 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Listener do Formulário
     filtroForm.addEventListener('submit', carregarVendas);
 
     // 3. Renderizar Lista
@@ -90,13 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         vendas.forEach(venda => {
             const div = document.createElement('div');
-            // Card igual ao Histórico
             div.className = 'bg-white dark:bg-zinc-800 rounded-xl shadow-sm border dark:border-zinc-700 p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors select-none mb-3';
             
             div.innerHTML = `
                 <div class="flex items-center gap-3 overflow-hidden w-full">
                     <input type="checkbox" class="venda-checkbox form-checkbox rounded text-primary focus:ring-primary/50 h-5 w-5 border-gray-300 dark:border-gray-600 dark:bg-gray-700 cursor-pointer flex-shrink-0" value="${venda.id}">
-                    
                     <div class="flex flex-col min-w-0 flex-1">
                         <div class="flex justify-between items-center w-full">
                             <p class="font-medium text-text-light dark:text-text-dark truncate mr-2">${venda.cliente_nome || 'Consumidor Final'}</p>
@@ -107,7 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
-            // Clique no card marca o checkbox (melhor usabilidade)
             div.addEventListener('click', (e) => {
                 if(e.target.type !== 'checkbox') {
                     const cb = div.querySelector('.venda-checkbox');
@@ -116,7 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             
-            // Listener direto no checkbox
             div.querySelector('.venda-checkbox').addEventListener('change', atualizarContador);
             vendasListContainer.appendChild(div);
         });
@@ -127,31 +121,16 @@ document.addEventListener('DOMContentLoaded', () => {
     selectAllCheckbox.addEventListener('change', (e) => {
         const isChecked = e.target.checked;
         const checkboxes = document.querySelectorAll('.venda-checkbox');
-        checkboxes.forEach(chk => {
-            chk.checked = isChecked;
-        });
+        checkboxes.forEach(chk => { chk.checked = isChecked; });
         atualizarContador();
     });
 
     function atualizarContador() {
         const count = document.querySelectorAll('.venda-checkbox:checked').length;
         contadorSelecionados.textContent = `${count} selecionados`;
-        
-        // Atualiza estado do "Selecionar Todos" caso o usuário desmarque um item manualmente
-        const total = document.querySelectorAll('.venda-checkbox').length;
-        if (total > 0 && count === total) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        } else if (count > 0 && count < total) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = true;
-        } else {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
     }
 
-    // 5. Gerar Imagem com HTML2CANVAS
+    // 5. Gerar Imagem (Alta Qualidade)
     btnGerarImagem.addEventListener('click', async () => {
         const selecionados = Array.from(document.querySelectorAll('.venda-checkbox:checked')).map(cb => cb.value);
         
@@ -165,11 +144,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btnGerarImagem.innerHTML = `<div class="spinner"></div>`; 
 
         try {
-            // A. Buscar Detalhes
+            // Busca detalhes
             const promessas = selecionados.map(id => fetchWithAuth(`/api/vendas/${id}`).then(r => r.json()));
             const vendasDetalhadas = await Promise.all(promessas);
 
-            // B. Preencher Template Oculto
+            // Preenche HTML Oculto
             renderVendasLista.innerHTML = '';
             let totalAcumulado = 0;
             renderDataGeracao.textContent = new Date().toLocaleString('pt-BR');
@@ -177,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
             vendasDetalhadas.forEach(venda => {
                 totalAcumulado += parseFloat(venda.valor_total);
                 
-                // Itens
                 let linhasItens = '';
                 if(venda.itens && venda.itens.length > 0) {
                     venda.itens.forEach(item => {
@@ -194,7 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     linhasItens = '<tr><td colspan="4" class="rel-text-center">- Sem itens -</td></tr>';
                 }
 
-                // Pagamento
                 let infoPagamento = '';
                 if(venda.pagamentos && venda.pagamentos.length > 0) {
                     const pags = venda.pagamentos.map(p => `${p.metodo} (${formatCurrency(p.valor)})`).join(', ');
@@ -225,17 +202,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderTotalGeral.textContent = formatCurrency(totalAcumulado);
 
-            // C. Gerar Imagem
+            // --- CONFIGURAÇÃO DE ALTA QUALIDADE ---
+            // Usa 'onclone' para garantir que o elemento oculto seja renderizado corretamente na memória
             const canvas = await html2canvas(renderContainer, {
-                scale: 2,
+                scale: 4, // Aumenta a escala para 4x (Alta Resolução)
                 backgroundColor: "#ffffff",
-                useCORS: true
+                useCORS: true,
+                logging: false,
+                onclone: (clonedDoc) => {
+                    const element = clonedDoc.getElementById('relatorio-render-container');
+                    // Garante que o elemento esteja visível e posicionado no topo para o renderizador
+                    if(element) {
+                        element.style.display = 'block';
+                        element.style.left = '0px';
+                        element.style.top = '0px';
+                        element.style.position = 'static'; // Remove o absolute para evitar cortes
+                    }
+                }
             });
 
-            // D. Download
             const link = document.createElement('a');
             link.download = `Relatorio_Vendas_${new Date().toISOString().slice(0,10)}.png`;
-            link.href = canvas.toDataURL('image/png');
+            link.href = canvas.toDataURL('image/png', 1.0); // Qualidade máxima
             link.click();
 
         } catch (error) {
@@ -251,5 +239,5 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Inicialização
     carregarDadosEmpresa();
-    carregarVendas(); // <-- Chama automaticamente ao iniciar
+    carregarVendas();
 });
