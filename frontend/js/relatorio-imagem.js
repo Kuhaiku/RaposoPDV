@@ -3,7 +3,7 @@
 if (typeof checkAuth !== 'function') { console.error("Auth não carregado"); } else { checkAuth(); }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Elementos DOM ---
+    // --- DOM Elements ---
     const filtroForm = document.getElementById('filtro-form');
     const vendasListContainer = document.getElementById('vendas-list-container');
     const vendasListPlaceholder = document.getElementById('vendas-list-placeholder');
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnGerarPDF = document.getElementById('btn-gerar-pdf');
     const logoutBtn = document.getElementById('logout-btn');
 
-    // --- Elementos Template (Apenas Imagem) ---
+    // --- Template Elements (Image Only) ---
     const renderContainer = document.getElementById('relatorio-render-container');
     const renderNomeEmpresa = document.getElementById('render-nome-empresa');
     const renderInfoEmpresa = document.getElementById('render-info-empresa');
@@ -24,17 +24,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let vendasCarregadas = []; 
     let dadosEmpresa = null;
 
-    // --- Formatadores ---
+    // --- Helpers ---
     const formatCurrency = (val) => parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const formatDate = (iso) => new Date(iso).toLocaleString('pt-BR');
 
-    // 1. Carregar Dados da Empresa
+    // 1. Carregar Empresa
     async function carregarDadosEmpresa() {
         try {
             const res = await fetchWithAuth('/api/empresas/meus-dados');
             if(res.ok) {
                 dadosEmpresa = await res.json();
-                // Preenche o template de imagem também
                 renderNomeEmpresa.textContent = (dadosEmpresa.nome_empresa || 'Minha Empresa').toUpperCase();
                 renderInfoEmpresa.textContent = `${dadosEmpresa.endereco_comercial || ''} ${dadosEmpresa.telefone_comercial ? ' - ' + dadosEmpresa.telefone_comercial : ''}`;
             }
@@ -73,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     filtroForm.addEventListener('submit', carregarVendas);
 
-    // 3. Renderizar Lista na Tela
+    // 3. Renderizar Lista
     function renderizarLista(vendas) {
         vendasListContainer.innerHTML = '';
         if (vendas.length === 0) {
@@ -136,44 +135,46 @@ document.addEventListener('DOMContentLoaded', () => {
         botao.innerHTML = `<div class="spinner"></div>`;
 
         try {
-            // Busca Detalhes Completos das vendas selecionadas
+            // Busca Detalhes
             const promessas = selecionados.map(id => fetchWithAuth(`/api/vendas/${id}`).then(r => r.json()));
             const vendasDetalhadas = await Promise.all(promessas);
 
-            let totalAcumulado = 0;
             const dataGeracao = new Date().toLocaleString('pt-BR');
+            let totalAcumulado = 0;
 
-            // =========== GERAR PDF (A4 Leve e Nativo) ===========
+            // =======================================================
+            // OPÇÃO 1: GERAR PDF (NATIVO, LEVE, A4)
+            // =======================================================
             if (tipo === 'pdf') {
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF(); // Padrão é A4 retrato (portrait), mm
+                const doc = new jsPDF({ format: 'a4', unit: 'mm' }); // Formato A4 explícito
 
-                // Cabeçalho do Documento
-                doc.setFontSize(18);
+                // Cabeçalho
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
                 doc.text(dadosEmpresa?.nome_empresa || 'MINHA EMPRESA', 105, 15, { align: 'center' });
                 
-                doc.setFontSize(10);
-                doc.text(`Data de Emissão: ${dataGeracao}`, 105, 22, { align: 'center' });
-                
-                doc.setLineWidth(0.5);
-                doc.line(10, 25, 200, 25);
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "normal");
+                doc.text(`Data de Emissão: ${dataGeracao}`, 105, 20, { align: 'center' });
+                doc.line(10, 23, 200, 23);
 
-                let finalY = 30; // Posição vertical inicial
+                let finalY = 28;
 
-                // Loop para cada venda (Cria uma "seção" para cada venda)
+                // Loop Vendas
                 vendasDetalhadas.forEach((venda) => {
                     totalAcumulado += parseFloat(venda.valor_total);
 
-                    // Cabeçalho da Venda
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text(`Venda #${venda.id}  -  Data: ${formatDate(venda.data_venda)}`, 14, finalY);
-                    
+                    // Dados da Venda (Campos Solicitados)
+                    // Venda ID, Cliente Nome
                     doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`Venda #${venda.id}`, 14, finalY);
+                    
                     doc.setFont("helvetica", "normal");
                     doc.text(`Cliente: ${venda.cliente_nome || 'Consumidor Final'}`, 14, finalY + 5);
 
-                    // Prepara dados para a tabela desta venda
+                    // Tabela de Itens (Item, Qtd, Valor Unitário, Total)
                     const itemsData = venda.itens ? venda.itens.map(item => [
                         item.produto_nome,
                         item.quantidade,
@@ -181,91 +182,88 @@ document.addEventListener('DOMContentLoaded', () => {
                         formatCurrency(item.quantidade * item.preco_unitario)
                     ]) : [];
 
-                    if (itemsData.length === 0) {
-                        itemsData.push(['Sem itens', '-', '-', '-']);
-                    }
+                    if(itemsData.length === 0) itemsData.push(['Sem itens', '-', '-', '-']);
 
-                    // Gera tabela de itens da venda
                     doc.autoTable({
-                        startY: finalY + 8,
-                        head: [['Item', 'Qtd', 'Valor Unit.', 'Total']],
+                        startY: finalY + 7,
+                        head: [['Item', 'Qtd', 'Unit.', 'Total']],
                         body: itemsData,
-                        theme: 'grid',
-                        headStyles: { fillColor: [52, 152, 219], fontSize: 9 }, // Azul Primary
-                        bodyStyles: { fontSize: 9 },
+                        theme: 'plain', // Tema limpo para economizar tinta
+                        styles: { fontSize: 9, cellPadding: 1 },
+                        headStyles: { fontStyle: 'bold', fillColor: [220, 220, 220] },
                         columnStyles: {
                             0: { cellWidth: 'auto' }, // Item
-                            1: { cellWidth: 20, halign: 'center' }, // Qtd
-                            2: { cellWidth: 30, halign: 'right' }, // Unit
-                            3: { cellWidth: 30, halign: 'right' }  // Total
+                            1: { cellWidth: 15, halign: 'center' }, // Qtd
+                            2: { cellWidth: 25, halign: 'right' }, // Unit
+                            3: { cellWidth: 25, halign: 'right' }  // Total
                         },
                         margin: { left: 14, right: 14 }
                     });
 
-                    finalY = doc.lastAutoTable.finalY + 7;
+                    finalY = doc.lastAutoTable.finalY + 5;
 
-                    // Total da Compra (Alinhado à direita)
+                    // Total da Compra
                     doc.setFont("helvetica", "bold");
                     doc.text(`Total da Compra: ${formatCurrency(venda.valor_total)}`, 196, finalY, { align: 'right' });
                     
-                    finalY += 10; // Espaço entre vendas
+                    // Linha separadora
+                    finalY += 8;
+                    doc.setLineWidth(0.1);
+                    doc.line(14, finalY, 196, finalY);
+                    finalY += 8;
 
-                    // Verifica se precisa de nova página para a próxima venda
+                    // Nova página se necessário
                     if (finalY > 270) {
                         doc.addPage();
                         finalY = 20;
                     }
                 });
 
-                // Total Geral Final
-                doc.setLineWidth(0.5);
-                doc.line(10, finalY, 200, finalY);
-                finalY += 10;
-                
-                doc.setFontSize(14);
-                doc.setTextColor(44, 62, 80); // Secondary Color
-                doc.text(`TOTAL GERAL: ${formatCurrency(totalAcumulado)}`, 196, finalY, { align: 'right' });
+                // Total Geral (Fim do Documento)
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "bold");
+                doc.text(`TOTAL GERAL: ${formatCurrency(totalAcumulado)}`, 196, finalY + 5, { align: 'right' });
 
-                doc.save(`Relatorio_Vendas_${new Date().toISOString().slice(0,10)}.pdf`);
+                doc.save(`Relatorio_A4_${new Date().toISOString().slice(0,10)}.pdf`);
             } 
             
-            // =========== GERAR IMAGEM (HTML2CANVAS - Método Original) ===========
+            // =======================================================
+            // OPÇÃO 2: GERAR IMAGEM (ESTILO CUPOM VISUAL)
+            // =======================================================
             else if (tipo === 'image') {
                 renderVendasLista.innerHTML = '';
                 renderDataGeracao.textContent = dataGeracao;
 
                 vendasDetalhadas.forEach(venda => {
                     totalAcumulado += parseFloat(venda.valor_total);
+                    
                     let linhasItens = '';
-                    if(venda.itens && venda.itens.length > 0) {
+                    if(venda.itens) {
                         venda.itens.forEach(item => {
-                            const subtotal = item.quantidade * item.preco_unitario;
-                            linhasItens += `<tr><td>${item.produto_nome}</td><td class="rel-text-center">${item.quantidade}</td><td class="rel-text-right">${formatCurrency(item.preco_unitario)}</td><td class="rel-text-right">${formatCurrency(subtotal)}</td></tr>`;
+                            linhasItens += `<tr><td>${item.produto_nome}</td><td class="rel-text-center">${item.quantidade}</td><td class="rel-text-right">${formatCurrency(item.preco_unitario)}</td><td class="rel-text-right">${formatCurrency(item.quantidade * item.preco_unitario)}</td></tr>`;
                         });
-                    } else { linhasItens = '<tr><td colspan="4" class="rel-text-center">- Sem itens -</td></tr>'; }
-
-                    let infoPagamento = venda.pagamentos ? `<p style="margin: 5px 0 0 0; font-size: 0.8rem; font-style:italic;">Pagamento: ${venda.pagamentos.map(p => `${p.metodo} (${formatCurrency(p.valor)})`).join(', ')}</p>` : '';
+                    }
 
                     renderVendasLista.innerHTML += `
                         <div class="rel-venda-card">
-                            <div class="rel-venda-header"><span>Venda #${venda.id}</span><span>${formatDate(venda.data_venda)}</span></div>
-                            <div style="margin-bottom: 8px;"><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor Final'}<br></div>
+                            <div class="rel-venda-header"><span>Venda #${venda.id}</span><span></span></div>
+                            <div style="margin-bottom: 8px;"><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor Final'}</div>
                             <table class="rel-table"><thead><tr><th>Item</th><th class="rel-text-center">Qtd</th><th class="rel-text-right">Unit.</th><th class="rel-text-right">Total</th></tr></thead><tbody>${linhasItens}</tbody></table>
-                            ${infoPagamento}
-                            <div class="rel-text-right" style="margin-top: 8px; font-weight:bold; font-size: 1.1rem;">Total da Compra: ${formatCurrency(venda.valor_total)}</div>
+                            <div class="rel-text-right" style="margin-top: 8px; font-weight:bold;">Total da Compra: ${formatCurrency(venda.valor_total)}</div>
                         </div>`;
                 });
                 renderTotalGeral.textContent = formatCurrency(totalAcumulado);
 
                 const canvas = await html2canvas(renderContainer, {
-                    scale: 4, backgroundColor: "#ffffff", useCORS: true,
+                    scale: 4, // Alta qualidade
+                    backgroundColor: "#ffffff",
                     onclone: (doc) => {
                         const el = doc.getElementById('relatorio-render-container');
                         if(el) { el.style.display = 'block'; el.style.position = 'static'; el.style.left = '0'; el.style.top = '0'; }
                     }
                 });
                 const link = document.createElement('a');
-                link.download = `Relatorio_Vendas_${new Date().toISOString().slice(0,10)}.png`;
+                link.download = `Relatorio_Imagem_${new Date().toISOString().slice(0,10)}.png`;
                 link.href = canvas.toDataURL('image/png', 1.0);
                 link.click();
             }
@@ -280,13 +278,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Listeners
     btnGerarImagem.addEventListener('click', () => processarRelatorio('image'));
     btnGerarPDF.addEventListener('click', () => processarRelatorio('pdf'));
 
     if(logoutBtn) logoutBtn.addEventListener('click', logout);
-    
-    // Inicialização
     carregarDadosEmpresa();
     carregarVendas();
 });
