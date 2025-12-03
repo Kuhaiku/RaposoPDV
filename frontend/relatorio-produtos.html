@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="css/global.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script id="tailwind-config">
@@ -44,17 +43,9 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         /* Estilo para itens esgotados na tela */
-        .item-esgotado .prod-nome {
-            text-decoration: line-through;
-            color: #999;
-        }
-        .item-esgotado {
-            opacity: 0.8;
-            background-color: #fafafa;
-        }
-        .dark .item-esgotado {
-            background-color: #18181b;
-        }
+        .item-esgotado .prod-nome { text-decoration: line-through; color: #999; }
+        .item-esgotado { opacity: 0.8; background-color: #fafafa; }
+        .dark .item-esgotado { background-color: #18181b; }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display">
