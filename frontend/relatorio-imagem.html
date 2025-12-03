@@ -43,13 +43,13 @@
         .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* O container abaixo só é usado para a opção de IMAGEM (PNG) */
+        /* Container Oculto apenas para a função de IMAGEM (não afeta o PDF novo) */
         #relatorio-render-container {
             position: absolute; left: -9999px; top: 0; width: 800px;
             background-color: white; padding: 40px;
             font-family: 'Courier New', Courier, monospace; color: #000; z-index: -1;
         }
-        /* Estilos do Relatório (Imagem) */
+        /* Estilos do Render Imagem */
         .rel-header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #000; padding-bottom: 20px; }
         .rel-header h2 { font-size: 1.8rem; font-weight: bold; margin: 0; text-transform: uppercase; }
         .rel-info-geral { margin-bottom: 20px; font-size: 1rem; }
