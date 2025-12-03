@@ -3,7 +3,7 @@
 if (typeof checkAuth !== 'function') { console.error("Auth não carregado"); } else { checkAuth(); }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM Elements ---
+    // --- Elementos DOM ---
     const filtroForm = document.getElementById('filtro-form');
     const vendasListContainer = document.getElementById('vendas-list-container');
     const vendasListPlaceholder = document.getElementById('vendas-list-placeholder');
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnGerarPDF = document.getElementById('btn-gerar-pdf');
     const logoutBtn = document.getElementById('logout-btn');
 
-    // --- Template Elements (Image Only) ---
+    // --- Elementos Template (Apenas para Imagem PNG) ---
     const renderContainer = document.getElementById('relatorio-render-container');
     const renderNomeEmpresa = document.getElementById('render-nome-empresa');
     const renderInfoEmpresa = document.getElementById('render-info-empresa');
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let vendasCarregadas = []; 
     let dadosEmpresa = null;
 
-    // --- Helpers ---
+    // --- Formatadores ---
     const formatCurrency = (val) => parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const formatDate = (iso) => new Date(iso).toLocaleString('pt-BR');
 
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     filtroForm.addEventListener('submit', carregarVendas);
 
-    // 3. Renderizar Lista
+    // 3. Renderizar Lista na Tela
     function renderizarLista(vendas) {
         vendasListContainer.innerHTML = '';
         if (vendas.length === 0) {
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
         botao.innerHTML = `<div class="spinner"></div>`;
 
         try {
-            // Busca Detalhes
+            // Busca Detalhes Completos
             const promessas = selecionados.map(id => fetchWithAuth(`/api/vendas/${id}`).then(r => r.json()));
             const vendasDetalhadas = await Promise.all(promessas);
 
@@ -143,38 +143,63 @@ document.addEventListener('DOMContentLoaded', () => {
             let totalAcumulado = 0;
 
             // =======================================================
-            // OPÇÃO 1: GERAR PDF (NATIVO, LEVE, A4)
+            // OPÇÃO 1: GERAR PDF (ESTILO CARD VISUAL)
             // =======================================================
             if (tipo === 'pdf') {
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ format: 'a4', unit: 'mm' }); // Formato A4 explícito
+                const doc = new jsPDF({ format: 'a4', unit: 'mm' });
 
-                // Cabeçalho
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "bold");
-                doc.text(dadosEmpresa?.nome_empresa || 'MINHA EMPRESA', 105, 15, { align: 'center' });
+                // Configurações de Layout
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const margin = 10;
+                const cardWidth = pageWidth - (margin * 2);
+                let currentY = 15;
+
+                // --- Cabeçalho do Documento ---
+                doc.setFillColor(44, 62, 80); // Secondary Color (Dark Blue)
+                doc.rect(0, 0, pageWidth, 25, 'F'); // Top Bar Background
                 
-                doc.setFontSize(9);
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(16);
+                doc.setFont("helvetica", "bold");
+                doc.text(dadosEmpresa?.nome_empresa || 'RELATÓRIO DE VENDAS', pageWidth / 2, 12, { align: 'center' });
+                
+                doc.setFontSize(10);
                 doc.setFont("helvetica", "normal");
-                doc.text(`Data de Emissão: ${dataGeracao}`, 105, 20, { align: 'center' });
-                doc.line(10, 23, 200, 23);
+                doc.text(`Emissão: ${dataGeracao}`, pageWidth / 2, 19, { align: 'center' });
 
-                let finalY = 28;
+                currentY = 35; // Espaço após cabeçalho
 
-                // Loop Vendas
-                vendasDetalhadas.forEach((venda) => {
+                // --- Loop Vendas ---
+                for (const venda of vendasDetalhadas) {
                     totalAcumulado += parseFloat(venda.valor_total);
 
-                    // Dados da Venda (Campos Solicitados)
-                    // Venda ID, Cliente Nome
-                    doc.setFontSize(10);
-                    doc.setFont("helvetica", "bold");
-                    doc.text(`Venda #${venda.id}`, 14, finalY);
-                    
-                    doc.setFont("helvetica", "normal");
-                    doc.text(`Cliente: ${venda.cliente_nome || 'Consumidor Final'}`, 14, finalY + 5);
+                    // Verificar se cabe na página (estimativa simples)
+                    if (currentY + 40 > doc.internal.pageSize.getHeight()) {
+                        doc.addPage();
+                        currentY = 15; // Reset Y
+                    }
 
-                    // Tabela de Itens (Item, Qtd, Valor Unitário, Total)
+                    const startY = currentY;
+
+                    // 1. Cabeçalho do "Card"
+                    doc.setFillColor(52, 152, 219); // Primary Blue
+                    // Desenha retângulo do topo com bordas arredondadas (simulando)
+                    doc.setDrawColor(52, 152, 219);
+                    doc.roundedRect(margin, currentY, cardWidth, 10, 2, 2, 'F'); 
+                    
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(11);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`Venda #${venda.id}`, margin + 3, currentY + 7);
+                    
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(`${venda.cliente_nome || 'Consumidor Final'}`, margin + cardWidth - 3, currentY + 7, { align: 'right' });
+
+                    currentY += 10;
+
+                    // 2. Tabela de Itens (Dentro do Card)
                     const itemsData = venda.itens ? venda.itens.map(item => [
                         item.produto_nome,
                         item.quantidade,
@@ -184,51 +209,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if(itemsData.length === 0) itemsData.push(['Sem itens', '-', '-', '-']);
 
+                    // Gera tabela
                     doc.autoTable({
-                        startY: finalY + 7,
+                        startY: currentY,
                         head: [['Item', 'Qtd', 'Unit.', 'Total']],
                         body: itemsData,
-                        theme: 'plain', // Tema limpo para economizar tinta
-                        styles: { fontSize: 9, cellPadding: 1 },
-                        headStyles: { fontStyle: 'bold', fillColor: [220, 220, 220] },
+                        theme: 'grid', // Linhas de grade para visual organizado
+                        styles: { 
+                            fontSize: 9, 
+                            cellPadding: 1.5,
+                            lineColor: [220, 220, 220],
+                            lineWidth: 0.1
+                        },
+                        headStyles: { 
+                            fillColor: [245, 245, 245], // Cinza bem claro
+                            textColor: [50, 50, 50],
+                            fontStyle: 'bold',
+                            halign: 'center'
+                        },
                         columnStyles: {
                             0: { cellWidth: 'auto' }, // Item
                             1: { cellWidth: 15, halign: 'center' }, // Qtd
-                            2: { cellWidth: 25, halign: 'right' }, // Unit
-                            3: { cellWidth: 25, halign: 'right' }  // Total
+                            2: { cellWidth: 30, halign: 'right' }, // Unit
+                            3: { cellWidth: 30, halign: 'right' }  // Total
                         },
-                        margin: { left: 14, right: 14 }
+                        margin: { left: margin, right: margin }
                     });
 
-                    finalY = doc.lastAutoTable.finalY + 5;
+                    currentY = doc.lastAutoTable.finalY;
 
-                    // Total da Compra
-                    doc.setFont("helvetica", "bold");
-                    doc.text(`Total da Compra: ${formatCurrency(venda.valor_total)}`, 196, finalY, { align: 'right' });
+                    // 3. Rodapé do Card (Total)
+                    doc.setFillColor(255, 255, 255);
+                    // Desenha borda em volta do corpo da tabela se necessário, ou apenas fecha o card
                     
-                    // Linha separadora
-                    finalY += 8;
-                    doc.setLineWidth(0.1);
-                    doc.line(14, finalY, 196, finalY);
-                    finalY += 8;
+                    // Box do Total da Compra
+                    currentY += 1; // Pequeno respiro
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(11);
+                    doc.setTextColor(44, 62, 80); // Dark Blue
+                    doc.text(`Total da Compra: ${formatCurrency(venda.valor_total)}`, margin + cardWidth - 3, currentY + 5, { align: 'right' });
+                    
+                    // Desenha Borda Externa do Card (Contorno)
+                    const cardHeight = (currentY + 8) - startY;
+                    doc.setDrawColor(200, 200, 200);
+                    doc.setLineWidth(0.3);
+                    doc.roundedRect(margin, startY, cardWidth, cardHeight, 2, 2, 'S'); // 'S' para Stroke (borda)
 
-                    // Nova página se necessário
-                    if (finalY > 270) {
-                        doc.addPage();
-                        finalY = 20;
-                    }
-                });
+                    currentY += 15; // Espaço para o próximo card
+                }
 
-                // Total Geral (Fim do Documento)
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "bold");
-                doc.text(`TOTAL GERAL: ${formatCurrency(totalAcumulado)}`, 196, finalY + 5, { align: 'right' });
+                // --- Total Geral Final ---
+                // Verifica quebra de página
+                if (currentY + 20 > doc.internal.pageSize.getHeight()) {
+                    doc.addPage();
+                    currentY = 20;
+                }
 
-                doc.save(`Relatorio_A4_${new Date().toISOString().slice(0,10)}.pdf`);
+                doc.setDrawColor(44, 62, 80);
+                doc.setLineWidth(0.5);
+                doc.line(margin, currentY, pageWidth - margin, currentY);
+                
+                currentY += 10;
+                doc.setFontSize(16);
+                doc.setTextColor(44, 62, 80);
+                doc.text(`TOTAL GERAL: ${formatCurrency(totalAcumulado)}`, pageWidth - margin, currentY, { align: 'right' });
+
+                doc.save(`Relatorio_Vendas_${new Date().toISOString().slice(0,10)}.pdf`);
             } 
             
             // =======================================================
-            // OPÇÃO 2: GERAR IMAGEM (ESTILO CUPOM VISUAL)
+            // OPÇÃO 2: GERAR IMAGEM (HTML2CANVAS) - MANTIDO
             // =======================================================
             else if (tipo === 'image') {
                 renderVendasLista.innerHTML = '';
@@ -236,17 +286,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 vendasDetalhadas.forEach(venda => {
                     totalAcumulado += parseFloat(venda.valor_total);
-                    
                     let linhasItens = '';
                     if(venda.itens) {
                         venda.itens.forEach(item => {
                             linhasItens += `<tr><td>${item.produto_nome}</td><td class="rel-text-center">${item.quantidade}</td><td class="rel-text-right">${formatCurrency(item.preco_unitario)}</td><td class="rel-text-right">${formatCurrency(item.quantidade * item.preco_unitario)}</td></tr>`;
                         });
                     }
-
+                    // Excluindo Data e Vendedor aqui também para manter consistência
                     renderVendasLista.innerHTML += `
                         <div class="rel-venda-card">
-                            <div class="rel-venda-header"><span>Venda #${venda.id}</span><span></span></div>
+                            <div class="rel-venda-header"><span>Venda #${venda.id}</span></div>
                             <div style="margin-bottom: 8px;"><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor Final'}</div>
                             <table class="rel-table"><thead><tr><th>Item</th><th class="rel-text-center">Qtd</th><th class="rel-text-right">Unit.</th><th class="rel-text-right">Total</th></tr></thead><tbody>${linhasItens}</tbody></table>
                             <div class="rel-text-right" style="margin-top: 8px; font-weight:bold;">Total da Compra: ${formatCurrency(venda.valor_total)}</div>
@@ -255,8 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderTotalGeral.textContent = formatCurrency(totalAcumulado);
 
                 const canvas = await html2canvas(renderContainer, {
-                    scale: 4, // Alta qualidade
-                    backgroundColor: "#ffffff",
+                    scale: 4, backgroundColor: "#ffffff", useCORS: true,
                     onclone: (doc) => {
                         const el = doc.getElementById('relatorio-render-container');
                         if(el) { el.style.display = 'block'; el.style.position = 'static'; el.style.left = '0'; el.style.top = '0'; }
@@ -282,6 +330,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnGerarPDF.addEventListener('click', () => processarRelatorio('pdf'));
 
     if(logoutBtn) logoutBtn.addEventListener('click', logout);
+    
+    // Inicialização
     carregarDadosEmpresa();
     carregarVendas();
 });
