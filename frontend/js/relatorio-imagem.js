@@ -10,10 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectAllCheckbox = document.getElementById('select-all');
     const contadorSelecionados = document.getElementById('contador-selecionados');
     const btnGerarImagem = document.getElementById('btn-gerar-imagem');
-    const btnGerarPDF = document.getElementById('btn-gerar-pdf'); // Novo botão
+    const btnGerarPDF = document.getElementById('btn-gerar-pdf');
     const logoutBtn = document.getElementById('logout-btn');
 
-    // --- Elementos Template ---
+    // --- Elementos Template (Apenas Imagem) ---
     const renderContainer = document.getElementById('relatorio-render-container');
     const renderNomeEmpresa = document.getElementById('render-nome-empresa');
     const renderInfoEmpresa = document.getElementById('render-info-empresa');
@@ -28,12 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatCurrency = (val) => parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const formatDate = (iso) => new Date(iso).toLocaleString('pt-BR');
 
-    // 1. Carregar Empresa
+    // 1. Carregar Dados da Empresa
     async function carregarDadosEmpresa() {
         try {
             const res = await fetchWithAuth('/api/empresas/meus-dados');
             if(res.ok) {
                 dadosEmpresa = await res.json();
+                // Preenche o template de imagem também
                 renderNomeEmpresa.textContent = (dadosEmpresa.nome_empresa || 'Minha Empresa').toUpperCase();
                 renderInfoEmpresa.textContent = `${dadosEmpresa.endereco_comercial || ''} ${dadosEmpresa.telefone_comercial ? ' - ' + dadosEmpresa.telefone_comercial : ''}`;
             }
@@ -72,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     filtroForm.addEventListener('submit', carregarVendas);
 
-    // 3. Renderizar Lista
+    // 3. Renderizar Lista na Tela
     function renderizarLista(vendas) {
         vendasListContainer.innerHTML = '';
         if (vendas.length === 0) {
@@ -122,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
         contadorSelecionados.textContent = `${count} selecionados`;
     }
 
-    // --- FUNÇÃO CENTRAL DE GERAÇÃO (PDF e IMAGEM) ---
+    // --- FUNÇÃO CENTRAL DE GERAÇÃO ---
     async function processarRelatorio(tipo) {
         const selecionados = Array.from(document.querySelectorAll('.venda-checkbox:checked')).map(cb => cb.value);
         if (selecionados.length === 0) { alert("Selecione pelo menos uma venda."); return; }
@@ -130,86 +131,143 @@ document.addEventListener('DOMContentLoaded', () => {
         const botao = tipo === 'pdf' ? btnGerarPDF : btnGerarImagem;
         const htmlOriginal = botao.innerHTML;
         
-        // Desabilita ambos os botões
         btnGerarImagem.disabled = true;
         btnGerarPDF.disabled = true;
         botao.innerHTML = `<div class="spinner"></div>`;
 
         try {
-            // A. Buscar Detalhes
+            // Busca Detalhes Completos das vendas selecionadas
             const promessas = selecionados.map(id => fetchWithAuth(`/api/vendas/${id}`).then(r => r.json()));
             const vendasDetalhadas = await Promise.all(promessas);
 
-            // B. Preencher Template HTML
-            renderVendasLista.innerHTML = '';
             let totalAcumulado = 0;
-            renderDataGeracao.textContent = new Date().toLocaleString('pt-BR');
+            const dataGeracao = new Date().toLocaleString('pt-BR');
 
-            vendasDetalhadas.forEach(venda => {
-                totalAcumulado += parseFloat(venda.valor_total);
-                
-                let linhasItens = '';
-                if(venda.itens && venda.itens.length > 0) {
-                    venda.itens.forEach(item => {
-                        const subtotal = item.quantidade * item.preco_unitario;
-                        linhasItens += `<tr><td>${item.produto_nome}</td><td class="rel-text-center">${item.quantidade}</td><td class="rel-text-right">${formatCurrency(item.preco_unitario)}</td><td class="rel-text-right">${formatCurrency(subtotal)}</td></tr>`;
-                    });
-                } else { linhasItens = '<tr><td colspan="4" class="rel-text-center">- Sem itens -</td></tr>'; }
-
-                let infoPagamento = '';
-                if(venda.pagamentos && venda.pagamentos.length > 0) {
-                    const pags = venda.pagamentos.map(p => `${p.metodo} (${formatCurrency(p.valor)})`).join(', ');
-                    infoPagamento = `<p style="margin: 5px 0 0 0; font-size: 0.8rem; font-style:italic;">Pagamento: ${pags}</p>`;
-                }
-
-                renderVendasLista.innerHTML += `
-                    <div class="rel-venda-card">
-                        <div class="rel-venda-header"><span>Venda #${venda.id}</span><span>${formatDate(venda.data_venda)}</span></div>
-                        <div style="margin-bottom: 8px;"><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor Final'}<br>${venda.usuario_nome ? `<strong>Vendedor:</strong> ${venda.usuario_nome}` : ''}</div>
-                        <table class="rel-table"><thead><tr><th>Item</th><th class="rel-text-center">Qtd</th><th class="rel-text-right">Unit.</th><th class="rel-text-right">Total</th></tr></thead><tbody>${linhasItens}</tbody></table>
-                        ${infoPagamento}
-                        <div class="rel-text-right" style="margin-top: 8px; font-weight:bold; font-size: 1.1rem;">Total: ${formatCurrency(venda.valor_total)}</div>
-                    </div>`;
-            });
-            renderTotalGeral.textContent = formatCurrency(totalAcumulado);
-
-            // C. Gerar Canvas com Alta Qualidade
-            const canvas = await html2canvas(renderContainer, {
-                scale: 4, 
-                backgroundColor: "#ffffff",
-                useCORS: true,
-                onclone: (doc) => {
-                    const el = doc.getElementById('relatorio-render-container');
-                    if(el) { el.style.display = 'block'; el.style.position = 'static'; el.style.left = '0'; el.style.top = '0'; }
-                }
-            });
-
-            const nomeArquivo = `Relatorio_Vendas_${new Date().toISOString().slice(0,10)}`;
-
-            if (tipo === 'image') {
-                const link = document.createElement('a');
-                link.download = `${nomeArquivo}.png`;
-                link.href = canvas.toDataURL('image/png', 1.0);
-                link.click();
-            } 
-            else if (tipo === 'pdf') {
-                // Cria PDF com tamanho customizado para caber a imagem inteira sem cortes
+            // =========== GERAR PDF (A4 Leve e Nativo) ===========
+            if (tipo === 'pdf') {
                 const { jsPDF } = window.jspdf;
-                // Converte pixels do canvas para dimensão do PDF (mantendo proporção)
-                // Usando 'pt' (pontos) facilita a conversão direta se assumirmos 72dpi, mas vamos usar pixels unitários do canvas
-                const imgWidth = canvas.width / 4; // Divide pelo scale para voltar ao tamanho original em "pixels de tela"
-                const imgHeight = canvas.height / 4;
+                const doc = new jsPDF(); // Padrão é A4 retrato (portrait), mm
+
+                // Cabeçalho do Documento
+                doc.setFontSize(18);
+                doc.text(dadosEmpresa?.nome_empresa || 'MINHA EMPRESA', 105, 15, { align: 'center' });
                 
-                // Cria um PDF com o tamanho exato da imagem gerada
-                const doc = new jsPDF({
-                    orientation: 'p',
-                    unit: 'px',
-                    format: [imgWidth, imgHeight] 
+                doc.setFontSize(10);
+                doc.text(`Data de Emissão: ${dataGeracao}`, 105, 22, { align: 'center' });
+                
+                doc.setLineWidth(0.5);
+                doc.line(10, 25, 200, 25);
+
+                let finalY = 30; // Posição vertical inicial
+
+                // Loop para cada venda (Cria uma "seção" para cada venda)
+                vendasDetalhadas.forEach((venda) => {
+                    totalAcumulado += parseFloat(venda.valor_total);
+
+                    // Cabeçalho da Venda
+                    doc.setFontSize(11);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`Venda #${venda.id}  -  Data: ${formatDate(venda.data_venda)}`, 14, finalY);
+                    
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(`Cliente: ${venda.cliente_nome || 'Consumidor Final'}`, 14, finalY + 5);
+
+                    // Prepara dados para a tabela desta venda
+                    const itemsData = venda.itens ? venda.itens.map(item => [
+                        item.produto_nome,
+                        item.quantidade,
+                        formatCurrency(item.preco_unitario),
+                        formatCurrency(item.quantidade * item.preco_unitario)
+                    ]) : [];
+
+                    if (itemsData.length === 0) {
+                        itemsData.push(['Sem itens', '-', '-', '-']);
+                    }
+
+                    // Gera tabela de itens da venda
+                    doc.autoTable({
+                        startY: finalY + 8,
+                        head: [['Item', 'Qtd', 'Valor Unit.', 'Total']],
+                        body: itemsData,
+                        theme: 'grid',
+                        headStyles: { fillColor: [52, 152, 219], fontSize: 9 }, // Azul Primary
+                        bodyStyles: { fontSize: 9 },
+                        columnStyles: {
+                            0: { cellWidth: 'auto' }, // Item
+                            1: { cellWidth: 20, halign: 'center' }, // Qtd
+                            2: { cellWidth: 30, halign: 'right' }, // Unit
+                            3: { cellWidth: 30, halign: 'right' }  // Total
+                        },
+                        margin: { left: 14, right: 14 }
+                    });
+
+                    finalY = doc.lastAutoTable.finalY + 7;
+
+                    // Total da Compra (Alinhado à direita)
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`Total da Compra: ${formatCurrency(venda.valor_total)}`, 196, finalY, { align: 'right' });
+                    
+                    finalY += 10; // Espaço entre vendas
+
+                    // Verifica se precisa de nova página para a próxima venda
+                    if (finalY > 270) {
+                        doc.addPage();
+                        finalY = 20;
+                    }
                 });
 
-                // Adiciona a imagem cobrindo todo o PDF
-                doc.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, imgWidth, imgHeight);
-                doc.save(`${nomeArquivo}.pdf`);
+                // Total Geral Final
+                doc.setLineWidth(0.5);
+                doc.line(10, finalY, 200, finalY);
+                finalY += 10;
+                
+                doc.setFontSize(14);
+                doc.setTextColor(44, 62, 80); // Secondary Color
+                doc.text(`TOTAL GERAL: ${formatCurrency(totalAcumulado)}`, 196, finalY, { align: 'right' });
+
+                doc.save(`Relatorio_Vendas_${new Date().toISOString().slice(0,10)}.pdf`);
+            } 
+            
+            // =========== GERAR IMAGEM (HTML2CANVAS - Método Original) ===========
+            else if (tipo === 'image') {
+                renderVendasLista.innerHTML = '';
+                renderDataGeracao.textContent = dataGeracao;
+
+                vendasDetalhadas.forEach(venda => {
+                    totalAcumulado += parseFloat(venda.valor_total);
+                    let linhasItens = '';
+                    if(venda.itens && venda.itens.length > 0) {
+                        venda.itens.forEach(item => {
+                            const subtotal = item.quantidade * item.preco_unitario;
+                            linhasItens += `<tr><td>${item.produto_nome}</td><td class="rel-text-center">${item.quantidade}</td><td class="rel-text-right">${formatCurrency(item.preco_unitario)}</td><td class="rel-text-right">${formatCurrency(subtotal)}</td></tr>`;
+                        });
+                    } else { linhasItens = '<tr><td colspan="4" class="rel-text-center">- Sem itens -</td></tr>'; }
+
+                    let infoPagamento = venda.pagamentos ? `<p style="margin: 5px 0 0 0; font-size: 0.8rem; font-style:italic;">Pagamento: ${venda.pagamentos.map(p => `${p.metodo} (${formatCurrency(p.valor)})`).join(', ')}</p>` : '';
+
+                    renderVendasLista.innerHTML += `
+                        <div class="rel-venda-card">
+                            <div class="rel-venda-header"><span>Venda #${venda.id}</span><span>${formatDate(venda.data_venda)}</span></div>
+                            <div style="margin-bottom: 8px;"><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor Final'}<br></div>
+                            <table class="rel-table"><thead><tr><th>Item</th><th class="rel-text-center">Qtd</th><th class="rel-text-right">Unit.</th><th class="rel-text-right">Total</th></tr></thead><tbody>${linhasItens}</tbody></table>
+                            ${infoPagamento}
+                            <div class="rel-text-right" style="margin-top: 8px; font-weight:bold; font-size: 1.1rem;">Total da Compra: ${formatCurrency(venda.valor_total)}</div>
+                        </div>`;
+                });
+                renderTotalGeral.textContent = formatCurrency(totalAcumulado);
+
+                const canvas = await html2canvas(renderContainer, {
+                    scale: 4, backgroundColor: "#ffffff", useCORS: true,
+                    onclone: (doc) => {
+                        const el = doc.getElementById('relatorio-render-container');
+                        if(el) { el.style.display = 'block'; el.style.position = 'static'; el.style.left = '0'; el.style.top = '0'; }
+                    }
+                });
+                const link = document.createElement('a');
+                link.download = `Relatorio_Vendas_${new Date().toISOString().slice(0,10)}.png`;
+                link.href = canvas.toDataURL('image/png', 1.0);
+                link.click();
             }
 
         } catch (error) {
@@ -222,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Listeners dos Botões
+    // Listeners
     btnGerarImagem.addEventListener('click', () => processarRelatorio('image'));
     btnGerarPDF.addEventListener('click', () => processarRelatorio('pdf'));
 
