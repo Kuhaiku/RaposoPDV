@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html class="light" lang="pt-br">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Relatório de Estoque</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="css/global.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                     colors: {
+                        "primary": "#3498db",
+                        "secondary": "#2c3e50",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "text-light": "#333333",
+                        "text-dark": "#f6f7f8",
+                        "subtext-light": "#617589",
+                        "subtext-dark": "#a0aec0",
+                        "success": "#2ecc71",
+                        "danger": "#e74c3c",
+                        "warning": "#f39c12",
+                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+        body { min-height: 100vh; font-family: 'Inter', sans-serif; }
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Estilo para itens esgotados (tachados) */
+        .item-esgotado {
+            text-decoration: line-through;
+            opacity: 0.6;
+            color: #999;
+        }
+        .item-esgotado img {
+            filter: grayscale(100%);
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden pb-24">
+
+    <div class="sticky top-0 z-10 flex items-center bg-white dark:bg-background-dark p-4 pb-3 justify-between border-b border-gray-200 dark:border-gray-700">
+        <div class="flex size-10 shrink-0 items-center">
+            <a href="painel.html" class="flex items-center justify-center h-10 w-10 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors" aria-label="Voltar">
+                <span class="material-symbols-outlined text-text-light dark:text-text-dark text-2xl">arrow_back</span>
+            </a>
+        </div>
+        <h1 class="text-text-light dark:text-text-dark text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Catálogo de Estoque</h1>
+        <div class="flex w-10 items-center justify-end"></div>
+    </div>
+
+    <section class="p-4 bg-white dark:bg-zinc-900 border-b dark:border-zinc-700 shadow-sm">
+        <div class="flex gap-2 overflow-x-auto pb-2">
+            <button class="filter-btn active px-4 py-2 bg-primary text-white rounded-full text-sm font-bold whitespace-nowrap" data-filter="todos">Todos</button>
+            <button class="filter-btn px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-full text-sm font-bold whitespace-nowrap" data-filter="disponivel">Em Estoque</button>
+            <button class="filter-btn px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-full text-sm font-bold whitespace-nowrap" data-filter="esgotado">Vendidos (Esgotados)</button>
+        </div>
+    </section>
+
+    <div id="produtos-list-container" class="flex-1 p-4 space-y-4">
+        <div id="loading-placeholder" class="text-center py-10 text-gray-500 dark:text-gray-400">
+            Carregando produtos...
+        </div>
+    </div>
+
+    <div class="fixed bottom-6 right-6 z-30">
+        <button id="btn-gerar-pdf" class="flex items-center justify-center rounded-full bg-danger text-white shadow-lg h-14 w-14 hover:bg-danger/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-danger" title="Baixar Relatório PDF">
+            <span class="material-symbols-outlined text-3xl">picture_as_pdf</span>
+        </button>
+    </div>
+
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/relatorio-produtos.js"></script>
+</body>
+</html>
