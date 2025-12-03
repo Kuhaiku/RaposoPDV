@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/global.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script id="tailwind-config">
@@ -42,15 +43,17 @@
         .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Estilo para itens esgotados (tachados) */
-        .item-esgotado {
+        /* Estilo para itens esgotados na tela */
+        .item-esgotado .prod-nome {
             text-decoration: line-through;
-            opacity: 0.6;
             color: #999;
         }
-        .item-esgotado img {
-            filter: grayscale(100%);
-            opacity: 0.5;
+        .item-esgotado {
+            opacity: 0.8;
+            background-color: #fafafa;
+        }
+        .dark .item-esgotado {
+            background-color: #18181b;
         }
     </style>
 </head>
@@ -71,12 +74,12 @@
         <div class="flex gap-2 overflow-x-auto pb-2">
             <button class="filter-btn active px-4 py-2 bg-primary text-white rounded-full text-sm font-bold whitespace-nowrap" data-filter="todos">Todos</button>
             <button class="filter-btn px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-full text-sm font-bold whitespace-nowrap" data-filter="disponivel">Em Estoque</button>
-            <button class="filter-btn px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-full text-sm font-bold whitespace-nowrap" data-filter="esgotado">Vendidos (Esgotados)</button>
+            <button class="filter-btn px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-full text-sm font-bold whitespace-nowrap" data-filter="esgotado">Esgotados</button>
         </div>
     </section>
 
-    <div id="produtos-list-container" class="flex-1 p-4 space-y-4">
-        <div id="loading-placeholder" class="text-center py-10 text-gray-500 dark:text-gray-400">
+    <div id="produtos-list-container" class="flex-1 p-4 space-y-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div id="loading-placeholder" class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">
             Carregando produtos...
         </div>
     </div>
