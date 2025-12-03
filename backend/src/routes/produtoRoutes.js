@@ -14,6 +14,7 @@ router.post("/importar-csv", uploadCsv, produtoController.importarCSV);
 router.get("/inativos", produtoController.listarInativos);
 router.put("/inativar-em-massa", produtoController.inativarEmMassa);
 router.post("/excluir-em-massa", produtoController.excluirEmMassa); 
+router.get("/relatorio-completo", produtoController.listarParaRelatorio); // <--- ADICIONE ESTA LINHA
 
 // Rotas com parâmetros (mais genéricas) vêm depois
 router.get("/:id", produtoController.obterPorId);
