@@ -591,3 +591,26 @@ exports.importarCSV = async (req, res) => {
             }
         });
 };
+exports.listarParaRelatorio = async (req, res) => {
+    const empresa_id = req.empresaId;
+    try {
+        // Busca produtos e agrupa todas as URLs das fotos em um array JSON
+        const [rows] = await pool.query(`
+            SELECT p.id, p.nome, p.preco, p.estoque, p.codigo, p.ativo,
+                   (
+                       SELECT JSON_ARRAYAGG(pf.url)
+                       FROM produto_fotos pf
+                       WHERE pf.produto_id = p.id
+                   ) as fotos
+            FROM produtos p
+            WHERE p.empresa_id = ?
+            GROUP BY p.id
+            ORDER BY p.nome ASC
+        `, [empresa_id]);
+
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao gerar relatório de produtos.' });
+    }
+};
