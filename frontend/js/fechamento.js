@@ -1,19 +1,42 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Autenticação integrada
+    // Verifica autenticação
     if (typeof checkAuth === 'function' && !checkAuth()) return;
 
     const btnBuscar = document.getElementById('btn-buscar');
     const btnSair = document.getElementById('btn-sair');
     
-    // Datas padrão: Início e fim do mês atual
+    // --- LÓGICA DE DATAS AUTOMÁTICA (CORRIGIDA) ---
     const hoje = new Date();
-    const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
     
-    document.getElementById('data-inicio').valueAsDate = primeiroDia;
-    document.getElementById('data-fim').valueAsDate = ultimoDia;
+    // Primeiro dia do mês atual
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0'); // Janeiro é 0
+    
+    // Define o último dia do mês corretamente
+    const ultimoDiaDate = new Date(ano, hoje.getMonth() + 1, 0);
+    const ultimoDia = String(ultimoDiaDate.getDate()).padStart(2, '0');
 
-    btnBuscar.addEventListener('click', buscarCobrancas);
+    // Formato YYYY-MM-DD que o input type="date" exige
+    const dataInicioStr = `${ano}-${mes}-01`;
+    const dataFimStr = `${ano}-${mes}-${ultimoDia}`;
+
+    // Preenche os campos forçadamente
+    const inputInicio = document.getElementById('data-inicio');
+    const inputFim = document.getElementById('data-fim');
+
+    if (inputInicio && inputFim) {
+        inputInicio.value = dataInicioStr;
+        inputFim.value = dataFimStr;
+        
+        // --- DISPARA A BUSCA IMEDIATAMENTE ---
+        console.log("Iniciando busca automática...");
+        buscarCobrancas();
+    }
+    // ----------------------------------------------
+
+    if (btnBuscar) {
+        btnBuscar.addEventListener('click', buscarCobrancas);
+    }
     
     if (btnSair) {
         btnSair.addEventListener('click', () => {
@@ -21,9 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
             else window.location.href = 'login.html';
         });
     }
-
-    // Busca inicial
-    buscarCobrancas();
 });
 
 async function buscarCobrancas() {
@@ -33,28 +53,27 @@ async function buscarCobrancas() {
     const resumoTotal = document.getElementById('resumo-total');
 
     if (!dataInicio || !dataFim) {
-        alert('Por favor, selecione as datas de início e fim.');
+        // Se por algum motivo as datas falharem, não faz nada
         return;
     }
 
-    // Loading State
+    // Loading State visual
     tbody.innerHTML = `
         <tr>
             <td colspan="5" class="px-6 py-10 text-center text-gray-500">
                 <div class="flex flex-col items-center justify-center">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-                    <p>Carregando dados...</p>
+                    <p>Carregando dados de ${formatarDataBr(dataInicio)} a ${formatarDataBr(dataFim)}...</p>
                 </div>
             </td>
         </tr>`;
 
     try {
-        // Usa fetchWithAuth se disponível, ou fetch padrão com token manual
         let response;
         if (typeof fetchWithAuth === 'function') {
             response = await fetchWithAuth(`/api/cobrancas/listar?dataInicio=${dataInicio}&dataFim=${dataFim}`, { method: 'GET' });
         } else {
-            const token = localStorage.getItem('token'); // Fallback antigo
+            const token = localStorage.getItem('token');
             response = await fetch(`http://localhost:3000/api/cobrancas/listar?dataInicio=${dataInicio}&dataFim=${dataFim}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -70,7 +89,7 @@ async function buscarCobrancas() {
                 <tr>
                     <td colspan="5" class="px-6 py-10 text-center text-gray-500">
                         <span class="material-symbols-outlined text-4xl mb-2 text-gray-300">block</span>
-                        <p>Nenhuma venda encontrada para este período.</p>
+                        <p>Nenhuma venda encontrada neste período.</p>
                     </td>
                 </tr>`;
             resumoTotal.textContent = 'Total: R$ 0,00';
@@ -83,7 +102,6 @@ async function buscarCobrancas() {
             const valor = parseFloat(item.total_comprado);
             somaTotal += valor;
 
-            // Estilos de Status (Tailwind)
             const isPago = item.status_pagamento === 'Pago';
             const statusClass = isPago 
                 ? 'bg-green-100 text-green-800 border-green-200' 
@@ -117,7 +135,7 @@ async function buscarCobrancas() {
 
     } catch (error) {
         console.error(error);
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar dados. Tente novamente.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar dados.</td></tr>`;
     }
 }
 
@@ -126,7 +144,7 @@ async function alterarStatus(selectElement, clienteId, nomeCliente, valorTotal) 
     const dataInicio = document.getElementById('data-inicio').value;
     const dataFim = document.getElementById('data-fim').value;
     
-    // Atualização Visual Imediata (Optimistic UI)
+    // Atualização Visual (Optimistic UI)
     const isPago = novoStatus === 'Pago';
     selectElement.className = `rounded-full px-3 py-1 text-xs font-bold border cursor-pointer focus:ring-2 focus:ring-offset-1 focus:ring-primary outline-none appearance-none pr-8 ${
         isPago ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'
@@ -148,7 +166,6 @@ async function alterarStatus(selectElement, clienteId, nomeCliente, valorTotal) 
                 body: JSON.stringify(body)
             });
         } else {
-             // Fallback
              const token = localStorage.getItem('token');
              response = await fetch('http://localhost:3000/api/cobrancas/atualizar', {
                 method: 'POST',
@@ -163,11 +180,18 @@ async function alterarStatus(selectElement, clienteId, nomeCliente, valorTotal) 
         if (!response.ok) throw new Error('Erro ao salvar');
 
     } catch (error) {
-        alert('Erro ao atualizar. A página será recarregada.');
+        alert('Erro ao atualizar. Recarregue a página.');
         window.location.reload();
     }
 }
 
 function verDetalhesCliente(id) {
     window.location.href = `cliente-detalhes.html?id=${id}`;
+}
+
+// Helper auxiliar para mostrar data bonitinha no loading
+function formatarDataBr(dataIso) {
+    if(!dataIso) return '';
+    const [ano, mes, dia] = dataIso.split('-');
+    return `${dia}/${mes}/${ano}`;
 }
