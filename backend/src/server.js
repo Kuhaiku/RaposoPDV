@@ -17,6 +17,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const caixaRoutes = require('./routes/caixaRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const pagamentoRoutes = require('./routes/pagamentoRoutes');
+const cobrancaRoutes = require('./routes/cobrancaRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,7 +37,7 @@ app.use('/api/vendas', vendaRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/caixa', caixaRoutes);
 app.use('/api/pagamentos', pagamentoRoutes);
-
+app.use('/api/cobrancas', cobrancaRoutes); // <--- ADICIONAR
 // --- SERVINDO O FRONTEND ---
 // O servidor agora serve os arquivos estáticos da pasta 'frontend'
 const frontendPath = path.join(__dirname, '..', 'frontend');
