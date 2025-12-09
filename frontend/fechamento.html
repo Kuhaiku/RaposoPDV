@@ -1,104 +1,114 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html class="light" lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Fechamento de Período | RaposoPDV</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                primary: "#3498db",
+                secondary: "#2c3e50",
+                "background-light": "#f6f7f8",
+                "background-dark": "#101922",
+                "text-light": "#333333",
+                danger: "#e74c3c",
+                success: "#2ecc71",
+                warning: "#f39c12",
+              },
+              fontFamily: {
+                display: ["Inter", "sans-serif"],
+              },
+            },
+          },
+        };
+      </script>
+    
     <link rel="stylesheet" href="css/global.css">
-    <link rel="stylesheet" href="css/painel.css">
-    <link rel="stylesheet" href="css/vendas.css"> <style>
-        /* Estilos específicos rápidos */
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .status-Pendente { background-color: #ffeeba; color: #856404; }
-        .status-Pago { background-color: #d4edda; color: #155724; }
-        
-        .filtros-container {
-            display: flex;
-            gap: 15px;
-            align-items: flex-end;
-            margin-bottom: 20px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .select-status {
-            padding: 5px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
+    
+    <style>
+        /* Ajustes finos para a tabela no padrão Tailwind */
+        .table-header { @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50; }
+        .table-cell { @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900; }
+        .table-row { @apply border-b border-gray-100 hover:bg-gray-50 transition-colors; }
     </style>
 </head>
-<body>
-    <div class="painel-container">
-        <aside class="sidebar" id="sidebar-container">
-            <div class="logo">
-                <h2>RaposoPDV</h2>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-light dark:text-text-dark min-h-screen flex flex-col">
+
+    <div class="flex items-center bg-white dark:bg-zinc-900 p-4 border-b dark:border-zinc-700 sticky top-0 z-10 shadow-sm">
+        <a href="painel.html" class="flex items-center text-gray-500 hover:text-primary transition-colors mr-4">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <div class="flex size-10 shrink-0 items-center justify-center bg-primary/10 rounded-full mr-3">
+            <span class="material-symbols-outlined text-primary">fact_check</span>
+        </div>
+        <h1 class="text-lg font-bold leading-tight flex-1 text-secondary dark:text-zinc-100">Fechamento de Período</h1>
+        
+        <button id="btn-sair" class="ml-2 flex size-10 items-center justify-center rounded-full text-danger hover:bg-danger/10 transition-colors" title="Sair">
+            <span class="material-symbols-outlined">logout</span>
+        </button>
+    </div>
+
+    <main class="flex-1 p-4 max-w-7xl mx-auto w-full space-y-6">
+
+        <div class="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-base font-semibold mb-4 text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">filter_alt</span> Filtros de Busca
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Data Início</label>
+                    <input type="date" id="data-inicio" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-zinc-800 focus:border-primary focus:ring-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Data Fim</label>
+                    <input type="date" id="data-fim" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-zinc-800 focus:border-primary focus:ring-primary">
+                </div>
+                <button id="btn-buscar" class="w-full bg-primary hover:bg-blue-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md">
+                    <span class="material-symbols-outlined text-[20px]">search</span>
+                    Buscar Clientes
+                </button>
             </div>
-            <nav>
-                <ul>
-                    <li><a href="painel.html">Dashboard</a></li>
-                    <li><a href="caixa.html">Caixa / PDV</a></li>
-                    <li><a href="produtos.html">Produtos</a></li>
-                    <li><a href="clientes.html">Clientes</a></li>
-                    <li><a href="vendas.html">Vendas</a></li>
-                    <li><a href="fechamento.html" class="active">Cobranças</a></li> <li><a href="#" id="btn-sair">Sair</a></li>
-                </ul>
-            </nav>
-        </aside>
+        </div>
 
-        <main class="conteudo-principal">
-            <header>
-                <h1>Gestão de Cobranças por Período</h1>
-                <div class="usuario-info">
-                    <span id="nome-usuario">Usuário</span>
-                </div>
-            </header>
-
-            <div class="filtros-container">
-                <div class="form-group">
-                    <label for="data-inicio">Data Início</label>
-                    <input type="date" id="data-inicio" class="form-input">
-                </div>
-                <div class="form-group">
-                    <label for="data-fim">Data Fim</label>
-                    <input type="date" id="data-fim" class="form-input">
-                </div>
-                <button id="btn-buscar" class="btn-primary" style="height: 42px;">Buscar Fechamento</button>
+        <div class="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div class="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-base font-semibold text-gray-700 dark:text-gray-300">Resultados do Período</h2>
+                <span id="resumo-total" class="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-bold">Total: R$ 0,00</span>
             </div>
-
-            <div class="tabela-container">
-                <table class="tabela">
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead>
                         <tr>
-                            <th>Cliente</th>
-                            <th>Telefone</th>
-                            <th>Total Comprado</th>
-                            <th>Status no Período</th>
-                            <th>Ação</th>
+                            <th class="table-header">Cliente</th>
+                            <th class="table-header">Telefone</th>
+                            <th class="table-header">Total Comprado</th>
+                            <th class="table-header">Status</th>
+                            <th class="table-header text-center">Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="lista-cobrancas">
+                    <tbody id="lista-cobrancas" class="bg-white dark:bg-zinc-900 divide-y divide-gray-200 dark:divide-gray-700">
                         <tr>
-                            <td colspan="5" style="text-align: center;">Selecione um período para buscar.</td>
+                            <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                                <span class="material-symbols-outlined text-4xl mb-2 text-gray-300">calendar_today</span>
+                                <p>Selecione um período acima para visualizar os dados.</p>
+                            </td>
                         </tr>
                     </tbody>
-                    <tfoot id="tfoot-totais" style="display: none; background-color: #f8f9fa; font-weight: bold;">
-                        <tr>
-                            <td colspan="2" style="text-align: right;">TOTAL GERAL:</td>
-                            <td id="total-geral-periodo">R$ 0,00</td>
-                            <td colspan="2"></td>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
-        </main>
-    </div>
+        </div>
+
+    </main>
 
     <script src="js/auth.js"></script>
     <script src="js/fechamento.js"></script>
