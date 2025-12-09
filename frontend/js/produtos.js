@@ -1,198 +1,96 @@
-// Garante que checkAuth e fetchWithAuth estão disponíveis (de auth.js)
+// frontend/js/produtos.js
+
 if (typeof checkAuth !== 'function' || typeof fetchWithAuth !== 'function') {
-    console.error("Funções 'checkAuth' ou 'fetchWithAuth' não encontradas. Verifique se auth.js foi carregado corretamente.");
-    // Poderia redirecionar para login ou mostrar erro
+    console.error("Funções de auth não encontradas.");
 } else {
     checkAuth();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Seletores de Elementos DOM ---
+    // --- Elementos ---
     const productListContainer = document.getElementById('product-list-container');
     const productListPlaceholder = document.getElementById('product-list-placeholder');
     const searchInput = document.getElementById('search-input');
     const tabAtivos = document.getElementById('tab-ativos');
     const tabInativos = document.getElementById('tab-inativos');
     const addProductButton = document.getElementById('add-product-button');
+    
+    // Elementos de Ação em Massa
+    const massActionsBar = document.getElementById('mass-actions-bar');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const cancelSelectionBtn = document.getElementById('cancel-selection-btn');
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    const massInactivateBtn = document.getElementById('mass-inactivate-btn');
+    const massReactivateBtn = document.getElementById('mass-reactivate-btn');
+    const massDeleteBtn = document.getElementById('mass-delete-btn');
 
-    // --- Modais ---
+    // Modais
     const addProductPopup = document.getElementById('add-product-popup');
     const editProductPopup = document.getElementById('edit-product-popup');
     const addProductForm = document.getElementById('add-product-form');
     const editProductForm = document.getElementById('edit-product-form');
 
-    // --- Campos do Formulário ADD ---
-    const addImageInput = document.getElementById('add-images-input');
-    const addImagePreviews = document.getElementById('add-image-previews');
-    const addProductMessage = document.getElementById('add-product-message');
-
-    // --- Campos do Formulário EDIT ---
-    const editProductIdInput = document.getElementById('edit-product-id');
-    const editProductNameInput = document.getElementById('edit-product-name');
-    const editProductCodigoInput = document.getElementById('edit-product-codigo');
-    const editProductPrecoInput = document.getElementById('edit-product-preco');
-    const editProductEstoqueInput = document.getElementById('edit-product-estoque');
-    const editProductCategoriaInput = document.getElementById('edit-product-categoria');
-    const editProductDescricaoInput = document.getElementById('edit-product-descricao');
-    const editImageInput = document.getElementById('edit-images-input');
-    const editImagePreviews = document.getElementById('edit-image-previews');
-    const editProductMessage = document.getElementById('edit-product-message');
-
-    // --- Estado ---
-    let todosProdutos = []; // Armazena todos os produtos (ativos e inativos)
-    let filtroAtual = 'ativos'; // 'ativos' ou 'inativos'
+    // Estado
+    let todosProdutos = [];
+    let filtroAtual = 'ativos';
     let termoBusca = '';
-    let fotosParaRemoverEdit = []; // Armazena fotos a serem removidas na edição [{id: 1, public_id: 'abc'}, ...]
-    let addProductFiles = []; // Armazena ARQUIVOS (File objects) para adicionar
-    let editProductFiles = []; // Armazena NOVOS ARQUIVOS (File objects) para editar
+    let selectedIds = new Set(); // Conjunto de IDs selecionados
+    
+    // Estado de Edição/Upload
+    let addProductFiles = [];
+    let editProductFiles = [];
+    let fotosParaRemoverEdit = [];
+    const MAX_IMAGES = 5;
 
-    const MAX_IMAGES = 5; // Limite máximo de imagens
+    // --- Helpers ---
+    const formatCurrency = (val) => parseFloat(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const openPopup = (el) => { el.classList.add('is-open'); document.body.style.overflow = 'hidden'; };
+    const closePopup = (el) => { el.classList.remove('is-open'); document.body.style.overflow = ''; };
+    const showMsg = (el, msg, err) => { el.textContent = msg; el.classList.remove('hidden', 'text-green-600', 'text-red-600'); el.classList.add(err ? 'text-red-600' : 'text-green-600'); };
 
-    // --- Funções Auxiliares ---
+    // --- Imagens ---
+    const handleFile = (e, container, storage) => {
+        const files = Array.from(e.target.files || []);
+        if(!files.length) return;
+        const current = container.querySelectorAll('.image-preview').length;
+        if(files.length + current > MAX_IMAGES) { alert(`Limite de ${MAX_IMAGES} imagens.`); return; }
 
-    // Formata moeda
-    const formatCurrency = (value) => {
-        const number = parseFloat(value) || 0;
-        return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    };
-
-    // Exibe mensagem nos modais
-    const showModalMessage = (element, message, isError = false) => {
-        if (!element) return; // Verificação
-        element.textContent = message;
-        element.classList.remove('hidden', 'text-green-600', 'text-red-600');
-        element.classList.add(isError ? 'text-red-600' : 'text-green-600');
-    };
-
-    // Limpa mensagem dos modais
-    const clearModalMessage = (element) => {
-        if (!element) return; // Verificação
-        element.textContent = '';
-        element.classList.add('hidden');
-    };
-
-    // Abre um modal (bottom sheet)
-    const openPopup = (popupElement) => {
-        if (popupElement) {
-            popupElement.classList.add('is-open');
-            document.body.style.overflow = 'hidden'; // Impedir scroll do body
-        }
-    };
-
-    // Fecha um modal (bottom sheet)
-    const closePopup = (popupElement) => {
-        if (popupElement) {
-            popupElement.classList.remove('is-open');
-            document.body.style.overflow = ''; // Restaurar scroll do body
-            // Limpa mensagens de erro/sucesso ao fechar
-            clearModalMessage(addProductMessage);
-            clearModalMessage(editProductMessage);
-        }
-    };
-
-    // --- Funções de Pré-visualização de Imagem (AJUSTADA PARA NÃO REMOVER) ---
-    const handleFileChange = (event, previewContainer, fileStorage) => {
-        const files = event.target.files;
-        if (!files) return;
-
-        const currentImageCount = previewContainer.querySelectorAll('.image-preview').length;
-        const availableSlots = MAX_IMAGES - currentImageCount;
-
-        if (files.length > availableSlots) {
-            alert(`Você pode adicionar no máximo mais ${availableSlots} imagem(ns). O limite total é ${MAX_IMAGES}.`);
-            event.target.value = null; // Limpa a seleção atual
-            return;
-        }
-
-        Array.from(files).forEach(file => {
-            // Verifica se um arquivo com o mesmo nome E tamanho já está no array de upload
-             const alreadyExists = fileStorage.some(existingFile =>
-                existingFile.name === file.name && existingFile.size === file.size
-            );
-
-            // Verifica se um preview para esse arquivo já existe na tela (para novos uploads)
-            const alreadyPreviewed = Array.from(previewContainer.querySelectorAll('.new-image img'))
-                                          .some(img => img.dataset.fileName === file.name && img.dataset.fileSize === String(file.size));
-
-
-            if (alreadyExists || alreadyPreviewed) {
-                console.warn(`Arquivo "${file.name}" já presente ou selecionado, pulando.`);
-                return; // Pula este arquivo
-            }
-
-
-            fileStorage.push(file); // Armazena o novo arquivo
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const div = document.createElement('div');
-                // Adiciona 'new-image' para diferenciar dos existentes na edição
-                div.className = 'image-preview new-image';
-                div.innerHTML = `
-                    <img src="${e.target.result}" alt="${file.name}" data-file-name="${file.name}" data-file-size="${file.size}">
-                    <button type="button" class="remove-image-btn" title="Remover imagem">&times;</button>
-                `;
-                previewContainer.insertBefore(div, previewContainer.querySelector('.add-image-btn'));
-
-                div.querySelector('.remove-image-btn').addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    div.remove();
-                    const indexToRemove = fileStorage.indexOf(file);
-                    if (indexToRemove > -1) {
-                        fileStorage.splice(indexToRemove, 1);
-                    }
-                    checkImageLimit(previewContainer);
-                    // Não limpa o input geral aqui, pois múltiplos arquivos podem ter sido selecionados
-                });
-            };
-            reader.readAsDataURL(file);
+        files.forEach(file => {
+             storage.push(file);
+             const reader = new FileReader();
+             reader.onload = (ev) => {
+                 const div = document.createElement('div');
+                 div.className = 'image-preview new-image';
+                 div.innerHTML = `<img src="${ev.target.result}"><button type="button" class="remove-image-btn">&times;</button>`;
+                 div.querySelector('button').addEventListener('click', (btne) => {
+                     btne.stopPropagation(); div.remove();
+                     const idx = storage.indexOf(file); if(idx > -1) storage.splice(idx, 1);
+                     checkLimit(container);
+                 });
+                 container.insertBefore(div, container.querySelector('.add-image-btn'));
+             };
+             reader.readAsDataURL(file);
         });
-
-        checkImageLimit(previewContainer);
-        // Limpa o input file DEPOIS para permitir selecionar o mesmo arquivo novamente caso ele seja removido do preview/storage
-        // Isso pode ser útil, mas também pode ser confuso se o usuário quiser adicionar mais depois.
-        // Vamos deixar sem limpar por enquanto para testar o comportamento de adicionar mais.
-        // event.target.value = null;
+        checkLimit(container);
     };
+    const checkLimit = (c) => { c.querySelector('.add-image-btn').style.display = c.querySelectorAll('.image-preview').length >= MAX_IMAGES ? 'none' : 'flex'; };
 
-
-     // Função para verificar e mostrar/esconder o botão '+'
-     const checkImageLimit = (previewContainer) => {
-          const addBtn = previewContainer.querySelector('.add-image-btn');
-          if (!addBtn) return;
-          const currentImageCount = previewContainer.querySelectorAll('.image-preview').length;
-          addBtn.style.display = currentImageCount >= MAX_IMAGES ? 'none' : 'flex';
-     };
-
-
-    addImageInput.addEventListener('change', (event) => handleFileChange(event, addImagePreviews, addProductFiles));
-    editImageInput.addEventListener('change', (event) => handleFileChange(event, editImagePreviews, editProductFiles));
-
+    document.getElementById('add-images-input').addEventListener('change', (e) => handleFile(e, document.getElementById('add-image-previews'), addProductFiles));
+    document.getElementById('edit-images-input').addEventListener('change', (e) => handleFile(e, document.getElementById('edit-image-previews'), editProductFiles));
 
     // --- Funções Principais ---
 
-    // Carrega TODOS os produtos (ativos e inativos) da API
     const carregarTodosProdutos = async () => {
-        productListPlaceholder.textContent = 'Carregando produtos...';
-        productListPlaceholder.classList.remove('hidden');
+        productListPlaceholder.textContent = 'Carregando...'; productListPlaceholder.classList.remove('hidden');
         productListContainer.innerHTML = '';
+        selectedIds.clear(); updateMassActionsUI(); // Limpa seleção ao recarregar
 
         try {
             const [ativosRes, inativosRes] = await Promise.all([
                 fetchWithAuth('/api/produtos'),
                 fetchWithAuth('/api/produtos/inativos')
             ]);
-
-            if (!ativosRes.ok || !inativosRes.ok) {
-                let errorMsg = 'Falha ao carregar lista de produtos.';
-                try {
-                     if (!ativosRes.ok) errorMsg = (await ativosRes.json()).message || errorMsg;
-                     else if (!inativosRes.ok) errorMsg = (await inativosRes.json()).message || errorMsg;
-                } catch (e) {}
-                throw new Error(errorMsg);
-            }
-
             const ativos = await ativosRes.json();
             const inativos = await inativosRes.json();
 
@@ -201,328 +99,238 @@ document.addEventListener('DOMContentLoaded', () => {
                 ...inativos.map(p => ({ ...p, ativo: false }))
             ];
             todosProdutos.sort((a, b) => a.nome.localeCompare(b.nome));
-
             renderizarProdutos();
-
         } catch (error) {
-            console.error('Erro ao carregar produtos:', error);
-            productListPlaceholder.textContent = `Erro ao carregar produtos: ${error.message}. Tente novamente.`;
-            productListPlaceholder.classList.remove('hidden');
-            todosProdutos = [];
+            console.error(error);
+            productListPlaceholder.textContent = 'Erro ao carregar produtos.';
         }
     };
 
-    // Renderiza a lista de produtos na tela com base nos filtros
     const renderizarProdutos = () => {
         productListContainer.innerHTML = '';
         productListPlaceholder.classList.add('hidden');
 
+        // Filtra
         const produtosFiltrados = todosProdutos.filter(p => {
-            const correspondeStatus = (filtroAtual === 'ativos' && p.ativo) || (filtroAtual === 'inativos' && !p.ativo);
-            const correspondeBusca = termoBusca === '' ||
-                                     p.nome.toLowerCase().includes(termoBusca) ||
-                                     (p.codigo && String(p.codigo).toLowerCase().includes(termoBusca)); // Garante que código é string
-            return correspondeStatus && correspondeBusca;
+            const statusOk = (filtroAtual === 'ativos' && p.ativo) || (filtroAtual === 'inativos' && !p.ativo);
+            const buscaOk = termoBusca === '' || p.nome.toLowerCase().includes(termoBusca) || (p.codigo && String(p.codigo).toLowerCase().includes(termoBusca));
+            return statusOk && buscaOk;
         });
 
         if (produtosFiltrados.length === 0) {
-            productListPlaceholder.textContent = `Nenhum produto ${filtroAtual} encontrado ${termoBusca ? 'para "' + termoBusca + '"' : ''}.`;
-            productListPlaceholder.classList.remove('hidden');
+            productListPlaceholder.textContent = 'Nenhum produto encontrado.'; productListPlaceholder.classList.remove('hidden');
+            // Desmarca "Selecionar Todos" se lista vazia
+            selectAllCheckbox.checked = false;
             return;
         }
 
+        // Verifica estado do Select All
+        const allVisibleIds = produtosFiltrados.map(p => p.id);
+        const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedIds.has(String(id)));
+        selectAllCheckbox.checked = allSelected;
+
         produtosFiltrados.forEach(produto => {
+            const isSelected = selectedIds.has(String(produto.id));
             const card = document.createElement('div');
-            card.className = `flex items-start gap-3 bg-white dark:bg-zinc-900 rounded-lg p-3 shadow-sm product-card ${!produto.ativo ? 'opacity-60' : ''}`;
+            card.className = `flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-lg p-3 shadow-sm product-card transition-colors ${isSelected ? 'ring-2 ring-primary bg-blue-50 dark:bg-zinc-800' : ''}`;
             card.dataset.produtoId = produto.id;
 
-            card.innerHTML = `
-                <img class="rounded-lg size-16 object-cover border dark:border-zinc-700 flex-shrink-0" src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}"/>
-                <div class="flex-1 min-w-0">
-                    <p class="text-secondary dark:text-white text-base font-semibold leading-tight truncate" title="${produto.nome}">${produto.nome}</p>
-                    <p class="text-zinc-500 dark:text-zinc-400 text-sm font-normal">SKU: ${produto.codigo || 'N/A'}</p>
-                    <p class="text-${produto.ativo ? 'primary' : 'zinc-500 dark:text-zinc-400'} font-bold text-base mt-1">${formatCurrency(produto.preco)}</p>
-                    <p class="text-xs text-zinc-400">Estoque: ${produto.estoque}</p>
-                </div>
-                <div class="flex flex-col items-end gap-1 flex-shrink-0">
-                    <button class="btn-edit flex items-center justify-center rounded-lg h-7 px-2 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
-                        <span class="material-symbols-outlined mr-1 text-sm">edit</span> Editar
-                    </button>
-                    ${produto.ativo ? `
-                        <button class="btn-inativar flex items-center justify-center rounded-lg h-7 px-2 bg-warning/10 text-warning text-xs font-medium hover:bg-warning/20 transition-colors">
-                            <span class="material-symbols-outlined mr-1 text-sm">visibility_off</span> Inativar
-                        </button>
-                    ` : `
-                        <button class="btn-ativar flex items-center justify-center rounded-lg h-7 px-2 bg-success/10 text-success text-xs font-medium hover:bg-success/20 transition-colors">
-                            <span class="material-symbols-outlined mr-1 text-sm">visibility</span> Ativar
-                        </button>
-                        <button class="btn-excluir-perm flex items-center justify-center rounded-lg h-7 px-2 bg-danger/10 text-danger text-xs font-medium hover:bg-danger/20 transition-colors mt-1" title="Excluir Permanentemente">
-                            <span class="material-symbols-outlined mr-1 text-sm">delete_forever</span> Excluir
-                        </button>
-                    `}
+            // Checkbox Individual no Card
+            const checkboxHtml = `
+                <div class="flex-shrink-0" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="product-checkbox custom-checkbox form-checkbox text-primary border-zinc-400 rounded focus:ring-primary bg-transparent" value="${produto.id}" ${isSelected ? 'checked' : ''}>
                 </div>
             `;
+
+            card.innerHTML = `
+                ${checkboxHtml}
+                <img class="rounded-lg w-14 h-14 object-cover border dark:border-zinc-700 flex-shrink-0" src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}"/>
+                <div class="flex-1 min-w-0 cursor-pointer card-clickable-area">
+                    <p class="text-secondary dark:text-white text-base font-semibold truncate leading-tight">${produto.nome}</p>
+                    <p class="text-zinc-500 text-xs">SKU: ${produto.codigo || 'N/A'}</p>
+                    <p class="text-${produto.ativo ? 'primary' : 'zinc-500'} font-bold text-sm">${formatCurrency(produto.preco)}</p>
+                </div>
+                <div class="flex-shrink-0">
+                    <button class="btn-edit p-2 text-primary hover:bg-primary/10 rounded-full transition-colors"><span class="material-symbols-outlined">edit</span></button>
+                </div>
+            `;
+            
+            // Evento Click no Checkbox
+            card.querySelector('.product-checkbox').addEventListener('change', (e) => {
+                toggleSelection(String(produto.id), e.target.checked);
+            });
+
+            // Evento Click na área do texto (abre edição)
+            card.querySelector('.card-clickable-area').addEventListener('click', () => abrirEdicao(produto));
+            card.querySelector('.btn-edit').addEventListener('click', () => abrirEdicao(produto));
+
             productListContainer.appendChild(card);
         });
     };
 
-    // --- Tratamento de Eventos ---
+    // --- Lógica de Seleção em Massa ---
 
-    // Busca com Debounce
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchInput.timer);
-        searchInput.timer = setTimeout(() => {
-            termoBusca = searchInput.value.toLowerCase();
-            renderizarProdutos();
-        }, 300);
-    });
+    const toggleSelection = (id, checked) => {
+        if (checked) selectedIds.add(id);
+        else selectedIds.delete(id);
+        updateMassActionsUI();
+        renderizarProdutos(); // Re-renderiza para atualizar estilos (bordas) e "Select All"
+    };
 
-    // Abas Ativos/Inativos
-    const handleTabClick = (tabId) => {
-        filtroAtual = tabId;
-        tabAtivos.classList.toggle('active', tabId === 'ativos');
-        tabInativos.classList.toggle('active', tabId === 'inativos');
+    const toggleSelectAll = (checked) => {
+        // Pega APENAS os produtos visíveis no filtro atual
+        const produtosVisiveis = todosProdutos.filter(p => {
+            const statusOk = (filtroAtual === 'ativos' && p.ativo) || (filtroAtual === 'inativos' && !p.ativo);
+            const buscaOk = termoBusca === '' || p.nome.toLowerCase().includes(termoBusca);
+            return statusOk && buscaOk;
+        });
+
+        if (checked) {
+            produtosVisiveis.forEach(p => selectedIds.add(String(p.id)));
+        } else {
+            produtosVisiveis.forEach(p => selectedIds.delete(String(p.id)));
+        }
+        updateMassActionsUI();
         renderizarProdutos();
     };
-    tabAtivos.addEventListener('click', () => handleTabClick('ativos'));
-    tabInativos.addEventListener('click', () => handleTabClick('inativos'));
 
-    // Abrir Modal Adicionar
+    const updateMassActionsUI = () => {
+        const count = selectedIds.size;
+        selectedCountSpan.textContent = count;
+        
+        if (count > 0) {
+            massActionsBar.classList.add('visible');
+            // Mostra botões dependendo da aba
+            if (filtroAtual === 'ativos') {
+                massInactivateBtn.classList.remove('hidden');
+                massReactivateBtn.classList.add('hidden');
+                massDeleteBtn.classList.add('hidden');
+            } else {
+                massInactivateBtn.classList.add('hidden');
+                massReactivateBtn.classList.remove('hidden');
+                massDeleteBtn.classList.remove('hidden');
+            }
+        } else {
+            massActionsBar.classList.remove('visible');
+        }
+    };
+
+    selectAllCheckbox.addEventListener('change', (e) => toggleSelectAll(e.target.checked));
+    cancelSelectionBtn.addEventListener('click', () => { selectedIds.clear(); updateMassActionsUI(); renderizarProdutos(); });
+
+    // --- Ações em Massa (API) ---
+
+    const executarAcaoEmMassa = async (url, method, confirmMsg, successMsg) => {
+        if (!confirm(confirmMsg)) return;
+        const ids = Array.from(selectedIds);
+        
+        try {
+            const res = await fetchWithAuth(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: ids })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Erro na operação.');
+            
+            alert(data.message || successMsg);
+            carregarTodosProdutos(); // Recarrega tudo
+        } catch (error) {
+            console.error(error);
+            alert(`Erro: ${error.message}`);
+        }
+    };
+
+    massInactivateBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/inativar-em-massa', 'PUT', `Inativar ${selectedIds.size} produto(s)?`, 'Produtos inativados.'));
+    massReactivateBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/reativar-em-massa', 'PUT', `Reativar ${selectedIds.size} produto(s)?`, 'Produtos reativados.'));
+    massDeleteBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/excluir-em-massa', 'POST', `EXCLUIR PERMANENTEMENTE ${selectedIds.size} produto(s)? Isso não pode ser desfeito.`, 'Produtos excluídos.'));
+
+
+    // --- Eventos da Interface ---
+
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchInput.timer);
+        searchInput.timer = setTimeout(() => { termoBusca = e.target.value.toLowerCase(); renderizarProdutos(); }, 300);
+    });
+
+    const switchTab = (tab) => {
+        filtroAtual = tab;
+        tabAtivos.classList.toggle('active', tab === 'ativos');
+        tabInativos.classList.toggle('active', tab === 'inativos');
+        selectedIds.clear(); updateMassActionsUI(); // Limpa seleção ao trocar aba
+        renderizarProdutos();
+    };
+    tabAtivos.addEventListener('click', () => switchTab('ativos'));
+    tabInativos.addEventListener('click', () => switchTab('inativos'));
+
+    // --- Formulários (Add/Edit) ---
+
+    const abrirEdicao = async (produto) => {
+        editProductForm.reset();
+        document.getElementById('edit-image-previews').innerHTML = `<label for="edit-images-input" class="add-image-btn"><span class="material-symbols-outlined text-4xl">add_photo_alternate</span></label>`;
+        fotosParaRemoverEdit = []; editProductFiles = []; document.getElementById('edit-images-input').value = null;
+        
+        try {
+            const res = await fetchWithAuth(`/api/produtos/${produto.id}`);
+            const p = await res.json();
+            document.getElementById('edit-product-id').value = p.id;
+            document.getElementById('edit-product-name').value = p.nome;
+            document.getElementById('edit-product-codigo').value = p.codigo || '';
+            document.getElementById('edit-product-preco').value = p.preco;
+            document.getElementById('edit-product-estoque').value = p.estoque;
+            document.getElementById('edit-product-categoria').value = p.categoria || '';
+            document.getElementById('edit-product-descricao').value = p.descricao || '';
+            
+            if(p.fotos) {
+                p.fotos.forEach(f => {
+                    const div = document.createElement('div'); div.className = 'image-preview';
+                    div.innerHTML = `<img src="${f.url}"><button type="button" class="remove-image-btn">&times;</button>`;
+                    div.querySelector('button').addEventListener('click', () => {
+                        fotosParaRemoverEdit.push({ id: f.id, public_id: f.public_id });
+                        div.remove(); checkLimit(document.getElementById('edit-image-previews'));
+                    });
+                    const cont = document.getElementById('edit-image-previews');
+                    cont.insertBefore(div, cont.querySelector('.add-image-btn'));
+                });
+            }
+            checkLimit(document.getElementById('edit-image-previews'));
+            openPopup(editProductPopup);
+        } catch(e) { console.error(e); alert('Erro ao abrir edição.'); }
+    };
+
     addProductButton.addEventListener('click', () => {
-        addProductForm.reset();
-        addImagePreviews.innerHTML = `<label for="add-images-input" class="add-image-btn"><span class="material-symbols-outlined text-4xl">add_photo_alternate</span></label>`;
-        addProductFiles = [];
-        addImageInput.value = null;
-        clearModalMessage(addProductMessage);
-        checkImageLimit(addImagePreviews); // Garante que o botão + apareça
+        addProductForm.reset(); addProductFiles = []; 
+        document.getElementById('add-image-previews').innerHTML = `<label for="add-images-input" class="add-image-btn"><span class="material-symbols-outlined text-4xl">add_photo_alternate</span></label>`;
         openPopup(addProductPopup);
     });
 
-    // Submeter Formulário Adicionar (CORRIGIDO)
-    addProductForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        clearModalMessage(addProductMessage);
-        // CORREÇÃO: Seleciona o botão DENTRO do contexto do popup/formulário
-        const submitButton = addProductPopup.querySelector('button[type="submit"]'); // Busca dentro do popup
-
-        // VERIFICAÇÃO ADICIONADA: Checa se o botão foi encontrado
-        if (!submitButton) {
-            console.error("Botão de submit não encontrado no formulário de adicionar produto.");
-            showModalMessage(addProductMessage, "Erro interno: Botão não encontrado.", true);
-            return; // Impede a continuação se o botão não existe
-        }
-
-        submitButton.disabled = true; // Agora é seguro desabilitar
-        submitButton.innerHTML = `<div class="spinner mr-2 inline-block"></div> Salvando...`;
-
-        const formData = new FormData();
-        formData.append('nome', document.getElementById('add-product-name').value);
-        formData.append('codigo', document.getElementById('add-product-codigo').value);
-        formData.append('preco', document.getElementById('add-product-preco').value);
-        formData.append('estoque', document.getElementById('add-product-estoque').value);
-        formData.append('categoria', document.getElementById('add-product-categoria').value);
-        formData.append('descricao', document.getElementById('add-product-descricao').value);
-        addProductFiles.forEach(file => formData.append('imagens', file));
+    // Submits
+    const handleFormSubmit = async (e, form, url, method, files, msgEl, popup) => {
+        e.preventDefault();
+        const btn = form.closest('.popup').querySelector('button[type="submit"]');
+        btn.disabled = true; btn.innerHTML = 'Salvando...';
+        
+        const fd = new FormData(form);
+        if(method === 'PUT') fd.append('fotosParaRemover', JSON.stringify(fotosParaRemoverEdit));
+        files.forEach(f => fd.append('imagens', f));
 
         try {
-            const response = await fetchWithAuth('/api/produtos', { method: 'POST', body: formData });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Erro ao salvar.');
-
-            showModalMessage(addProductMessage, 'Produto salvo com sucesso!');
-            await carregarTodosProdutos(); // Recarrega lista
-             // Limpa o formulário e previews após sucesso ANTES de fechar
-             addProductForm.reset();
-             addImagePreviews.innerHTML = `<label for="add-images-input" class="add-image-btn"><span class="material-symbols-outlined text-4xl">add_photo_alternate</span></label>`;
-             addProductFiles = []; // Limpa array de arquivos
-             addImageInput.value = null; // Limpa input file
-            setTimeout(() => { closePopup(addProductPopup); }, 1500);
-
-        } catch (error) {
-            console.error("Erro ao adicionar produto:", error);
-            showModalMessage(addProductMessage, `Erro: ${error.message}`, true);
-        } finally {
-             // Reabilita botão mesmo se falhar
-             if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.textContent = 'Salvar Produto';
-            }
-        }
-    });
-
-    // Submeter Formulário Editar (CORRIGIDO)
-    editProductForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        clearModalMessage(editProductMessage);
-        // CORREÇÃO: Seleciona o botão DENTRO do contexto do popup/formulário
-        const submitButton = editProductPopup.querySelector('button[type="submit"]'); // Busca dentro do popup
-
-        // VERIFICAÇÃO ADICIONADA:
-        if (!submitButton) {
-            console.error("Botão de submit não encontrado no formulário de editar produto.");
-            showModalMessage(editProductMessage, "Erro interno: Botão não encontrado.", true);
-            return;
-        }
-
-        submitButton.disabled = true; // Desabilita
-        submitButton.innerHTML = `<div class="spinner mr-2 inline-block"></div> Salvando...`; // Adiciona spinner
-
-        const id = editProductIdInput.value;
-        const formData = new FormData();
-        formData.append('nome', editProductNameInput.value);
-        formData.append('codigo', editProductCodigoInput.value);
-        formData.append('preco', editProductPrecoInput.value);
-        formData.append('estoque', editProductEstoqueInput.value);
-        formData.append('categoria', editProductCategoriaInput.value);
-        formData.append('descricao', editProductDescricaoInput.value);
-        formData.append('fotosParaRemover', JSON.stringify(fotosParaRemoverEdit));
-        editProductFiles.forEach(file => formData.append('imagens', file));
-
-        try {
-            const response = await fetchWithAuth(`/api/produtos/${id}`, { method: 'PUT', body: formData });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Erro ao atualizar.');
-
-            showModalMessage(editProductMessage, 'Produto atualizado com sucesso!');
+            const res = await fetchWithAuth(url, { method: method, body: fd });
+            if(!res.ok) throw new Error((await res.json()).message);
+            showMsg(msgEl, 'Salvo com sucesso!');
             await carregarTodosProdutos();
-             // Limpa arrays de controle após sucesso
-             fotosParaRemoverEdit = [];
-             editProductFiles = [];
-             editImageInput.value = null; // Limpa input file
-            setTimeout(() => { closePopup(editProductPopup); }, 1500);
+            setTimeout(() => { closePopup(popup); }, 1000);
+        } catch(err) { showMsg(msgEl, err.message, true); }
+        finally { btn.disabled = false; btn.innerHTML = 'Salvar'; }
+    };
 
-        } catch (error) {
-            console.error("Erro ao editar produto:", error);
-            showModalMessage(editProductMessage, `Erro: ${error.message}`, true);
-        } finally {
-            if (submitButton) {
-               submitButton.disabled = false;
-               submitButton.textContent = 'Salvar Alterações';
-            }
-        }
+    addProductForm.addEventListener('submit', (e) => handleFormSubmit(e, addProductForm, '/api/produtos', 'POST', addProductFiles, document.getElementById('add-product-message'), addProductPopup));
+    editProductForm.addEventListener('submit', (e) => handleFormSubmit(e, editProductForm, `/api/produtos/${document.getElementById('edit-product-id').value}`, 'PUT', editProductFiles, document.getElementById('edit-product-message'), editProductPopup));
+
+    document.querySelectorAll('.popup-backdrop').forEach(b => {
+        b.addEventListener('click', (e) => { if(e.target === b) closePopup(b); });
+        b.querySelectorAll('.close-popup-btn').forEach(btn => btn.addEventListener('click', () => closePopup(b)));
     });
 
-    // Eventos nos Cards de Produto
-    productListContainer.addEventListener('click', async (event) => {
-        const button = event.target.closest('button');
-        if (!button) return;
-        const card = button.closest('.product-card');
-        if (!card || !card.dataset.produtoId) return;
-        const produtoId = card.dataset.produtoId;
-        const produto = todosProdutos.find(p => p.id == produtoId);
-        if (!produto) return;
-
-        if (button.classList.contains('btn-edit')) {
-            editProductForm.reset();
-            editImagePreviews.innerHTML = `<label for="edit-images-input" class="add-image-btn"><span class="material-symbols-outlined text-4xl">add_photo_alternate</span></label>`;
-            fotosParaRemoverEdit = [];
-            editProductFiles = [];
-            editImageInput.value = null;
-            clearModalMessage(editProductMessage);
-
-            try {
-                const response = await fetchWithAuth(`/api/produtos/${produtoId}`);
-                if (!response.ok) throw new Error('Falha ao buscar detalhes do produto.');
-                const produtoDetalhado = await response.json();
-
-                editProductIdInput.value = produtoDetalhado.id;
-                editProductNameInput.value = produtoDetalhado.nome || '';
-                editProductCodigoInput.value = produtoDetalhado.codigo || '';
-                editProductPrecoInput.value = produtoDetalhado.preco || '';
-                editProductEstoqueInput.value = produtoDetalhado.estoque || '';
-                editProductCategoriaInput.value = produtoDetalhado.categoria || '';
-                editProductDescricaoInput.value = produtoDetalhado.descricao || '';
-
-                if (produtoDetalhado.fotos && Array.isArray(produtoDetalhado.fotos)) {
-                    produtoDetalhado.fotos.forEach(foto => {
-                        if (!foto || !foto.url) return;
-                        const div = document.createElement('div');
-                        div.className = 'image-preview existing-image'; // Marca como existente
-                        div.innerHTML = `
-                            <img src="${foto.url}" alt="Preview">
-                            <button type="button" class="remove-image-btn existing-photo" title="Remover imagem salva">&times;</button>
-                        `;
-                        const removeBtn = div.querySelector('.remove-image-btn');
-                        removeBtn.dataset.fotoId = foto.id;
-                        removeBtn.dataset.publicId = foto.public_id;
-                        editImagePreviews.insertBefore(div, editImagePreviews.querySelector('.add-image-btn'));
-
-                        removeBtn.addEventListener('click', (ev) => {
-                            ev.stopPropagation();
-                            const fotoId = ev.target.dataset.fotoId;
-                            const publicId = ev.target.dataset.publicId;
-                            if (publicId) { // Só adiciona se tiver public_id
-                                fotosParaRemoverEdit.push({ id: fotoId !== 'null' ? parseInt(fotoId, 10) : null, public_id: publicId });
-                                console.log("Marcado para remover:", fotosParaRemoverEdit);
-                                div.remove();
-                                checkImageLimit(editImagePreviews); // Verifica limite após remover
-                            } else {
-                                console.warn("Não foi possível marcar para remover: Public ID ausente.", foto);
-                            }
-                        });
-                    });
-                }
-                checkImageLimit(editImagePreviews); // Verifica limite ao carregar
-                openPopup(editProductPopup);
-
-            } catch(error) {
-                 console.error("Erro ao preparar edição:", error);
-                 alert(`Erro ao carregar dados do produto: ${error.message}`);
-            }
-        }
-        else if (button.classList.contains('btn-inativar')) {
-            if (confirm(`Tem certeza que deseja INATIVAR o produto "${produto.nome}"?`)) {
-                try {
-                    button.disabled = true; button.innerHTML = '<div class="spinner spinner-small inline-block"></div>'; // Spinner
-                    const response = await fetchWithAuth(`/api/produtos/${produtoId}`, { method: 'DELETE' }); // DELETE = Inativar
-                    if (!response.ok) throw new Error((await response.json()).message || 'Erro ao inativar.');
-                    await carregarTodosProdutos(); // Recarrega e re-renderiza
-                } catch (error) {
-                    console.error("Erro ao inativar:", error); alert(`Erro: ${error.message}`);
-                    button.disabled = false; button.innerHTML = '<span class="material-symbols-outlined mr-1 text-sm">visibility_off</span> Inativar';
-                }
-            }
-        }
-        else if (button.classList.contains('btn-ativar')) {
-             if (confirm(`Tem certeza que deseja ATIVAR o produto "${produto.nome}"?`)) {
-                 try {
-                     button.disabled = true; button.innerHTML = '<div class="spinner spinner-small inline-block"></div>';
-                     const response = await fetchWithAuth(`/api/produtos/${produtoId}/reativar`, { method: 'PUT' });
-                     if (!response.ok) throw new Error((await response.json()).message || 'Erro ao ativar.');
-                     await carregarTodosProdutos();
-                 } catch (error) {
-                     console.error("Erro ao ativar:", error); alert(`Erro: ${error.message}`);
-                     button.disabled = false; button.innerHTML = '<span class="material-symbols-outlined mr-1 text-sm">visibility</span> Ativar';
-                 }
-            }
-        }
-         else if (button.classList.contains('btn-excluir-perm')) {
-            if (confirm(`ATENÇÃO! Excluir PERMANENTEMENTE "${produto.nome}"? NÃO pode ser desfeito e só funciona se não houver vendas.`)) {
-                try {
-                    button.disabled = true; button.innerHTML = '<div class="spinner spinner-small inline-block"></div>';
-                    const response = await fetchWithAuth(`/api/produtos/excluir-em-massa`, {
-                         method: 'POST', body: JSON.stringify({ ids: [produtoId] })
-                    });
-                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'Erro ao excluir.');
-                    alert(data.message || "Excluído com sucesso");
-                    await carregarTodosProdutos();
-                } catch (error) {
-                    console.error("Erro ao excluir permanentemente:", error); alert(`Erro: ${error.message}`);
-                     button.disabled = false; button.innerHTML = '<span class="material-symbols-outlined mr-1 text-sm">delete_forever</span> Excluir';
-                }
-            }
-        }
-     });
-
-    // Fechar Modais
-    document.querySelectorAll('.popup-backdrop').forEach(backdrop => {
-        backdrop.addEventListener('click', (event) => { if (event.target === backdrop) closePopup(backdrop); });
-        backdrop.querySelectorAll('.close-popup-btn').forEach(button => button.addEventListener('click', () => closePopup(backdrop)));
-     });
-
-    // --- Inicialização ---
-    handleTabClick('ativos');
     carregarTodosProdutos();
-
-}); // Fim do DOMContentLoaded
+});
