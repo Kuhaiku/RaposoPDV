@@ -1,5 +1,3 @@
-// frontend/js/produtos.js
-
 if (typeof checkAuth !== 'function' || typeof fetchWithAuth !== 'function') {
     console.error("Funções de auth não encontradas.");
 } else {
@@ -35,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let todosProdutos = [];
     let filtroAtual = 'ativos';
     let termoBusca = '';
-    let selectedIds = new Set(); // Conjunto de IDs selecionados
+    let selectedIds = new Set();
     
     // Estado de Edição/Upload
     let addProductFiles = [];
@@ -84,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const carregarTodosProdutos = async () => {
         productListPlaceholder.textContent = 'Carregando...'; productListPlaceholder.classList.remove('hidden');
         productListContainer.innerHTML = '';
-        selectedIds.clear(); updateMassActionsUI(); // Limpa seleção ao recarregar
+        selectedIds.clear(); updateMassActionsUI(); 
 
         try {
             const [ativosRes, inativosRes] = await Promise.all([
@@ -119,12 +117,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (produtosFiltrados.length === 0) {
             productListPlaceholder.textContent = 'Nenhum produto encontrado.'; productListPlaceholder.classList.remove('hidden');
-            // Desmarca "Selecionar Todos" se lista vazia
             selectAllCheckbox.checked = false;
             return;
         }
 
-        // Verifica estado do Select All
         const allVisibleIds = produtosFiltrados.map(p => p.id);
         const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedIds.has(String(id)));
         selectAllCheckbox.checked = allSelected;
@@ -132,10 +128,10 @@ document.addEventListener('DOMContentLoaded', () => {
         produtosFiltrados.forEach(produto => {
             const isSelected = selectedIds.has(String(produto.id));
             const card = document.createElement('div');
-            card.className = `flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-lg p-3 shadow-sm product-card transition-colors ${isSelected ? 'ring-2 ring-primary bg-blue-50 dark:bg-zinc-800' : ''}`;
+            // Design do Card Ajustado
+            card.className = `flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-lg p-3 shadow-sm border border-transparent transition-all ${isSelected ? 'ring-2 ring-primary bg-blue-50 dark:bg-zinc-800' : 'hover:border-zinc-200 dark:hover:border-zinc-700'}`;
             card.dataset.produtoId = produto.id;
 
-            // Checkbox Individual no Card
             const checkboxHtml = `
                 <div class="flex-shrink-0" onclick="event.stopPropagation()">
                     <input type="checkbox" class="product-checkbox custom-checkbox form-checkbox text-primary border-zinc-400 rounded focus:ring-primary bg-transparent" value="${produto.id}" ${isSelected ? 'checked' : ''}>
@@ -144,23 +140,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             card.innerHTML = `
                 ${checkboxHtml}
-                <img class="rounded-lg w-14 h-14 object-cover border dark:border-zinc-700 flex-shrink-0" src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}"/>
+                <img class="rounded-lg w-14 h-14 object-cover border dark:border-zinc-700 flex-shrink-0 bg-zinc-100" src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}"/>
                 <div class="flex-1 min-w-0 cursor-pointer card-clickable-area">
-                    <p class="text-secondary dark:text-white text-base font-semibold truncate leading-tight">${produto.nome}</p>
+                    <p class="text-secondary dark:text-white text-sm font-semibold truncate leading-tight">${produto.nome}</p>
                     <p class="text-zinc-500 text-xs">SKU: ${produto.codigo || 'N/A'}</p>
-                    <p class="text-${produto.ativo ? 'primary' : 'zinc-500'} font-bold text-sm">${formatCurrency(produto.preco)}</p>
+                    <p class="text-${produto.ativo ? 'primary' : 'zinc-500'} font-bold text-sm mt-0.5">${formatCurrency(produto.preco)}</p>
                 </div>
                 <div class="flex-shrink-0">
-                    <button class="btn-edit p-2 text-primary hover:bg-primary/10 rounded-full transition-colors"><span class="material-symbols-outlined">edit</span></button>
+                    <button class="btn-edit p-2 text-zinc-400 hover:text-primary hover:bg-primary/10 rounded-full transition-colors"><span class="material-symbols-outlined">edit</span></button>
                 </div>
             `;
             
-            // Evento Click no Checkbox
             card.querySelector('.product-checkbox').addEventListener('change', (e) => {
                 toggleSelection(String(produto.id), e.target.checked);
             });
 
-            // Evento Click na área do texto (abre edição)
             card.querySelector('.card-clickable-area').addEventListener('click', () => abrirEdicao(produto));
             card.querySelector('.btn-edit').addEventListener('click', () => abrirEdicao(produto));
 
@@ -169,16 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Lógica de Seleção em Massa ---
-
     const toggleSelection = (id, checked) => {
         if (checked) selectedIds.add(id);
         else selectedIds.delete(id);
         updateMassActionsUI();
-        renderizarProdutos(); // Re-renderiza para atualizar estilos (bordas) e "Select All"
+        renderizarProdutos(); 
     };
 
     const toggleSelectAll = (checked) => {
-        // Pega APENAS os produtos visíveis no filtro atual
         const produtosVisiveis = todosProdutos.filter(p => {
             const statusOk = (filtroAtual === 'ativos' && p.ativo) || (filtroAtual === 'inativos' && !p.ativo);
             const buscaOk = termoBusca === '' || p.nome.toLowerCase().includes(termoBusca);
@@ -200,7 +192,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (count > 0) {
             massActionsBar.classList.add('visible');
-            // Mostra botões dependendo da aba
             if (filtroAtual === 'ativos') {
                 massInactivateBtn.classList.remove('hidden');
                 massReactivateBtn.classList.add('hidden');
@@ -218,8 +209,29 @@ document.addEventListener('DOMContentLoaded', () => {
     selectAllCheckbox.addEventListener('change', (e) => toggleSelectAll(e.target.checked));
     cancelSelectionBtn.addEventListener('click', () => { selectedIds.clear(); updateMassActionsUI(); renderizarProdutos(); });
 
-    // --- Ações em Massa (API) ---
+    // --- Switch de Abas (Ativos/Inativos) ---
+    const switchTab = (tab) => {
+        filtroAtual = tab;
+        // Atualiza estilo das abas
+        if (tab === 'ativos') {
+            tabAtivos.classList.add('bg-white', 'shadow-sm', 'text-primary');
+            tabAtivos.classList.remove('hover:bg-zinc-200', 'dark:hover:bg-zinc-700');
+            tabInativos.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+            tabInativos.classList.add('hover:bg-zinc-200', 'dark:hover:bg-zinc-700');
+        } else {
+            tabInativos.classList.add('bg-white', 'shadow-sm', 'text-primary');
+            tabInativos.classList.remove('hover:bg-zinc-200', 'dark:hover:bg-zinc-700');
+            tabAtivos.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+            tabAtivos.classList.add('hover:bg-zinc-200', 'dark:hover:bg-zinc-700');
+        }
+        
+        selectedIds.clear(); updateMassActionsUI(); 
+        renderizarProdutos();
+    };
+    tabAtivos.addEventListener('click', () => switchTab('ativos'));
+    tabInativos.addEventListener('click', () => switchTab('inativos'));
 
+    // --- Ações em Massa (API) ---
     const executarAcaoEmMassa = async (url, method, confirmMsg, successMsg) => {
         if (!confirm(confirmMsg)) return;
         const ids = Array.from(selectedIds);
@@ -234,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error(data.message || 'Erro na operação.');
             
             alert(data.message || successMsg);
-            carregarTodosProdutos(); // Recarrega tudo
+            carregarTodosProdutos();
         } catch (error) {
             console.error(error);
             alert(`Erro: ${error.message}`);
@@ -243,28 +255,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     massInactivateBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/inativar-em-massa', 'PUT', `Inativar ${selectedIds.size} produto(s)?`, 'Produtos inativados.'));
     massReactivateBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/reativar-em-massa', 'PUT', `Reativar ${selectedIds.size} produto(s)?`, 'Produtos reativados.'));
-    massDeleteBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/excluir-em-massa', 'POST', `EXCLUIR PERMANENTEMENTE ${selectedIds.size} produto(s)? Isso não pode ser desfeito.`, 'Produtos excluídos.'));
+    massDeleteBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/excluir-em-massa', 'POST', `ATENÇÃO: EXCLUIR PERMANENTEMENTE ${selectedIds.size} produto(s)?\nIsso apagará fotos e dados. Não pode ser desfeito.`, 'Produtos excluídos.'));
 
-
-    // --- Eventos da Interface ---
-
+    // --- Search ---
     searchInput.addEventListener('input', (e) => {
         clearTimeout(searchInput.timer);
         searchInput.timer = setTimeout(() => { termoBusca = e.target.value.toLowerCase(); renderizarProdutos(); }, 300);
     });
 
-    const switchTab = (tab) => {
-        filtroAtual = tab;
-        tabAtivos.classList.toggle('active', tab === 'ativos');
-        tabInativos.classList.toggle('active', tab === 'inativos');
-        selectedIds.clear(); updateMassActionsUI(); // Limpa seleção ao trocar aba
-        renderizarProdutos();
-    };
-    tabAtivos.addEventListener('click', () => switchTab('ativos'));
-    tabInativos.addEventListener('click', () => switchTab('inativos'));
-
     // --- Formulários (Add/Edit) ---
-
     const abrirEdicao = async (produto) => {
         editProductForm.reset();
         document.getElementById('edit-image-previews').innerHTML = `<label for="edit-images-input" class="add-image-btn"><span class="material-symbols-outlined text-4xl">add_photo_alternate</span></label>`;
@@ -304,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
         openPopup(addProductPopup);
     });
 
-    // Submits
     const handleFormSubmit = async (e, form, url, method, files, msgEl, popup) => {
         e.preventDefault();
         const btn = form.closest('.popup').querySelector('button[type="submit"]');
@@ -319,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!res.ok) throw new Error((await res.json()).message);
             showMsg(msgEl, 'Salvo com sucesso!');
             await carregarTodosProdutos();
-            setTimeout(() => { closePopup(popup); }, 1000);
+            setTimeout(() => { closePopup(popup); msgEl.classList.add('hidden'); }, 1000);
         } catch(err) { showMsg(msgEl, err.message, true); }
         finally { btn.disabled = false; btn.innerHTML = 'Salvar'; }
     };
