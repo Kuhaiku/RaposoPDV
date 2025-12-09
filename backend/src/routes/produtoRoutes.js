@@ -1,4 +1,3 @@
-// ./backend/src/routes/produtoRoutes.js
 const express = require("express");
 const router = express.Router();
 const produtoController = require("../controllers/produtoController");
@@ -7,18 +6,21 @@ const { uploadImages, uploadCsv } = require("../config/multer");
 
 router.use(authMiddleware);
 
+// --- ROTAS ESTÁTICAS (DEVEM VIR PRIMEIRO) ---
 router.get("/", produtoController.listarTodos);
 router.post("/", uploadImages, produtoController.criar);
 
-// Rotas específicas
 router.post("/importar-csv", uploadCsv, produtoController.importarCSV);
 router.get("/inativos", produtoController.listarInativos);
-router.put("/inativar-em-massa", produtoController.inativarEmMassa);
-router.put("/reativar-em-massa", produtoController.reativarEmMassa); // NOVA ROTA
-router.post("/excluir-em-massa", produtoController.excluirEmMassa); 
 router.get("/relatorio-completo", produtoController.listarParaRelatorio);
 
-// Rotas com parâmetros
+// Rotas de Ação em Massa (PUT e POST específicos)
+// IMPORTANTE: Estas devem vir ANTES de router.put("/:id")
+router.put("/inativar-em-massa", produtoController.inativarEmMassa);
+router.put("/reativar-em-massa", produtoController.reativarEmMassa); 
+router.post("/excluir-em-massa", produtoController.excluirEmMassa); 
+
+// --- ROTAS COM PARÂMETROS (DEVEM VIR POR ÚLTIMO) ---
 router.get("/:id", produtoController.obterPorId);
 router.put("/:id", uploadImages, produtoController.atualizar);
 router.put("/:id/reativar", produtoController.reativar);
