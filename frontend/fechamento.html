@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fechamento de Período | RaposoPDV</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/painel.css">
+    <link rel="stylesheet" href="css/vendas.css"> <style>
+        /* Estilos específicos rápidos */
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .status-Pendente { background-color: #ffeeba; color: #856404; }
+        .status-Pago { background-color: #d4edda; color: #155724; }
+        
+        .filtros-container {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .select-status {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="painel-container">
+        <aside class="sidebar" id="sidebar-container">
+            <div class="logo">
+                <h2>RaposoPDV</h2>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="painel.html">Dashboard</a></li>
+                    <li><a href="caixa.html">Caixa / PDV</a></li>
+                    <li><a href="produtos.html">Produtos</a></li>
+                    <li><a href="clientes.html">Clientes</a></li>
+                    <li><a href="vendas.html">Vendas</a></li>
+                    <li><a href="fechamento.html" class="active">Cobranças</a></li> <li><a href="#" id="btn-sair">Sair</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="conteudo-principal">
+            <header>
+                <h1>Gestão de Cobranças por Período</h1>
+                <div class="usuario-info">
+                    <span id="nome-usuario">Usuário</span>
+                </div>
+            </header>
+
+            <div class="filtros-container">
+                <div class="form-group">
+                    <label for="data-inicio">Data Início</label>
+                    <input type="date" id="data-inicio" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="data-fim">Data Fim</label>
+                    <input type="date" id="data-fim" class="form-input">
+                </div>
+                <button id="btn-buscar" class="btn-primary" style="height: 42px;">Buscar Fechamento</button>
+            </div>
+
+            <div class="tabela-container">
+                <table class="tabela">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Telefone</th>
+                            <th>Total Comprado</th>
+                            <th>Status no Período</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-cobrancas">
+                        <tr>
+                            <td colspan="5" style="text-align: center;">Selecione um período para buscar.</td>
+                        </tr>
+                    </tbody>
+                    <tfoot id="tfoot-totais" style="display: none; background-color: #f8f9fa; font-weight: bold;">
+                        <tr>
+                            <td colspan="2" style="text-align: right;">TOTAL GERAL:</td>
+                            <td id="total-geral-periodo">R$ 0,00</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/fechamento.js"></script>
+</body>
+</html>
