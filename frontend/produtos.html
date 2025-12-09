@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Lista de Produtos</title>
+    <title>Gerenciar Produtos</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -22,27 +22,21 @@
             },
           },
         }
-      </script>
+    </script>
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .material-symbols-outlined { vertical-align: middle; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
-        
+        .material-symbols-outlined { vertical-align: middle; }
         /* Checkbox customizado */
         .custom-checkbox { width: 1.25rem; height: 1.25rem; border-radius: 0.25rem; cursor: pointer; }
-        
         /* Barra de Ações em Massa */
-        #mass-actions-bar {
-            transform: translateY(-100%); transition: transform 0.3s ease-in-out;
-        }
+        #mass-actions-bar { transform: translateY(-100%); transition: transform 0.3s ease-in-out; }
         #mass-actions-bar.visible { transform: translateY(0); }
-
         /* Popups */
         .popup-backdrop { display: none; position: fixed; inset: 0; z-index: 50; align-items: flex-end; justify-content: center; background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s; }
         .popup-backdrop.is-open { display: flex; opacity: 1; }
         .popup { position: relative; width: 100%; max-width: 640px; transform: translateY(100%); border-radius: 0.75rem 0.75rem 0 0; background-color: #ffffff; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); transition: transform 0.3s; max-height: 90vh; display: flex; flex-direction: column; }
         .dark .popup { background-color: #18181b; }
         .popup-backdrop.is-open .popup { transform: translateY(0); }
-
         /* Imagens */
         input[type="file"] { display: none; }
         .image-preview-container { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; min-height: 5.5rem; }
@@ -50,73 +44,103 @@
         .image-preview img { width: 100%; height: 100%; object-fit: cover; }
         .remove-image-btn { position: absolute; top: 0.25rem; right: 0.25rem; width: 1.25rem; height: 1.25rem; background: rgba(231,76,60,0.8); color: white; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; cursor: pointer; }
         .add-image-btn { display: flex; align-items: center; justify-content: center; width: 5rem; height: 5rem; border-radius: 0.5rem; border: 2px dashed #d1d5db; color: #9ca3af; cursor: pointer; flex-shrink: 0; }
-        .spinner { border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 2px solid white; width: 1rem; height: 1rem; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark font-display pb-24">
+<body class="bg-background-light dark:bg-background-dark font-display flex h-screen overflow-hidden">
 
-    <div id="mass-actions-bar" class="fixed top-0 left-0 right-0 z-50 bg-secondary dark:bg-zinc-800 text-white shadow-md p-3 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <button id="cancel-selection-btn" class="p-1 hover:bg-white/10 rounded-full"><span class="material-symbols-outlined">close</span></button>
-            <span class="font-medium text-sm"><span id="selected-count">0</span> selecionado(s)</span>
+    <aside class="hidden md:flex flex-col w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 z-20">
+        <div class="h-16 flex items-center justify-center border-b border-zinc-200 dark:border-zinc-800">
+            <h1 class="text-xl font-bold text-primary">RaposoPDV</h1>
         </div>
-        <div class="flex gap-2">
-            <button id="mass-inactivate-btn" class="hidden flex items-center gap-1 bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-                <span class="material-symbols-outlined text-lg">visibility_off</span> <span class="hidden sm:inline">Inativar</span>
-            </button>
-            <button id="mass-reactivate-btn" class="hidden flex items-center gap-1 bg-success/20 hover:bg-success/30 text-success px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-                <span class="material-symbols-outlined text-lg">visibility</span> <span class="hidden sm:inline">Reativar</span>
-            </button>
-            <button id="mass-delete-btn" class="hidden flex items-center gap-1 bg-danger/20 hover:bg-danger/30 text-danger px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-                <span class="material-symbols-outlined text-lg">delete</span> <span class="hidden sm:inline">Excluir</span>
+        <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-3">
+            <a href="painel.html" class="flex items-center gap-3 px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                <span class="material-symbols-outlined">dashboard</span> Painel
+            </a>
+            <a href="nova-venda.html" class="flex items-center gap-3 px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                <span class="material-symbols-outlined">point_of_sale</span> Nova Venda
+            </a>
+            <a href="vendas.html" class="flex items-center gap-3 px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                <span class="material-symbols-outlined">receipt_long</span> Histórico
+            </a>
+            <a href="produtos.html" class="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary font-medium rounded-lg transition-colors">
+                <span class="material-symbols-outlined">inventory_2</span> Produtos
+            </a>
+            <a href="clientes.html" class="flex items-center gap-3 px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                <span class="material-symbols-outlined">group</span> Clientes
+            </a>
+            <a href="caixa.html" class="flex items-center gap-3 px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                <span class="material-symbols-outlined">account_balance_wallet</span> Caixa
+            </a>
+        </nav>
+        <div class="p-4 border-t border-zinc-200 dark:border-zinc-800">
+            <button onclick="logout()" class="flex items-center gap-2 text-danger hover:text-danger/80 w-full">
+                <span class="material-symbols-outlined">logout</span> Sair
             </button>
         </div>
-    </div>
+    </aside>
 
-    <div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden"> 
+    <div class="flex-1 flex flex-col relative min-w-0 overflow-hidden">
         
-        <div class="sticky top-0 z-40 bg-background-light dark:bg-background-dark pb-2 shadow-sm transition-transform duration-300" id="main-header">
-            <div class="flex items-center p-4 justify-between gap-2">
-                <a href="nova-venda.html" class="text-secondary dark:text-white p-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
-                    <span class="material-symbols-outlined">attach_money</span>
-                </a>
-                <h1 class="text-xl font-bold text-secondary dark:text-white flex-1 text-center truncate">Produtos</h1>
-                
-                <div class="relative w-2/5 max-w-xs">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span class="material-symbols-outlined text-zinc-500 dark:text-zinc-400 text-lg">search</span>
-                    </div>
-                    <input type="search" id="search-input" placeholder="Buscar..." class="w-full form-input pl-9 pr-3 py-1.5 rounded-full border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-900 focus:border-primary text-sm"/>
-                </div>
+        <div id="mass-actions-bar" class="absolute top-0 left-0 right-0 z-50 bg-secondary dark:bg-zinc-800 text-white shadow-md p-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button id="cancel-selection-btn" class="p-1 hover:bg-white/10 rounded-full"><span class="material-symbols-outlined">close</span></button>
+                <span class="font-medium text-sm"><span id="selected-count">0</span> selecionado(s)</span>
             </div>
-
-            <div class="px-4 py-1 flex items-center gap-3">
-                <div class="flex items-center justify-center p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer" id="select-all-container" title="Selecionar Todos">
-                    <input type="checkbox" id="select-all-checkbox" class="custom-checkbox form-checkbox text-primary border-zinc-400 rounded focus:ring-primary bg-transparent">
-                </div>
-
-                <div class="flex h-9 flex-1 items-center justify-center rounded-lg bg-zinc-200 dark:bg-zinc-800 p-1 text-sm">
-                    <button id="tab-ativos" class="tab-button flex cursor-pointer h-full grow items-center justify-center rounded-md px-2 text-zinc-600 dark:text-zinc-400 font-medium active transition-all">Ativos</button>
-                    <button id="tab-inativos" class="tab-button flex cursor-pointer h-full grow items-center justify-center rounded-md px-2 text-zinc-600 dark:text-zinc-400 font-medium transition-all">Inativos</button>
-                </div>
+            <div class="flex gap-2">
+                <button id="mass-inactivate-btn" class="hidden flex items-center gap-1 bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+                    <span class="material-symbols-outlined text-lg">visibility_off</span> Inativar
+                </button>
+                <button id="mass-reactivate-btn" class="hidden flex items-center gap-1 bg-success/20 hover:bg-success/30 text-success px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+                    <span class="material-symbols-outlined text-lg">visibility</span> Reativar
+                </button>
+                <button id="mass-delete-btn" class="hidden flex items-center gap-1 bg-danger/20 hover:bg-danger/30 text-danger px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+                    <span class="material-symbols-outlined text-lg">delete</span> Excluir
+                </button>
             </div>
-             <style> .tab-button.active { background-color: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); } .dark .tab-button.active { background-color: #3f3f46; color: white; } </style>
         </div>
 
-        <main id="product-list-container" class="flex-1 px-4 py-2 space-y-3 pb-24">
+        <header class="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 h-16 flex items-center justify-between px-4 shrink-0">
+            <div class="flex items-center gap-3">
+                <button class="md:hidden p-2 -ml-2 text-zinc-600 dark:text-zinc-300"><span class="material-symbols-outlined">menu</span></button>
+                <h1 class="text-lg font-bold text-secondary dark:text-white">Produtos</h1>
+            </div>
+            
+            <div class="flex items-center gap-2 w-full max-w-md mx-4">
+                <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500"><span class="material-symbols-outlined text-lg">search</span></span>
+                    <input type="search" id="search-input" placeholder="Buscar produto..." class="w-full pl-9 pr-3 py-1.5 rounded-lg border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 focus:ring-primary focus:border-primary text-sm"/>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                 <div class="flex h-9 items-center rounded-lg bg-zinc-100 dark:bg-zinc-800 p-1 text-sm border border-zinc-200 dark:border-zinc-700">
+                    <button id="tab-ativos" class="px-3 rounded-md text-zinc-600 dark:text-zinc-400 font-medium active transition-all bg-white shadow-sm text-primary">Ativos</button>
+                    <button id="tab-inativos" class="px-3 rounded-md text-zinc-600 dark:text-zinc-400 font-medium transition-all hover:bg-zinc-200 dark:hover:bg-zinc-700">Inativos</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="bg-background-light dark:bg-background-dark px-4 py-2 flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+            <div class="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-white dark:hover:bg-zinc-800 cursor-pointer transition-colors" id="select-all-container">
+                <input type="checkbox" id="select-all-checkbox" class="custom-checkbox form-checkbox text-primary border-zinc-400 rounded focus:ring-primary bg-transparent">
+                <span class="text-sm font-medium text-zinc-600 dark:text-zinc-400">Selecionar Todos</span>
+            </div>
+        </div>
+
+        <main id="product-list-container" class="flex-1 overflow-y-auto p-4 space-y-3 pb-24">
              <div id="product-list-placeholder" class="text-center py-10 text-zinc-500">Carregando produtos...</div>
         </main>
 
-        <div class="fixed bottom-6 right-6 z-30">
-            <button id="add-product-button" class="flex items-center justify-center rounded-full h-14 w-14 bg-primary text-white shadow-lg hover:bg-primary/90 transition-colors">
+        <div class="absolute bottom-6 right-6 z-30">
+            <button id="add-product-button" class="flex items-center justify-center rounded-full h-14 w-14 bg-primary text-white shadow-lg hover:bg-primary/90 transition-transform hover:scale-105">
                 <span class="material-symbols-outlined text-3xl">add</span>
             </button>
         </div>
+
     </div>
 
     <div class="popup-backdrop" id="add-product-popup">
-        <div class="popup bg-white dark:bg-zinc-900">
+        <div class="popup bg-white dark:bg-zinc-900 h-full md:h-auto">
             <div class="sticky top-0 z-10 bg-white dark:bg-zinc-900 py-3 px-4 border-b dark:border-zinc-700 flex justify-between items-center">
                 <h2 class="text-lg font-bold text-secondary dark:text-white">Novo Produto</h2>
                 <button class="close-popup-btn p-1 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"><span class="material-symbols-outlined">close</span></button>
@@ -124,9 +148,9 @@
             <div class="overflow-y-auto px-4 pb-4 flex-1">
                 <form id="add-product-form" class="space-y-4 pt-4">
                     <input class="form-input w-full rounded-md border-zinc-300 dark:bg-zinc-800 dark:text-white" name="nome" placeholder="Nome do Produto *" required/>
-                    <input class="form-input w-full rounded-md border-zinc-300 dark:bg-zinc-800 dark:text-white" name="codigo" placeholder="Código (Opcional)"/>
+                    <input class="form-input w-full rounded-md border-zinc-300 dark:bg-zinc-800 dark:text-white" name="codigo" placeholder="Código/SKU (Opcional)"/>
                     <div class="grid grid-cols-2 gap-4">
-                        <input class="form-input w-full rounded-md border-zinc-300 dark:bg-zinc-800 dark:text-white" name="preco" type="number" step="0.01" placeholder="Preço *" required/>
+                        <input class="form-input w-full rounded-md border-zinc-300 dark:bg-zinc-800 dark:text-white" name="preco" type="number" step="0.01" placeholder="Preço (R$) *" required/>
                         <input class="form-input w-full rounded-md border-zinc-300 dark:bg-zinc-800 dark:text-white" name="estoque" type="number" placeholder="Estoque *" required/>
                     </div>
                     <input class="form-input w-full rounded-md border-zinc-300 dark:bg-zinc-800 dark:text-white" name="categoria" placeholder="Categoria"/>
@@ -141,13 +165,13 @@
                 </form>
             </div>
             <div class="sticky bottom-0 z-10 bg-white dark:bg-zinc-900 py-3 px-4 border-t dark:border-zinc-700">
-                <button form="add-product-form" class="w-full rounded-lg bg-primary px-4 py-3 text-white font-semibold shadow-sm hover:bg-primary/90" type="submit">Salvar</button>
+                <button form="add-product-form" class="w-full rounded-lg bg-primary px-4 py-3 text-white font-semibold shadow-sm hover:bg-primary/90" type="submit">Salvar Produto</button>
             </div>
         </div>
     </div>
 
     <div class="popup-backdrop" id="edit-product-popup">
-        <div class="popup bg-white dark:bg-zinc-900">
+        <div class="popup bg-white dark:bg-zinc-900 h-full md:h-auto">
              <div class="sticky top-0 z-10 bg-white dark:bg-zinc-900 py-3 px-4 border-b dark:border-zinc-700 flex justify-between items-center">
                 <h2 class="text-lg font-bold text-secondary dark:text-white">Editar Produto</h2>
                 <button class="close-popup-btn p-1 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"><span class="material-symbols-outlined">close</span></button>
@@ -173,7 +197,7 @@
                 </form>
             </div>
             <div class="sticky bottom-0 z-10 bg-white dark:bg-zinc-900 py-3 px-4 border-t dark:border-zinc-700">
-                <button form="edit-product-form" class="w-full rounded-lg bg-primary px-4 py-3 text-white font-semibold shadow-sm hover:bg-primary/90" type="submit">Salvar</button>
+                <button form="edit-product-form" class="w-full rounded-lg bg-primary px-4 py-3 text-white font-semibold shadow-sm hover:bg-primary/90" type="submit">Salvar Alterações</button>
             </div>
         </div>
     </div>
