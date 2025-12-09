@@ -1,31 +1,28 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // CORREÇÃO 1: Usando o nome correto da função do seu auth.js
-    if (!checkAuth()) return; // Se não estiver logado, o auth.js já redireciona
+    // Autenticação integrada
+    if (typeof checkAuth === 'function' && !checkAuth()) return;
 
     const btnBuscar = document.getElementById('btn-buscar');
-    const dataInicioInput = document.getElementById('data-inicio');
-    const dataFimInput = document.getElementById('data-fim');
+    const btnSair = document.getElementById('btn-sair');
     
-    // Define datas padrão (início e fim do mês atual)
+    // Datas padrão: Início e fim do mês atual
     const hoje = new Date();
     const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
     
-    dataInicioInput.valueAsDate = primeiroDia;
-    dataFimInput.valueAsDate = ultimoDia;
+    document.getElementById('data-inicio').valueAsDate = primeiroDia;
+    document.getElementById('data-fim').valueAsDate = ultimoDia;
 
     btnBuscar.addEventListener('click', buscarCobrancas);
     
-    // Configura o botão de sair (Logout)
-    const btnSair = document.getElementById('btn-sair'); // Se existir no menu
     if (btnSair) {
-        btnSair.addEventListener('click', (e) => {
-            e.preventDefault();
-            logout();
+        btnSair.addEventListener('click', () => {
+            if (typeof logout === 'function') logout();
+            else window.location.href = 'login.html';
         });
     }
 
-    // Busca inicial automática
+    // Busca inicial
     buscarCobrancas();
 });
 
@@ -33,69 +30,94 @@ async function buscarCobrancas() {
     const dataInicio = document.getElementById('data-inicio').value;
     const dataFim = document.getElementById('data-fim').value;
     const tbody = document.getElementById('lista-cobrancas');
-    const tfoot = document.getElementById('tfoot-totais');
-    const totalGeralEl = document.getElementById('total-geral-periodo');
+    const resumoTotal = document.getElementById('resumo-total');
 
     if (!dataInicio || !dataFim) {
-        alert('Selecione ambas as datas.');
+        alert('Por favor, selecione as datas de início e fim.');
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando...</td></tr>';
+    // Loading State
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                <div class="flex flex-col items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                    <p>Carregando dados...</p>
+                </div>
+            </td>
+        </tr>`;
 
     try {
-        // CORREÇÃO 2: Usando fetchWithAuth do seu sistema
-        // Note que removemos 'http://localhost:3000' e o header manual do token
-        const response = await fetchWithAuth(`/api/cobrancas/listar?dataInicio=${dataInicio}&dataFim=${dataFim}`, {
-            method: 'GET'
-        });
+        // Usa fetchWithAuth se disponível, ou fetch padrão com token manual
+        let response;
+        if (typeof fetchWithAuth === 'function') {
+            response = await fetchWithAuth(`/api/cobrancas/listar?dataInicio=${dataInicio}&dataFim=${dataFim}`, { method: 'GET' });
+        } else {
+            const token = localStorage.getItem('token'); // Fallback antigo
+            response = await fetch(`http://localhost:3000/api/cobrancas/listar?dataInicio=${dataInicio}&dataFim=${dataFim}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        }
 
-        if (!response.ok) throw new Error('Erro ao buscar dados');
-
+        if (!response.ok) throw new Error('Erro na requisição');
+        
         const dados = await response.json();
         tbody.innerHTML = '';
 
         if (dados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma compra encontrada neste período.</td></tr>';
-            tfoot.style.display = 'none';
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                        <span class="material-symbols-outlined text-4xl mb-2 text-gray-300">block</span>
+                        <p>Nenhuma venda encontrada para este período.</p>
+                    </td>
+                </tr>`;
+            resumoTotal.textContent = 'Total: R$ 0,00';
             return;
         }
 
         let somaTotal = 0;
 
         dados.forEach(item => {
-            const tr = document.createElement('tr');
             const valor = parseFloat(item.total_comprado);
             somaTotal += valor;
 
-            // Define cor do select baseada no valor inicial
-            const corSelect = item.status_pagamento === 'Pago' ? '#d4edda' : '#ffeeba';
+            // Estilos de Status (Tailwind)
+            const isPago = item.status_pagamento === 'Pago';
+            const statusClass = isPago 
+                ? 'bg-green-100 text-green-800 border-green-200' 
+                : 'bg-yellow-100 text-yellow-800 border-yellow-200';
 
+            const tr = document.createElement('tr');
+            tr.className = 'table-row';
             tr.innerHTML = `
-                <td>${item.cliente_nome}</td>
-                <td>${item.cliente_telefone || '-'}</td>
-                <td>R$ ${valor.toFixed(2).replace('.', ',')}</td>
-                <td>
-                    <select class="select-status" 
-                            style="background-color: ${corSelect}"
-                            onchange="alterarStatus(this, ${item.cliente_id}, '${item.cliente_nome}', ${valor})">
-                        <option value="Pendente" ${item.status_pagamento === 'Pendente' ? 'selected' : ''}>Pendente</option>
-                        <option value="Pago" ${item.status_pagamento === 'Pago' ? 'selected' : ''}>Pago</option>
+                <td class="table-cell font-medium text-gray-900">${item.cliente_nome}</td>
+                <td class="table-cell text-gray-500">${item.cliente_telefone || '-'}</td>
+                <td class="table-cell font-bold text-gray-800">R$ ${valor.toFixed(2).replace('.', ',')}</td>
+                <td class="table-cell">
+                    <select onchange="alterarStatus(this, ${item.cliente_id}, '${item.cliente_nome}', ${valor})"
+                            class="rounded-full px-3 py-1 text-xs font-bold border ${statusClass} cursor-pointer focus:ring-2 focus:ring-offset-1 focus:ring-primary outline-none appearance-none pr-8">
+                        <option value="Pendente" ${!isPago ? 'selected' : ''}>Pendente</option>
+                        <option value="Pago" ${isPago ? 'selected' : ''}>Pago</option>
                     </select>
                 </td>
-                <td>
-                    <button class="btn" style="padding: 5px 10px; width: auto;" onclick="verDetalhesCliente(${item.cliente_id})" title="Ver Detalhes">🔍</button>
+                <td class="table-cell text-center">
+                    <button onclick="verDetalhesCliente(${item.cliente_id})" 
+                            class="text-gray-400 hover:text-primary transition-colors p-2 rounded-full hover:bg-gray-100" 
+                            title="Ver Histórico Completo">
+                        <span class="material-symbols-outlined text-[20px]">visibility</span>
+                    </button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
 
-        totalGeralEl.textContent = `R$ ${somaTotal.toFixed(2).replace('.', ',')}`;
-        tfoot.style.display = 'table-row-group';
+        resumoTotal.textContent = `Total: R$ ${somaTotal.toFixed(2).replace('.', ',')}`;
 
     } catch (error) {
         console.error(error);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">Erro ao carregar dados.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar dados. Tente novamente.</td></tr>`;
     }
 }
 
@@ -103,34 +125,46 @@ async function alterarStatus(selectElement, clienteId, nomeCliente, valorTotal) 
     const novoStatus = selectElement.value;
     const dataInicio = document.getElementById('data-inicio').value;
     const dataFim = document.getElementById('data-fim').value;
-
-    // Feedback visual imediato
-    selectElement.style.backgroundColor = novoStatus === 'Pago' ? '#d4edda' : '#ffeeba';
+    
+    // Atualização Visual Imediata (Optimistic UI)
+    const isPago = novoStatus === 'Pago';
+    selectElement.className = `rounded-full px-3 py-1 text-xs font-bold border cursor-pointer focus:ring-2 focus:ring-offset-1 focus:ring-primary outline-none appearance-none pr-8 ${
+        isPago ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    }`;
 
     try {
-        // CORREÇÃO 3: Usando fetchWithAuth para atualizar também
-        const response = await fetchWithAuth('/api/cobrancas/atualizar', {
-            method: 'POST',
-            body: JSON.stringify({
-                cliente_id: clienteId,
-                data_inicio: dataInicio,
-                data_fim: dataFim,
-                status: novoStatus,
-                valor_total: valorTotal
-            })
-            // Não precisa setar headers Content-Type nem Authorization, o fetchWithAuth faz isso
-        });
+        const body = {
+            cliente_id: clienteId,
+            data_inicio: dataInicio,
+            data_fim: dataFim,
+            status: novoStatus,
+            valor_total: valorTotal
+        };
 
-        if (!response.ok) throw new Error('Falha ao salvar');
+        let response;
+        if (typeof fetchWithAuth === 'function') {
+            response = await fetchWithAuth('/api/cobrancas/atualizar', {
+                method: 'POST',
+                body: JSON.stringify(body)
+            });
+        } else {
+             // Fallback
+             const token = localStorage.getItem('token');
+             response = await fetch('http://localhost:3000/api/cobrancas/atualizar', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(body)
+            });
+        }
 
-        // Sucesso silencioso (ou adicione um toast se preferir)
+        if (!response.ok) throw new Error('Erro ao salvar');
 
     } catch (error) {
-        alert('Erro ao atualizar status. Recarregue a página.');
-        console.error(error);
-        // Reverte visualmente se der erro
-        selectElement.value = novoStatus === 'Pago' ? 'Pendente' : 'Pago';
-        selectElement.style.backgroundColor = selectElement.value === 'Pago' ? '#d4edda' : '#ffeeba';
+        alert('Erro ao atualizar. A página será recarregada.');
+        window.location.reload();
     }
 }
 
