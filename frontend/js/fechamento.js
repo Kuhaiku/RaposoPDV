@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-    verificarAutenticacao();
+    // CORREÇÃO 1: Usando o nome correto da função do seu auth.js
+    if (!checkAuth()) return; // Se não estiver logado, o auth.js já redireciona
 
     const btnBuscar = document.getElementById('btn-buscar');
     const dataInicioInput = document.getElementById('data-inicio');
@@ -15,6 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnBuscar.addEventListener('click', buscarCobrancas);
     
+    // Configura o botão de sair (Logout)
+    const btnSair = document.getElementById('btn-sair'); // Se existir no menu
+    if (btnSair) {
+        btnSair.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
+    }
+
     // Busca inicial automática
     buscarCobrancas();
 });
@@ -34,9 +44,10 @@ async function buscarCobrancas() {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando...</td></tr>';
 
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:3000/api/cobrancas/listar?dataInicio=${dataInicio}&dataFim=${dataFim}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+        // CORREÇÃO 2: Usando fetchWithAuth do seu sistema
+        // Note que removemos 'http://localhost:3000' e o header manual do token
+        const response = await fetchWithAuth(`/api/cobrancas/listar?dataInicio=${dataInicio}&dataFim=${dataFim}`, {
+            method: 'GET'
         });
 
         if (!response.ok) throw new Error('Erro ao buscar dados');
@@ -73,7 +84,7 @@ async function buscarCobrancas() {
                     </select>
                 </td>
                 <td>
-                    <button class="btn-acao" onclick="verDetalhesCliente(${item.cliente_id})" title="Ver Detalhes">🔍</button>
+                    <button class="btn" style="padding: 5px 10px; width: auto;" onclick="verDetalhesCliente(${item.cliente_id})" title="Ver Detalhes">🔍</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -95,16 +106,11 @@ async function alterarStatus(selectElement, clienteId, nomeCliente, valorTotal) 
 
     // Feedback visual imediato
     selectElement.style.backgroundColor = novoStatus === 'Pago' ? '#d4edda' : '#ffeeba';
-    const textoOriginal = selectElement.parentElement.innerHTML; // Backup simples
 
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3000/api/cobrancas/atualizar', {
+        // CORREÇÃO 3: Usando fetchWithAuth para atualizar também
+        const response = await fetchWithAuth('/api/cobrancas/atualizar', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify({
                 cliente_id: clienteId,
                 data_inicio: dataInicio,
@@ -112,18 +118,19 @@ async function alterarStatus(selectElement, clienteId, nomeCliente, valorTotal) 
                 status: novoStatus,
                 valor_total: valorTotal
             })
+            // Não precisa setar headers Content-Type nem Authorization, o fetchWithAuth faz isso
         });
 
         if (!response.ok) throw new Error('Falha ao salvar');
 
-        // Opcional: Mostrar um toast/notificação de sucesso
-        // console.log(`Status de ${nomeCliente} atualizado para ${novoStatus}`);
+        // Sucesso silencioso (ou adicione um toast se preferir)
 
     } catch (error) {
         alert('Erro ao atualizar status. Recarregue a página.');
         console.error(error);
-        // Reverte visualmente se der erro (reload é mais seguro, mas isso ajuda)
+        // Reverte visualmente se der erro
         selectElement.value = novoStatus === 'Pago' ? 'Pendente' : 'Pago';
+        selectElement.style.backgroundColor = selectElement.value === 'Pago' ? '#d4edda' : '#ffeeba';
     }
 }
 
