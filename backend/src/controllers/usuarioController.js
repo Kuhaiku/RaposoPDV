@@ -195,11 +195,10 @@ exports.obterDadosPerfil = async (req, res) => {
     const { periodo = 'periodo_atual' } = req.query; // 'hoje', 'semana', 'mes', 'periodo_atual' (novo padrão)
 
     let dateFilter = '';
-    let startQuery = '';
 
     try {
         const [usuarioRow] = await pool.query('SELECT nome, senha_hash, data_inicio_periodo_atual FROM usuarios WHERE id = ?', [usuario_id]);
-        const { nome: nomeVendedor, data_inicio_periodo_atual, senha_hash } = usuarioRow[0];
+        const { nome: nomeVendedor, data_inicio_periodo_atual } = usuarioRow[0];
 
         // CORREÇÃO CRÍTICA AQUI: Formata a data para o SQL antes de usar na string da query
         const dataSql = toSqlDatetime(data_inicio_periodo_atual);
@@ -299,7 +298,8 @@ exports.obterDadosPerfil = async (req, res) => {
 };
 
 /**
- * NOVA FUNÇÃO: Fecha o período de vendas atual do vendedor logado.
+ * NOVA FUNÇÃO: Fecha o período de vendas atual, arquiva as vendas no histórico e limpa o painel principal.
+ * Isso garante que o novo período comece do "estado zero".
  */
 exports.fecharPeriodo = async (req, res) => {
     const usuario_id = req.usuarioId;
@@ -333,39 +333,87 @@ exports.fecharPeriodo = async (req, res) => {
         const data_inicio = toSqlDatetime(usuario.data_inicio_periodo_atual);
         const data_fim = toSqlDatetime(new Date());
 
-        // 2. Calcular as métricas do período atual (CORRIGIDA)
+        // 2. Calcular as métricas do período atual ANTES de apagar
+        // Calcula apenas o que está na tabela "vendas" (que é o período atual)
         const queryMetricas = `
             SELECT
-                IFNULL(SUM(DISTINCT v.valor_total), 0) AS totalFaturado,
-                COUNT(DISTINCT v.id) AS numeroVendas,
+                IFNULL(SUM(v.valor_total), 0) AS totalFaturado,
+                COUNT(v.id) AS numeroVendas,
                 IFNULL(SUM(vi.quantidade), 0) AS itensVendidos
             FROM vendas AS v
             LEFT JOIN venda_itens AS vi ON v.id = vi.venda_id
-            -- CORREÇÃO CRÍTICA AQUI: Adiciona o filtro de empresa
-            WHERE v.usuario_id = ? AND v.empresa_id = ? AND v.data_venda >= ? AND v.data_venda <= NOW();
+            WHERE v.usuario_id = ? AND v.empresa_id = ?
         `;
-        // Usa placeholder (?) para os parâmetros
-        const [metricasResult] = await connection.query(queryMetricas, [usuario_id, empresa_id, data_inicio]);
+        const [metricasResult] = await connection.query(queryMetricas, [usuario_id, empresa_id]);
         
         const { totalFaturado, numeroVendas, itensVendidos } = metricasResult[0];
         const faturamento = parseFloat(totalFaturado) || 0;
         const comissao = faturamento * 0.35;
         const ticketMedio = numeroVendas > 0 ? faturamento / numeroVendas : 0;
 
-        // 3. Salvar o período fechado na nova tabela (periodos_fechados)
-        await connection.query(
+        // 3. Salvar o resumo do período fechado na tabela de controle (periodos_fechados)
+        const [periodoResult] = await connection.query(
             'INSERT INTO periodos_fechados (empresa_id, usuario_id, data_inicio, data_fim, total_faturado, numero_vendas, ticket_medio, itens_vendidos, comissao_vendedor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [empresa_id, usuario_id, data_inicio, data_fim, faturamento, numeroVendas, ticketMedio, itensVendidos, comissao]
         );
+        const periodoId = periodoResult.insertId;
 
-        // 4. Atualizar o `data_inicio_periodo_atual` do usuário
+        // 4. ARQUIVAMENTO: Mover dados para tabelas de histórico
+        // Copia as vendas atuais para 'vendas_historico' vinculando ao ID do período
+        await connection.query(`
+            INSERT INTO vendas_historico (id, cliente_id, usuario_id, empresa_id, valor_total, data_venda, periodo_fechado_id)
+            SELECT id, cliente_id, usuario_id, empresa_id, valor_total, data_venda, ?
+            FROM vendas
+            WHERE usuario_id = ? AND empresa_id = ?
+        `, [periodoId, usuario_id, empresa_id]);
+
+        // Copia os itens para 'venda_itens_historico'
+        await connection.query(`
+            INSERT INTO venda_itens_historico (venda_id, produto_id, quantidade, preco_unitario)
+            SELECT vi.venda_id, vi.produto_id, vi.quantidade, vi.preco_unitario
+            FROM venda_itens vi
+            JOIN vendas v ON vi.venda_id = v.id
+            WHERE v.usuario_id = ? AND v.empresa_id = ?
+        `, [usuario_id, empresa_id]);
+
+        // Copia os pagamentos para 'venda_pagamentos_historico'
+        await connection.query(`
+            INSERT INTO venda_pagamentos_historico (venda_id, metodo, valor)
+            SELECT vp.venda_id, vp.metodo, vp.valor
+            FROM venda_pagamentos vp
+            JOIN vendas v ON vp.venda_id = v.id
+            WHERE v.usuario_id = ? AND v.empresa_id = ?
+        `, [usuario_id, empresa_id]);
+
+        // 5. LIMPEZA: Apagar dados das tabelas principais para iniciar o "Estado Zero"
+        // Remove pagamentos
+        await connection.query(`
+            DELETE vp FROM venda_pagamentos vp
+            JOIN vendas v ON vp.venda_id = v.id
+            WHERE v.usuario_id = ? AND v.empresa_id = ?
+        `, [usuario_id, empresa_id]);
+
+        // Remove itens
+        await connection.query(`
+            DELETE vi FROM venda_itens vi
+            JOIN vendas v ON vi.venda_id = v.id
+            WHERE v.usuario_id = ? AND v.empresa_id = ?
+        `, [usuario_id, empresa_id]);
+
+        // Remove as vendas (CUIDADO: Isso zera o histórico visível no painel principal)
+        await connection.query(`
+            DELETE FROM vendas
+            WHERE usuario_id = ? AND empresa_id = ?
+        `, [usuario_id, empresa_id]);
+
+        // 6. Atualizar a data de inicio do período atual do usuário para AGORA
         await connection.query(
             'UPDATE usuarios SET data_inicio_periodo_atual = NOW() WHERE id = ?',
             [usuario_id]
         );
 
         await connection.commit();
-        res.status(200).json({ message: 'Período de vendas encerrado com sucesso!' });
+        res.status(200).json({ message: 'Período encerrado, vendas arquivadas e painel reiniciado com sucesso!' });
     } catch (error) {
         if (connection) await connection.rollback();
         console.error(error);
