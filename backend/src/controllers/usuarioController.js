@@ -430,9 +430,9 @@ exports.listarHistoricoPeriodos = async (req, res) => {
     const usuario_id = req.usuarioId;
     const empresa_id = req.empresaId; // Adiciona filtro de empresa
     try {
-        // Filtra por usuario_id E empresa_id
+        // CORRIGIDO: Agora seleciona explicitamente ticket_medio e itens_vendidos
         const [periodos] = await pool.query(
-            'SELECT id, data_inicio, data_fim, total_faturado, numero_vendas, comissao_vendedor FROM periodos_fechados WHERE usuario_id = ? AND empresa_id = ? ORDER BY data_fim DESC',
+            'SELECT id, data_inicio, data_fim, total_faturado, numero_vendas, comissao_vendedor, ticket_medio, itens_vendidos FROM periodos_fechados WHERE usuario_id = ? AND empresa_id = ? ORDER BY data_fim DESC',
             [usuario_id, empresa_id]
         );
         res.status(200).json(periodos);
