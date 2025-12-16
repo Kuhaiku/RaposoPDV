@@ -1,4 +1,3 @@
-// kuhaiku/raposopdv/RaposoPDV-769745521c52e0c8dd0eaa6a76ce386c5a6d5e4d/frontend/js/historico-periodos.js
 checkAuth();
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -25,7 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function formatarMoeda(valor) {
-        return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        // Correção: Garante que o valor seja um número válido
+        const numero = parseFloat(valor);
+        if (isNaN(numero)) return parseFloat(0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        
+        return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
     // --- Funções de Dados
@@ -40,7 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const periodos = await response.json();
             
-            historicoPlaceholder.classList.add('hidden'); // Esconde o placeholder se houver dados
+            // Log para debug: ajuda a verificar se o backend está enviando as novas colunas
+            console.log('Períodos recebidos:', periodos);
+
+            historicoPlaceholder.classList.add('hidden'); 
 
             if (periodos.length === 0) {
                 historicoContainer.innerHTML = '<p class="text-center py-6 text-gray-500 dark:text-gray-400">Nenhum período de vendas foi encerrado ainda.</p>';
@@ -51,10 +57,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const details = document.createElement('details');
                 details.className = 'flex flex-col rounded-lg bg-white dark:bg-gray-800 shadow-sm group';
                 
-                // Cabeçalho resumido
+                // Tratamento de segurança para dados que podem vir nulos
                 const dataInicio = formatarData(periodo.data_inicio);
                 const dataFim = formatarData(periodo.data_fim);
                 const faturado = formatarMoeda(periodo.total_faturado);
+                
+                // Correção: Se itens_vendidos não existir, usa 0
+                const itensVendidos = (periodo.itens_vendidos !== undefined && periodo.itens_vendidos !== null) 
+                                      ? periodo.itens_vendidos 
+                                      : 0;
 
                 details.innerHTML = `
                     <summary class="flex cursor-pointer items-center justify-between gap-6 py-4 px-4 list-none">
@@ -83,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <div class="flex justify-between items-center">
                                 <p class="text-gray-600 dark:text-gray-400 text-sm font-medium">Itens Vendidos:</p>
-                                <p class="text-gray-900 dark:text-gray-100 text-sm font-bold">${periodo.itens_vendidos}</p>
+                                <p class="text-gray-900 dark:text-gray-100 text-sm font-bold">${itensVendidos}</p>
                             </div>
                             <div class="flex justify-between items-center pt-3 border-t dark:border-gray-700">
                                 <p class="text-gray-900 dark:text-gray-100 text-base font-bold">Comissão Gerada (35%):</p>
