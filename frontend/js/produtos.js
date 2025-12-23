@@ -5,6 +5,7 @@ if (typeof checkAuth !== 'function' || typeof fetchWithAuth !== 'function') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("Produtos.js carregado.");
 
     // --- Elementos ---
     const productListContainer = document.getElementById('product-list-container');
@@ -51,9 +52,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Helpers ---
     const formatCurrency = (val) => parseFloat(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const openPopup = (el) => { el.classList.add('is-open'); document.body.style.overflow = 'hidden'; };
-    const closePopup = (el) => { el.classList.remove('is-open'); document.body.style.overflow = ''; };
-    const showMsg = (el, msg, err) => { el.textContent = msg; el.classList.remove('hidden', 'text-green-600', 'text-red-600'); el.classList.add(err ? 'text-red-600' : 'text-green-600'); };
+    
+    const openPopup = (el) => { 
+        if (!el) return console.error("Popup não encontrado ao tentar abrir.");
+        el.classList.add('is-open'); 
+        document.body.style.overflow = 'hidden'; 
+    };
+    
+    const closePopup = (el) => { 
+        if (!el) return;
+        el.classList.remove('is-open'); 
+        document.body.style.overflow = ''; 
+    };
+    
+    const showMsg = (el, msg, err) => { 
+        el.textContent = msg; 
+        el.classList.remove('hidden', 'text-green-600', 'text-red-600'); 
+        el.classList.add(err ? 'text-red-600' : 'text-green-600'); 
+    };
 
     // --- Imagens ---
     const handleFile = (e, container, storage) => {
@@ -265,62 +281,71 @@ document.addEventListener('DOMContentLoaded', () => {
     massReactivateBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/reativar-em-massa', 'PUT', `Reativar ${selectedIds.size} produto(s)?`, 'Produtos reativados.'));
     massDeleteBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/excluir-em-massa', 'POST', `ATENÇÃO: EXCLUIR PERMANENTEMENTE ${selectedIds.size} produto(s)?\nIsso apagará fotos e dados. Não pode ser desfeito.`, 'Produtos excluídos.'));
 
-    // --- Importação CSV ---
-    btnImportCsv.addEventListener('click', () => {
-        importCsvForm.reset();
-        fileNameDisplay.textContent = '';
-        fileNameDisplay.classList.add('hidden');
-        importMessage.classList.add('hidden');
-        openPopup(importCsvPopup);
-    });
-
-    csvInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            fileNameDisplay.textContent = e.target.files[0].name;
-            fileNameDisplay.classList.remove('hidden');
-        } else {
+    // --- Importação CSV (DEBUG ATUALIZADO) ---
+    if (btnImportCsv && importCsvPopup) {
+        btnImportCsv.addEventListener('click', () => {
+            console.log("Abrindo modal CSV..."); // Debug log
+            importCsvForm.reset();
+            fileNameDisplay.textContent = '';
             fileNameDisplay.classList.add('hidden');
-        }
-    });
+            importMessage.classList.add('hidden');
+            openPopup(importCsvPopup);
+        });
+    } else {
+        console.error("Erro: Botão ou Modal de Importação não encontrados no HTML.");
+    }
 
-    importCsvForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const btn = importCsvForm.closest('.popup').querySelector('button[type="submit"]');
-        const originalBtnText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-sm mr-2">progress_activity</span> Processando...`;
-        
-        const formData = new FormData(importCsvForm);
-
-        try {
-            const res = await fetchWithAuth('/api/produtos/importar-csv', {
-                method: 'POST',
-                body: formData 
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.message || 'Erro ao importar CSV.');
+    if (csvInput) {
+        csvInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileNameDisplay.textContent = e.target.files[0].name;
+                fileNameDisplay.classList.remove('hidden');
+            } else {
+                fileNameDisplay.classList.add('hidden');
             }
+        });
+    }
 
-            showMsg(importMessage, data.message || 'Importação concluída com sucesso!');
-            await carregarTodosProdutos();
+    if (importCsvForm) {
+        importCsvForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            setTimeout(() => {
-                closePopup(importCsvPopup);
-                importMessage.classList.add('hidden');
-            }, 2000);
+            const btn = importCsvForm.closest('.popup').querySelector('button[type="submit"]');
+            const originalBtnText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-sm mr-2">progress_activity</span> Processando...`;
+            
+            const formData = new FormData(importCsvForm);
 
-        } catch (error) {
-            console.error(error);
-            showMsg(importMessage, error.message, true);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalBtnText;
-        }
-    });
+            try {
+                const res = await fetchWithAuth('/api/produtos/importar-csv', {
+                    method: 'POST',
+                    body: formData 
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.message || 'Erro ao importar CSV.');
+                }
+
+                showMsg(importMessage, data.message || 'Importação concluída com sucesso!');
+                await carregarTodosProdutos();
+                
+                setTimeout(() => {
+                    closePopup(importCsvPopup);
+                    importMessage.classList.add('hidden');
+                }, 2000);
+
+            } catch (error) {
+                console.error(error);
+                showMsg(importMessage, error.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnText;
+            }
+        });
+    }
 
     // --- Search ---
     searchInput.addEventListener('input', (e) => {
