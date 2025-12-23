@@ -26,18 +26,46 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         .material-symbols-outlined { vertical-align: middle; }
-        /* Checkbox customizado */
-        .custom-checkbox { width: 1.25rem; height: 1.25rem; border-radius: 0.25rem; cursor: pointer; }
-        /* Barra de Ações em Massa */
-        #mass-actions-bar { transform: translateY(-100%); transition: transform 0.3s ease-in-out; }
-        #mass-actions-bar.visible { transform: translateY(0); }
-        /* Popups */
-        .popup-backdrop { display: none; position: fixed; inset: 0; z-index: 50; align-items: flex-end; justify-content: center; background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s; }
-        .popup-backdrop.is-open { display: flex; opacity: 1; }
-        .popup { position: relative; width: 100%; max-width: 640px; transform: translateY(100%); border-radius: 0.75rem 0.75rem 0 0; background-color: #ffffff; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); transition: transform 0.3s; max-height: 90vh; display: flex; flex-direction: column; }
+        
+        /* --- ESTILOS CRITICOS DO MODAL --- */
+        .popup-backdrop { 
+            display: none; /* Escondido por padrão */
+            position: fixed; 
+            inset: 0; 
+            z-index: 50; 
+            align-items: flex-end; 
+            justify-content: center; 
+            background-color: rgba(0, 0, 0, 0.5); 
+            backdrop-filter: blur(4px); 
+            opacity: 0; 
+            transition: opacity 0.3s; 
+        }
+        /* Esta classe ativa o modal */
+        .popup-backdrop.is-open { 
+            display: flex; /* Torna visível */
+            opacity: 1; 
+        }
+        
+        .popup { 
+            position: relative; 
+            width: 100%; 
+            max-width: 640px; 
+            transform: translateY(100%); 
+            border-radius: 0.75rem 0.75rem 0 0; 
+            background-color: #ffffff; 
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.1); 
+            transition: transform 0.3s; 
+            max-height: 90vh; 
+            display: flex; 
+            flex-direction: column; 
+        }
         .dark .popup { background-color: #18181b; }
         .popup-backdrop.is-open .popup { transform: translateY(0); }
-        /* Imagens */
+
+        /* Outros estilos */
+        .custom-checkbox { width: 1.25rem; height: 1.25rem; border-radius: 0.25rem; cursor: pointer; }
+        #mass-actions-bar { transform: translateY(-100%); transition: transform 0.3s ease-in-out; }
+        #mass-actions-bar.visible { transform: translateY(0); }
         input[type="file"] { display: none; }
         .image-preview-container { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; min-height: 5.5rem; }
         .image-preview { position: relative; width: 5rem; height: 5rem; border-radius: 0.5rem; overflow: hidden; border: 1px solid #e5e7eb; flex-shrink: 0; }
@@ -113,7 +141,7 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <button id="btn-import-csv" class="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-sm font-medium border border-zinc-200 dark:border-zinc-700">
+                <button type="button" id="btn-import-csv" class="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-sm font-medium border border-zinc-200 dark:border-zinc-700">
                     <span class="material-symbols-outlined text-lg">upload_file</span>
                     <span class="hidden sm:inline">Importar CSV</span>
                 </button>
@@ -208,7 +236,7 @@
     </div>
 
     <div class="popup-backdrop" id="import-csv-popup">
-        <div class="popup bg-white dark:bg-zinc-900 h-auto max-w-md rounded-lg overflow-hidden">
+        <div class="popup bg-white dark:bg-zinc-900 h-auto max-w-md rounded-lg overflow-hidden m-4">
             <div class="sticky top-0 z-10 bg-white dark:bg-zinc-900 py-3 px-4 border-b dark:border-zinc-700 flex justify-between items-center">
                 <h2 class="text-lg font-bold text-secondary dark:text-white">Importar Produtos</h2>
                 <button class="close-popup-btn p-1 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"><span class="material-symbols-outlined">close</span></button>
