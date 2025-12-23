@@ -243,12 +243,13 @@
             </div>
             <div class="p-4">
                 <form id="import-csv-form" class="space-y-4">
-                    <div class="p-6 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors relative group">
+                    <label for="csv-input" class="w-full block p-6 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors relative group">
                         <span class="material-symbols-outlined text-4xl text-zinc-400 mb-2 group-hover:text-primary transition-colors">upload_file</span>
                         <p class="text-sm text-zinc-600 dark:text-zinc-400 font-medium">Clique para selecionar o arquivo CSV</p>
                         <p class="text-xs text-zinc-500 mt-1">Colunas obrigatórias: nome, preco, estoque</p>
-                        <input type="file" name="csvfile" id="csv-input" accept=".csv" class="absolute inset-0 opacity-0 cursor-pointer" required>
-                    </div>
+                        <input type="file" name="csvfile" id="csv-input" accept=".csv" class="hidden" required>
+                    </label>
+
                     <div id="file-name-display" class="text-sm text-primary font-medium text-center hidden break-all"></div>
                     
                     <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-xs text-blue-700 dark:text-blue-300">
