@@ -23,6 +23,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const massReactivateBtn = document.getElementById('mass-reactivate-btn');
     const massDeleteBtn = document.getElementById('mass-delete-btn');
 
+    // Elementos de Importação CSV
+    const btnImportCsv = document.getElementById('btn-import-csv');
+    const importCsvPopup = document.getElementById('import-csv-popup');
+    const importCsvForm = document.getElementById('import-csv-form');
+    const csvInput = document.getElementById('csv-input');
+    const fileNameDisplay = document.getElementById('file-name-display');
+    const importMessage = document.getElementById('import-message');
+
     // Modais
     const addProductPopup = document.getElementById('add-product-popup');
     const editProductPopup = document.getElementById('edit-product-popup');
@@ -256,6 +264,63 @@ document.addEventListener('DOMContentLoaded', () => {
     massInactivateBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/inativar-em-massa', 'PUT', `Inativar ${selectedIds.size} produto(s)?`, 'Produtos inativados.'));
     massReactivateBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/reativar-em-massa', 'PUT', `Reativar ${selectedIds.size} produto(s)?`, 'Produtos reativados.'));
     massDeleteBtn.addEventListener('click', () => executarAcaoEmMassa('/api/produtos/excluir-em-massa', 'POST', `ATENÇÃO: EXCLUIR PERMANENTEMENTE ${selectedIds.size} produto(s)?\nIsso apagará fotos e dados. Não pode ser desfeito.`, 'Produtos excluídos.'));
+
+    // --- Importação CSV ---
+    btnImportCsv.addEventListener('click', () => {
+        importCsvForm.reset();
+        fileNameDisplay.textContent = '';
+        fileNameDisplay.classList.add('hidden');
+        importMessage.classList.add('hidden');
+        openPopup(importCsvPopup);
+    });
+
+    csvInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            fileNameDisplay.textContent = e.target.files[0].name;
+            fileNameDisplay.classList.remove('hidden');
+        } else {
+            fileNameDisplay.classList.add('hidden');
+        }
+    });
+
+    importCsvForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const btn = importCsvForm.closest('.popup').querySelector('button[type="submit"]');
+        const originalBtnText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-sm mr-2">progress_activity</span> Processando...`;
+        
+        const formData = new FormData(importCsvForm);
+
+        try {
+            const res = await fetchWithAuth('/api/produtos/importar-csv', {
+                method: 'POST',
+                body: formData 
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.message || 'Erro ao importar CSV.');
+            }
+
+            showMsg(importMessage, data.message || 'Importação concluída com sucesso!');
+            await carregarTodosProdutos();
+            
+            setTimeout(() => {
+                closePopup(importCsvPopup);
+                importMessage.classList.add('hidden');
+            }, 2000);
+
+        } catch (error) {
+            console.error(error);
+            showMsg(importMessage, error.message, true);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalBtnText;
+        }
+    });
 
     // --- Search ---
     searchInput.addEventListener('input', (e) => {
