@@ -141,6 +141,12 @@ document.addEventListener('DOMContentLoaded', () => {
                       <img class="w-14 h-14 rounded-lg object-cover flex-shrink-0" src="${produto.foto_url || 'img/placeholder.png'}" alt="${produto.nome}"/>
                       <div class="flex-1 min-w-0">
                            <p class="font-semibold text-secondary dark:text-zinc-100 truncate">${produto.nome}</p>
+                           
+                           >> -->
+                           <p class="produto-descricao">
+                                ${produto.descricao || ''}
+                           </p>
+                           
                            <p class="text-sm text-zinc-500 dark:text-zinc-400">R$ ${parseFloat(produto.preco).toFixed(2)}</p>
                            <p class="text-xs text-zinc-400">Estoque Disp.: ${estoqueDisponivel}</p>
                       </div>
