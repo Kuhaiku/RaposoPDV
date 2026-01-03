@@ -94,8 +94,9 @@ exports.listarTodos = async (req, res) => {
     const orderByClause = ordenacaoMap[sortBy] || 'p.nome ASC';
 
     try {
+        // <<<--- ALTERAÇÃO AQUI: Adicionado p.descricao ao SELECT --->>>
         const [rows] = await pool.query(`
-            SELECT p.id, p.nome, p.preco, p.estoque, p.codigo,
+            SELECT p.id, p.nome, p.preco, p.estoque, p.codigo, p.descricao,
                    COALESCE((SELECT url FROM produto_fotos WHERE produto_id = p.id ORDER BY id LIMIT 1), p.foto_url) AS foto_url
             FROM produtos p
             WHERE p.ativo = 1 AND p.empresa_id = ?
