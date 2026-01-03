@@ -142,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
                       <div class="flex-1 min-w-0">
                            <p class="font-semibold text-secondary dark:text-zinc-100 truncate">${produto.nome}</p>
                            
-                           >> -->
                            <p class="produto-descricao">
                                 ${produto.descricao || ''}
                            </p>
